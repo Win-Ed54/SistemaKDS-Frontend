@@ -1,0 +1,34 @@
+# --- DEPENDENCIAS Y COMPILACIÓN (Fundamentales) ---
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# --- REGISTROS Y LOGS ---
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# --- VARIABLES DE ENTORNO (Seguridad) ---
+.env
+.env.local
+.env.*.local
+
+# --- CONFIGURACIÓN DE EDITORES ---
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# --- ARCHIVOS TEMPORALES DE WINDOWS/MAC ---
+Thumbs.db
+desktop.ini
