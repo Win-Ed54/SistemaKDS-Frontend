@@ -30,20 +30,22 @@ export const startConnection = async (setStatus) => {
         } catch (err) {
             console.error(">>> Error al conectar con SignalR:", err);
             if (setStatus) setStatus(false);
-            setTimeout(() => startConnection(setStatus), 5000);
+            setTimeout(() => startConnection(groupMethodName, setStatus), 5000);
         }
     }
-
-    // Suscribirse a eventos de reconexión para actualizar la UI automáticamente
-    connection.onreconnecting(() => {
-        if (setStatus) setStatus(false);
-        console.warn(">>> Perdiendo conexión... reconectando");
-    });
-
-    connection.onreconnected(() => {
-        if (setStatus) setStatus(true);
-        console.log(">>> Conexión restaurada");
-    });
 };
+
+// Eventos globales 
+connection.onreconnecting(() => {
+    console.warn(">>> Perdiendo conexión... reconectando");
+});
+
+connection.onreconnected(() => {
+    console.log(">>> Conexión restaurada");
+});
+
+connection.onclose(() => {
+    console.error(">>> Conexión cerrada completamente");
+});
 
 export default connection;
