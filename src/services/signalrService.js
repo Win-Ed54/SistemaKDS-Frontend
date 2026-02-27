@@ -4,43 +4,112 @@ const HUB_URL = "http://localhost:5162/ordersHub";
 
 const connection = new signalR.HubConnectionBuilder()
     .withUrl(HUB_URL)
+    .withAutomaticReconnect()
     .configureLogging(signalR.LogLevel.Information)
-    .withAutomaticReconnect() 
-    .withStatefulReconnect({ bufferSize: 100000 }) 
     .build();
 
+let currentGroups = [];
+let handlersRegistered = false;
+
 /**
- * @param {Function} setStatus - Función para actualizar el estado visual (ej. setIsConnected)
+ * Inicia conexión SignalR
+ * @param {Array<string>} groups
+ * @param {Function} setStatus
  */
-export const startConnection = async (setStatus) => {
-    if (connection.state === signalR.HubConnectionState.Disconnected) {
-        try {
-            await connection.start();
-            console.log(">>> KDS Conectado al Servidor de Tiempo Real");
-            
-            await connection.invoke("JoinKitchenGroup");
-            console.log(">>> Unido al grupo: cocina");
+export const startConnection = async (groups = [], setStatus) => {
 
-            // Si la conexión es exitosa, avisamos a la UI
-            if (setStatus) setStatus(true);
+    // 🛑 Evitar múltiples inicios
+    if (connection.state === signalR.HubConnectionState.Connected) return;
+    if (connection.state === signalR.HubConnectionState.Connecting) return;
 
-        } catch (err) {
-            console.error(">>> Error al conectar con SignalR:", err);
-            if (setStatus) setStatus(false);
-            setTimeout(() => startConnection(setStatus), 5000);
+    try {
+        await connection.start();
+        console.log(">>> Conectado a SignalR");
+
+        currentGroups = groups;
+
+        // 🔥 Unirse a grupos
+        for (const group of groups) {
+            await joinGroup(group);
         }
+
+        if (setStatus) setStatus(true);
+
+    } catch (err) {
+        console.error("Error SignalR:", err);
+
+        if (setStatus) setStatus(false);
+
+        setTimeout(() => startConnection(groups, setStatus), 5000);
     }
 
-    // Suscribirse a eventos de reconexión para actualizar la UI automáticamente
-    connection.onreconnecting(() => {
-        if (setStatus) setStatus(false);
-        console.warn(">>> Perdiendo conexión... reconectando");
-    });
+    // ---------------------------
+    // 🔁 REGISTRAR EVENTOS SOLO UNA VEZ
+    // ---------------------------
+    if (!handlersRegistered) {
+        handlersRegistered = true;
 
-    connection.onreconnected(() => {
-        if (setStatus) setStatus(true);
-        console.log(">>> Conexión restaurada");
-    });
+        connection.onreconnecting(() => {
+            console.warn("Reconectando...");
+            if (setStatus) setStatus(false);
+        });
+
+        connection.onreconnected(async () => {
+            console.log("Reconectado");
+
+            // 🔥 Reunirse a grupos otra vez
+            for (const group of currentGroups) {
+                await joinGroup(group);
+            }
+
+            if (setStatus) setStatus(true);
+        });
+
+        connection.onclose(() => {
+            console.warn("Conexión cerrada");
+            if (setStatus) setStatus(false);
+        });
+    }
+};
+
+// ---------------------------
+// 📌 JOIN GROUP
+// ---------------------------
+export const joinGroup = async (group) => {
+    if (connection.state !== signalR.HubConnectionState.Connected) return;
+
+    try {
+        switch (group) {
+            case "cocina":
+                await connection.invoke("JoinKitchenGroup");
+                break;
+
+            case "waiters":
+                await connection.invoke("JoinWaiterGroup");
+                break;
+        }
+
+        console.log(`>>> Unido al grupo: ${group}`);
+
+    } catch (err) {
+        console.error("Error join group:", err);
+    }
+};
+
+// ---------------------------
+// 📡 SAFE INVOKE (PRO TIP)
+// ---------------------------
+export const safeInvoke = async (method, ...args) => {
+    if (connection.state !== signalR.HubConnectionState.Connected) {
+        console.warn("SignalR no conectado");
+        return;
+    }
+
+    try {
+        await connection.invoke(method, ...args);
+    } catch (err) {
+        console.error("Error invoke:", err);
+    }
 };
 
 export default connection;
