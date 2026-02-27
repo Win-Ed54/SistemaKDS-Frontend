@@ -12,9 +12,10 @@ const KitchenDisplay = () => {
     useEffect(() => {
 
         const init = async () => {
-            // 🔥 pasar grupo correctamente
+            // 🔥 conexión + grupo cocina
             await startConnection(["cocina"], setIsConnected);
 
+            // 🔥 cargar órdenes iniciales
             try {
                 const res = await fetch("http://localhost:5162/api/orders/active");
                 if (res.ok) {
@@ -29,11 +30,25 @@ const KitchenDisplay = () => {
         init();
 
         // ---------------------------
+        // 🛑 EVITAR DUPLICAR EVENTOS
+        // ---------------------------
+        connection.off("ReceiveOrder");
+        connection.off("UpdateOrderStatus");
+        connection.off("NotifyWaiterOrderReady");
+
+        // ---------------------------
         // 📥 NUEVO PEDIDO
         // ---------------------------
         connection.on("ReceiveOrder", (newOrder) => {
             console.log("Nueva orden:", newOrder);
-            setOrders(prev => [newOrder, ...prev]);
+
+            setOrders(prev => {
+                // evitar duplicados
+                const exists = prev.some(o => (o.id || o._id) === (newOrder.id || newOrder._id));
+                if (exists) return prev;
+
+                return [newOrder, ...prev];
+            });
         });
 
         // ---------------------------
@@ -53,6 +68,7 @@ const KitchenDisplay = () => {
                 })
             );
 
+            // 🔥 remover si está listo
             if (newStatus === "Ready") {
                 setOrders(prev =>
                     prev.filter(o => (o.id || o._id) !== orderId)
@@ -85,16 +101,15 @@ const KitchenDisplay = () => {
     }, []);
 
     // ---------------------------
-    // 🔧 ACCIONES (con SignalR seguro)
+    // 🔧 ACCIONES
     // ---------------------------
-
     const markAsPreparing = async (orderId) => {
         try {
             await fetch(`http://localhost:5162/api/orders/${orderId}/preparing`, {
                 method: 'PATCH'
             });
 
-            // opcional (si tienes método en hub)
+            // opcional si usas hub
             // await safeInvoke("MarkAsPreparing", orderId);
 
         } catch (err) {
@@ -108,7 +123,7 @@ const KitchenDisplay = () => {
                 method: 'PATCH'
             });
 
-            // opcional
+            // opcional si usas hub
             // await safeInvoke("MarkAsReady", orderId);
 
         } catch (err) {
@@ -231,4 +246,3 @@ const KitchenDisplay = () => {
 };
 
 export default KitchenDisplay;
-
