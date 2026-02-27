@@ -1,6 +1,13 @@
+console.log("API:", import.meta.env.VITE_API_URL);
+console.log("HUB:", import.meta.env.VITE_HUB_URL);
+
 import * as signalR from "@microsoft/signalr";
 
-const HUB_URL = `${import.meta.env.VITE_API_URL}/ordersHub`;
+// 🔥 usar HUB separado
+const HUB_URL = import.meta.env.VITE_HUB_URL;
+if(!HUB_URL){
+    throw new Error("VITE_HUB_URL no definido");
+}
 
 const connection = new signalR.HubConnectionBuilder()
     .withUrl(HUB_URL)
@@ -13,12 +20,9 @@ let handlersRegistered = false;
 
 /**
  * Inicia conexión SignalR
- * @param {Array<string>} groups
- * @param {Function} setStatus
  */
 export const startConnection = async (groups = [], setStatus) => {
 
-    // 🛑 Evitar múltiples inicios
     if (connection.state === signalR.HubConnectionState.Connected) return;
     if (connection.state === signalR.HubConnectionState.Connecting) return;
 
@@ -28,7 +32,6 @@ export const startConnection = async (groups = [], setStatus) => {
 
         currentGroups = groups;
 
-        // 🔥 Unirse a grupos
         for (const group of groups) {
             await joinGroup(group);
         }
@@ -37,15 +40,13 @@ export const startConnection = async (groups = [], setStatus) => {
 
     } catch (err) {
         console.error("Error SignalR:", err);
-
         if (setStatus) setStatus(false);
 
+        // 🔁 retry automático
         setTimeout(() => startConnection(groups, setStatus), 5000);
     }
 
-    // ---------------------------
-    // 🔁 REGISTRAR EVENTOS SOLO UNA VEZ
-    // ---------------------------
+    // 🔁 registrar eventos SOLO UNA VEZ
     if (!handlersRegistered) {
         handlersRegistered = true;
 
@@ -57,7 +58,6 @@ export const startConnection = async (groups = [], setStatus) => {
         connection.onreconnected(async () => {
             console.log("Reconectado");
 
-            // 🔥 Reunirse a grupos otra vez
             for (const group of currentGroups) {
                 await joinGroup(group);
             }
@@ -79,14 +79,12 @@ export const joinGroup = async (group) => {
     if (connection.state !== signalR.HubConnectionState.Connected) return;
 
     try {
-        switch (group) {
-            case "cocina":
-                await connection.invoke("JoinKitchenGroup");
-                break;
+        if (group === "cocina") {
+            await connection.invoke("JoinKitchenGroup");
+        }
 
-            case "waiters":
-                await connection.invoke("JoinWaiterGroup");
-                break;
+        if (group === "waiters") {
+            await connection.invoke("JoinWaiterGroup");
         }
 
         console.log(`>>> Unido al grupo: ${group}`);
@@ -97,7 +95,7 @@ export const joinGroup = async (group) => {
 };
 
 // ---------------------------
-// 📡 SAFE INVOKE (PRO TIP)
+// 📡 SAFE INVOKE
 // ---------------------------
 export const safeInvoke = async (method, ...args) => {
     if (connection.state !== signalR.HubConnectionState.Connected) {
