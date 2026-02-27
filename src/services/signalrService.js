@@ -48,4 +48,20 @@ connection.onclose(() => {
     console.error(">>> Conexión cerrada completamente");
 });
 
+//Suscribirse a eventos del Hub
+export const onEvent = (eventName, callback) => {
+    connection.on(eventName, callback);
+};
+//Desuscribirse de eventos del Hub 
+export const offEvent = (eventName, callback) => {
+    connection.off(eventName, callback);
+}
+//Invocar métodos del Hub manualmente
+export const invoke = async (methodName, data) => {
+    try {
+        await connection.invoke(methodName, data);
+    } catch (err) {
+        console.error(`>>> Error invocando ${methodName}:`, err);
+    }
+};
 export default connection;
