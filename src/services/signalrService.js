@@ -18,11 +18,14 @@ export const startConnection = async (setStatus) => {
             await connection.start();
             console.log(">>> KDS Conectado al Servidor de Tiempo Real");
             
-            await connection.invoke("JoinKitchenGroup");
-            console.log(">>> Unido al grupo: cocina");
+            //grupo dinámico
+            if (groupMethodName) {
+                await connection.invoke(groupMethodName);
+                console.log(`>>> Unido al grupo mediante: ${groupMethodName}`);
+            }
 
-            // Si la conexión es exitosa, avisamos a la UI
             if (setStatus) setStatus(true);
+
 
         } catch (err) {
             console.error(">>> Error al conectar con SignalR:", err);
