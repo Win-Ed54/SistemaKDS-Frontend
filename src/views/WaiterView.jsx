@@ -13,7 +13,7 @@ const WaiterView = () => {
         startConnection(["waiters"], setIsConnected);
 
         // 📡 Escuchar pedidos listos
-        connection.on("OrderReadyForPickup", (data) => {
+        connection.on("NotifyWaiterOrderReady", (data) => {
             console.log("Pedido listo:", data);
 
             setOrdersReady(prev => [...prev, data]);
