@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import connection, { startConnection } from '../services/signalrService';
+import connection, { startConnection, safeInvoke } from '../services/signalrService';
 
 const KitchenDisplay = () => {
     const [orders, setOrders] = useState([]);
@@ -11,17 +11,9 @@ const KitchenDisplay = () => {
     // ---------------------------
     useEffect(() => {
 
-        const updateStatus = () => {
-            setIsConnected(connection.state === "Connected");
-        };
-
         const init = async () => {
-            await startConnection();
-
-            // 🔥 IMPORTANTE: unirse al grupo cocina
-            await connection.invoke("JoinKitchenGroup");
-
-            updateStatus();
+            // 🔥 pasar grupo correctamente
+            await startConnection(["cocina"], setIsConnected);
 
             try {
                 const res = await fetch("http://localhost:5162/api/orders/active");
@@ -51,7 +43,6 @@ const KitchenDisplay = () => {
 
             console.log("Estado actualizado:", orderId, newStatus);
 
-            // actualizar estado local
             setOrders(prev =>
                 prev.map(o => {
                     const id = o.id || o._id;
@@ -62,7 +53,6 @@ const KitchenDisplay = () => {
                 })
             );
 
-            // si ya está lista → remover del KDS
             if (newStatus === "Ready") {
                 setOrders(prev =>
                     prev.filter(o => (o.id || o._id) !== orderId)
@@ -71,22 +61,11 @@ const KitchenDisplay = () => {
         });
 
         // ---------------------------
-        // 🔔 NOTIFICACIÓN A MESERO
+        // 🔔 NOTIFICACIÓN MESERO
         // ---------------------------
         connection.on("NotifyWaiterOrderReady", (data) => {
             console.log("Orden lista para mesero:", data);
         });
-
-        // ---------------------------
-        // 🔁 RECONEXIÓN
-        // ---------------------------
-        connection.onreconnected(async () => {
-            updateStatus();
-            await connection.invoke("JoinKitchenGroup");
-        });
-
-        connection.onreconnecting(updateStatus);
-        connection.onclose(updateStatus);
 
         // cleanup
         return () => {
@@ -98,7 +77,7 @@ const KitchenDisplay = () => {
     }, []);
 
     // ---------------------------
-    // ⏱ RELOJ GLOBAL
+    // ⏱ RELOJ
     // ---------------------------
     useEffect(() => {
         const timer = setInterval(() => setNow(new Date()), 1000);
@@ -106,7 +85,7 @@ const KitchenDisplay = () => {
     }, []);
 
     // ---------------------------
-    // 🔧 ACCIONES
+    // 🔧 ACCIONES (con SignalR seguro)
     // ---------------------------
 
     const markAsPreparing = async (orderId) => {
@@ -114,6 +93,10 @@ const KitchenDisplay = () => {
             await fetch(`http://localhost:5162/api/orders/${orderId}/preparing`, {
                 method: 'PATCH'
             });
+
+            // opcional (si tienes método en hub)
+            // await safeInvoke("MarkAsPreparing", orderId);
+
         } catch (err) {
             console.error("Error preparando:", err);
         }
@@ -124,6 +107,10 @@ const KitchenDisplay = () => {
             await fetch(`http://localhost:5162/api/orders/${orderId}/ready`, {
                 method: 'PATCH'
             });
+
+            // opcional
+            // await safeInvoke("MarkAsReady", orderId);
+
         } catch (err) {
             console.error("Error listo:", err);
         }
@@ -147,10 +134,11 @@ const KitchenDisplay = () => {
             <header className="flex justify-between items-center mb-8 border-b border-gray-700 pb-4">
                 <h1 className="text-3xl font-bold uppercase">KDS - Cocina</h1>
 
-                <div className={`px-4 py-1 rounded-full border ${isConnected
-                    ? 'border-green-500 text-green-500'
-                    : 'border-red-500 text-red-500 animate-pulse'
-                    }`}>
+                <div className={`px-4 py-1 rounded-full border ${
+                    isConnected
+                        ? 'border-green-500 text-green-500'
+                        : 'border-red-500 text-red-500 animate-pulse'
+                }`}>
                     {isConnected ? "ONLINE" : "OFFLINE"}
                 </div>
             </header>
@@ -171,7 +159,9 @@ const KitchenDisplay = () => {
 
                         return (
                             <div key={id}
-                                className={`bg-gray-800 rounded-xl border-2 ${isLate ? 'border-red-600' : 'border-gray-700'}`}>
+                                className={`bg-gray-800 rounded-xl border-2 ${
+                                    isLate ? 'border-red-600' : 'border-gray-700'
+                                }`}>
 
                                 {/* HEADER */}
                                 <div className={`${isLate ? 'bg-red-600' : 'bg-blue-600'} p-3`}>
@@ -182,7 +172,6 @@ const KitchenDisplay = () => {
 
                                     <p className="text-xs">{order.customerName}</p>
 
-                                    {/* 🔥 ESTADO */}
                                     <p className="text-xs uppercase opacity-70">
                                         {order.status}
                                     </p>
@@ -204,18 +193,22 @@ const KitchenDisplay = () => {
                                     ))}
                                 </div>
 
-                                {/* BOTÓN DINÁMICO */}
+                                {/* BOTÓN */}
                                 <div className="p-3">
                                     <button
+                                        disabled={!isConnected}
                                         onClick={() =>
                                             order.status === "Pending"
                                                 ? markAsPreparing(id)
                                                 : markAsReady(id)
                                         }
-                                        className={`w-full py-3 rounded-lg font-bold ${order.status === "Pending"
-                                            ? 'bg-yellow-600'
-                                            : 'bg-green-600'
-                                            }`}
+                                        className={`w-full py-3 rounded-lg font-bold ${
+                                            order.status === "Pending"
+                                                ? 'bg-yellow-600'
+                                                : 'bg-green-600'
+                                        } ${
+                                            !isConnected && "opacity-50 cursor-not-allowed"
+                                        }`}
                                     >
                                         {order.status === "Pending"
                                             ? "Preparar"
