@@ -1,6 +1,6 @@
 import * as signalR from "@microsoft/signalr";
 
-const HUB_URL = "http://localhost:5162/ordersHub";
+const HUB_URL = `${import.meta.env.VITE_API_URL}/ordersHub`;
 
 const connection = new signalR.HubConnectionBuilder()
     .withUrl(HUB_URL)
