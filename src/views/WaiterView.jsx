@@ -1,51 +1,76 @@
-import React, { useEffect, useState } from 'react';
-import * as signalR from '@microsoft/signalr';
-import { toast, Toaster } from 'react-hot-toast'; // Para alertas visuales rápidas
+import React, { useEffect, useState } from "react";
+import { toast, Toaster } from "react-hot-toast";
+
+import connection, { startConnection } from "../services/signalrService";
 
 const WaiterView = () => {
     const [ordersReady, setOrdersReady] = useState([]);
+    const [isConnected, setIsConnected] = useState(false);
 
     useEffect(() => {
-        // 1. Configurar conexión al Hub que creaste
-        const connection = new signalR.HubConnectionBuilder()
-            .withUrl("https://tu-api.com")
-            .withAutomaticReconnect()
-            .build();
 
-        connection.start()
-            .then(() => {
-                // 2. Unirse al grupo de meseros (tu método en C#)
-                connection.invoke("JoinWaiterGroup");
-            })
-            .catch(err => console.error("Error conectando:", err));
+        // 🚀 Iniciar conexión y unirse al grupo de meseros
+        startConnection(["waiters"], setIsConnected);
 
-        // 3. Escuchar el evento específico de tu Hub
+        // 📡 Escuchar pedidos listos
         connection.on("OrderReadyForPickup", (data) => {
-            // Añadir a la lista de órdenes por entregar
+            console.log("Pedido listo:", data);
+
             setOrdersReady(prev => [...prev, data]);
-            // Notificación sonora/visual
-            toast.success(`¡Mesa ${data.tableNumber} lista!`, { duration: 5000 });
+
+            toast.success(`¡Mesa ${data.tableNumber} lista!`, {
+                duration: 5000
+            });
         });
 
-        return () => connection.stop();
+        // 🧹 Limpiar evento al desmontar
+        return () => {
+            connection.off("OrderReadyForPickup");
+        };
+
     }, []);
 
     return (
         <div className="p-4 bg-gray-900 min-h-screen text-white">
-            <Toaster position="top-right" />
-            <h1 className="text-2xl font-bold mb-6">Panel de Meseros</h1>
 
-            {/* SECCIÓN DE NOTIFICACIONES CRÍTICAS */}
+            <Toaster position="top-right" />
+
+            <div className="flex justify-between items-center mb-6">
+                <h1 className="text-2xl font-bold">Panel de Meseros</h1>
+
+                <span className={`px-4 py-1 rounded-full text-sm font-bold ${
+                    isConnected ? "bg-green-500" : "bg-red-500"
+                }`}>
+                    {isConnected ? "ONLINE" : "OFFLINE"}
+                </span>
+            </div>
+
+            {/* PEDIDOS LISTOS */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {ordersReady.length === 0 ? (
-                    <p className="text-gray-500">No hay pedidos pendientes de entrega.</p>
+                    <p className="text-gray-500">
+                        No hay pedidos pendientes de entrega.
+                    </p>
                 ) : (
                     ordersReady.map((order, index) => (
-                        <div key={index} className="bg-green-600 p-6 rounded-xl shadow-lg animate-pulse">
-                            <h2 className="text-4xl font-black">MESA {order.tableNumber}</h2>
-                            <p className="text-lg">Cliente: {order.customerName}</p>
-                            <button 
-                                onClick={() => setOrdersReady(prev => prev.filter((_, i) => i !== index))}
+                        <div
+                            key={index}
+                            className="bg-green-600 p-6 rounded-xl shadow-lg animate-pulse"
+                        >
+                            <h2 className="text-4xl font-black">
+                                MESA {order.tableNumber}
+                            </h2>
+
+                            <p className="text-lg">
+                                Cliente: {order.customerName}
+                            </p>
+
+                            <button
+                                onClick={() =>
+                                    setOrdersReady(prev =>
+                                        prev.filter((_, i) => i !== index)
+                                    )
+                                }
                                 className="mt-4 bg-white text-green-700 font-bold py-2 px-4 rounded"
                             >
                                 MARCAR COMO ENTREGADO
@@ -54,8 +79,6 @@ const WaiterView = () => {
                     ))
                 )}
             </div>
-            
-            {/* Aquí iría tu Mapa de Mesas o Botón para nueva orden */}
         </div>
     );
 };
