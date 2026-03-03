@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import connection, { startConnection } from '../services/signalrService';
+import connection, { startConnection, subscribeConnectionStatus } from '../services/signalrService';
 
 const STATUS = {
     0: "Pending",
@@ -33,14 +33,18 @@ const KitchenDisplay = () => {
     useEffect(() => {
 
         const init = async () => {
-            await startConnection(["cocina"], setIsConnected);
+            await startConnection(["cocina"]);
+
+            subscribeConnectionStatus((status) => {
+                setIsConnected(status);
+            });
 
             try {
                 const res = await fetch("http://localhost:5162/api/orders/active");
                 if (res.ok) {
                     const data = await res.json();
 
-                    // 🚫 NO mostrar READY desde inicio
+                    
                     const filtered = data.filter(o => {
                         const status = STATUS[o.status] ?? o.status;
                         return status !== "Ready";
