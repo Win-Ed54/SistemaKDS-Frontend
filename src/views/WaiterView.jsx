@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { toast, Toaster } from "react-hot-toast";
 
-import connection, { startConnection } from "../services/signalrService";
+import connection, { startConnection,subscribeConnectionStatus } from "../services/signalrService";
 
 const WaiterView = () => {
     const [ordersReady, setOrdersReady] = useState([]);
@@ -10,10 +10,14 @@ const WaiterView = () => {
     useEffect(() => {
 
         // 🚀 Iniciar conexión y unirse al grupo de meseros
-        startConnection(["waiters"], setIsConnected);
+        startConnection(["waiters"]);
+
+        subscribeConnectionStatus((status) =>{
+            setIsConnected(status);
+        });
 
         // 📡 Escuchar pedidos listos
-        connection.on("NotifyWaiterOrderReady", (data) => {
+        connection.off("NotifyWaiterOrderReady", (data) => {
             console.log("Pedido listo:", data);
 
             setOrdersReady(prev => [...prev, data]);
