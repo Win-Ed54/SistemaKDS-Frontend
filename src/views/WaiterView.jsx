@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { toast, Toaster } from "react-hot-toast";
 
 import connection, { startConnection,subscribeConnectionStatus } from "../services/signalrService";
+import { data } from "react-router-dom";
 
 const WaiterView = () => {
     const [ordersReady, setOrdersReady] = useState([]);
@@ -9,27 +10,33 @@ const WaiterView = () => {
 
     useEffect(() => {
 
-        // 🚀 Iniciar conexión y unirse al grupo de meseros
+        
         startConnection(["waiters"]);
 
         subscribeConnectionStatus((status) =>{
             setIsConnected(status);
         });
 
-        // 📡 Escuchar pedidos listos
-        connection.off("NotifyWaiterOrderReady", (data) => {
+        
+        connection.on("NotifyWaiterOrderReady", (data) => {
             console.log("Pedido listo:", data);
 
-            setOrdersReady(prev => [...prev, data]);
+            setOrdersReady(prev => {
+                const exists = prev.some(order => order.orderId === data.orderId);
+                if(exists) return prev;
+
+                return [...prev, data];
+
+            });
 
             toast.success(`¡Mesa ${data.tableNumber} lista!`, {
                 duration: 5000
             });
         });
 
-        // 🧹 Limpiar evento al desmontar
+        
         return () => {
-            connection.off("OrderReadyForPickup");
+            connection.off("NotifyWaiterOrderReady");
         };
 
     }, []);
@@ -62,11 +69,11 @@ const WaiterView = () => {
                             className="bg-green-600 p-6 rounded-xl shadow-lg animate-pulse"
                         >
                             <h2 className="text-4xl font-black">
-                                MESA {order.tableNumber}
+                                Mesa: {order.table}
                             </h2>
 
                             <p className="text-lg">
-                                Cliente: {order.customerName}
+                                Cliente: {order.customer}
                             </p>
 
                             <button

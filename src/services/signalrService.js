@@ -1,7 +1,7 @@
 import * as signalR from "@microsoft/signalr";
 
 // ---------------------------
-// 🔧 CONFIG
+// CONFIG
 // ---------------------------
 const HUB_URL = import.meta.env.VITE_HUB_URL;
 
@@ -10,7 +10,7 @@ if (!HUB_URL) {
 }
 
 // ---------------------------
-// 🔌 CONEXIÓN (Singleton)
+// CONEXIÓN (Singleton)
 // ---------------------------
 const connection = new signalR.HubConnectionBuilder()
     .withUrl(HUB_URL)
@@ -19,7 +19,7 @@ const connection = new signalR.HubConnectionBuilder()
     .build();
 
 // ---------------------------
-// 📡 ESTADO GLOBAL
+// ESTADO GLOBAL
 // ---------------------------
 let isConnected = false;
 let currentGroups = [];
@@ -27,7 +27,7 @@ let handlersRegistered = false;
 let listeners = [];
 
 // ---------------------------
-// 📢 SUBSCRIBE STATUS
+// SUBSCRIBE STATUS
 // ---------------------------
 export const subscribeConnectionStatus = (callback) => {
     listeners.push(callback);
@@ -41,7 +41,7 @@ const notifyStatusChange = (status) => {
 export const getConnectionState = () => isConnected;
 
 // ---------------------------
-// 🔁 START CON RETRY
+//START CON RETRY
 // ---------------------------
 const startWithRetry = async (groups = []) => {
 
@@ -67,7 +67,7 @@ const startWithRetry = async (groups = []) => {
 };
 
 // ---------------------------
-// 🚀 START CONNECTION
+// START CONNECTION
 // ---------------------------
 export const startConnection = async (groups = []) => {
 
@@ -101,7 +101,7 @@ export const startConnection = async (groups = []) => {
 };
 
 // ---------------------------
-// 📌 JOIN GROUP
+// JOIN GROUP
 // ---------------------------
 export const joinGroup = async (group) => {
 

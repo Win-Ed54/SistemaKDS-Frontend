@@ -5,7 +5,7 @@ import WaiterView from "./views/WaiterView";
 function App() {
   return (
     <BrowserRouter>
-      {/* 🔹 Navegación simple para pruebas */}
+      {/* Navegación simple para pruebas */}
       <nav className="p-4 bg-gray-800 text-white flex gap-4">
         <Link to="/kitchen">Cocina</Link>
         <Link to="/waiter">Mesero</Link>

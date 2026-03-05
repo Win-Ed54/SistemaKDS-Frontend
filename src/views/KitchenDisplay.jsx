@@ -17,7 +17,7 @@ const KitchenDisplay = () => {
 
     const audioRef = useRef(null);
 
-    // 🔊 SONIDO
+    //SONIDO
     useEffect(() => {
         audioRef.current = new Audio('/notification.mp3');
     }, []);
@@ -29,7 +29,7 @@ const KitchenDisplay = () => {
         }
     };
 
-    // 🔌 SIGNALR
+    //SIGNALR
     useEffect(() => {
 
         const init = async () => {
@@ -59,7 +59,7 @@ const KitchenDisplay = () => {
 
         init();
 
-        // 🆕 NUEVA ORDEN
+        
         connection.on("ReceiveOrder", (newOrder) => {
 
             setOrders(prev => {
@@ -77,7 +77,7 @@ const KitchenDisplay = () => {
                 ];
             });
 
-            // quitar animación
+            
             setTimeout(() => {
                 setOrders(prev =>
                     prev.map(o =>
@@ -89,7 +89,7 @@ const KitchenDisplay = () => {
             }, 3000);
         });
 
-        // 🔄 UPDATE STATUS
+       
         connection.on("UpdateOrderStatus", (orderId, newStatus) => {
 
             setOrders(prev =>
@@ -108,14 +108,14 @@ const KitchenDisplay = () => {
                 })
             );
 
-            // quitar highlight
+            
             setTimeout(() => {
                 setOrders(prev =>
                     prev.map(o => ({ ...o, updated: false }))
                 );
             }, 1500);
 
-            // 🧹 eliminar después de animación
+           
             if (newStatus === 2) {
                 setTimeout(() => {
                     setOrders(prev =>
@@ -132,19 +132,19 @@ const KitchenDisplay = () => {
 
     }, []);
 
-    // ⏱ RELOJ
+    //RELOJ
     useEffect(() => {
         const timer = setInterval(() => setNow(new Date()), 1000);
         return () => clearInterval(timer);
     }, []);
 
-    // ⏱ TIEMPO
+    //TIEMPO
     const getMinutesElapsed = (createdAt) => {
         const start = new Date(createdAt);
         return Math.floor((now - start) / 60000);
     };
 
-    // 🎨 COLORES
+    //COLORES
     const getStatusColor = (status) => {
         switch (status) {
             case "Pending": return "bg-yellow-600";
@@ -154,7 +154,7 @@ const KitchenDisplay = () => {
         }
     };
 
-    // 🔧 ACCIONES
+    //ACCIONES
     const markAsPreparing = async (orderId) => {
         await fetch(`http://localhost:5162/api/orders/${orderId}/preparing`, {
             method: 'PATCH'
@@ -193,7 +193,7 @@ const KitchenDisplay = () => {
                 )}
 
                 {orders
-                    // 🚫 nunca renderizar READY
+                    
                     .filter(order => {
                         const status = STATUS[order.status] ?? order.status;
                         return status !== "Ready";

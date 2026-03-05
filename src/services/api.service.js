@@ -1,7 +1,7 @@
 const API_URL = import.meta.env.VITE_API_URL; // ✅ PUERTO CORRECTO
 
 // ===============================
-// 🟢 CREAR ORDEN (MESERO)
+//CREAR ORDEN (MESERO)
 // ===============================
 export const createOrder = async (orderData) => {
     const response = await fetch(`${API_URL}/orders`, {
@@ -19,7 +19,7 @@ export const createOrder = async (orderData) => {
 
 
 // ===============================
-// 🔵 OBTENER ÓRDENES ACTIVAS (KDS)
+//OBTENER ÓRDENES ACTIVAS (KDS)
 // ===============================
 export const getActiveOrders = async () => {
     const response = await fetch(`${API_URL}/orders/active`);
@@ -33,7 +33,7 @@ export const getActiveOrders = async () => {
 
 
 // ===============================
-// 🟡 MARCAR COMO READY (COCINA)
+//MARCAR COMO READY (COCINA)
 // ===============================
 export const markOrderReady = async (orderId) => {
     const response = await fetch(`${API_URL}/orders/${orderId}/ready`, {
@@ -49,7 +49,7 @@ export const markOrderReady = async (orderId) => {
 
 
 // ===============================
-// 🔴 FINALIZAR ORDEN (MESERO)
+//FINALIZAR ORDEN (MESERO)
 // ===============================
 export const finishOrder = async (orderId) => {
     const response = await fetch(`${API_URL}/orders/${orderId}/finish`, {
@@ -65,7 +65,7 @@ export const finishOrder = async (orderId) => {
 
 
 // ===============================
-// 🟣 TABLAS
+//TABLAS
 // ===============================
 export const getTables = async () => {
     const response = await fetch(`${API_URL}/tables`);
