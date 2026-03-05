@@ -47,7 +47,7 @@ const WaiterView = () => {
             <Toaster position="top-right" />
 
             <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-bold">Panel de Meseros</h1>
+                <h1 className="text-2xl font-bold">Panel de meseros</h1>
 
                 <span className={`px-4 py-1 rounded-full text-sm font-bold ${
                     isConnected ? "bg-green-500" : "bg-red-500"
