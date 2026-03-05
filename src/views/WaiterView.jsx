@@ -29,7 +29,7 @@ const WaiterView = () => {
 
             });
 
-            toast.success(`¡Mesa ${data.tableNumber} lista!`, {
+            toast.success(`¡Mesa ${data.table} lista!`, {
                 duration: 5000
             });
         });
