@@ -1,5 +1,14 @@
 import React, { useEffect, useState, useRef } from "react";
-import connection, { startConnection, subscribeConnectionStatus } from "../services/signalrService";
+import connection, {
+  startConnection,
+  subscribeConnectionStatus
+} from "../services/signalrService";
+
+import {
+  getActiveOrders,
+  markOrderPreparing,
+  markOrderReady
+} from "../services/apiService";
 
 const STATUS = {
   0: "Pending",
@@ -17,9 +26,9 @@ const KitchenDisplay = () => {
 
   const audioRef = useRef(null);
 
-  // --------------------------
+  // =============================
   // SONIDO
-  // --------------------------
+  // =============================
   useEffect(() => {
     audioRef.current = new Audio("/notification.mp3");
   }, []);
@@ -31,9 +40,9 @@ const KitchenDisplay = () => {
     audioRef.current.play().catch(() => {});
   };
 
-  // --------------------------
-  // TIEMPO mm:ss
-  // --------------------------
+  // =============================
+  // TIEMPO
+  // =============================
   const getElapsedTime = (createdAt) => {
 
     if (!createdAt) return "00:00";
@@ -42,26 +51,24 @@ const KitchenDisplay = () => {
 
     if (isNaN(start)) return "00:00";
 
-    const diff = Math.floor((now.getTime() - start.getTime()) / 1000);
+    const diff = Math.floor((now - start) / 1000);
 
-    const minutes = Math.floor(diff / 60);
-    const seconds = diff % 60;
+    const m = Math.floor(diff / 60);
+    const s = diff % 60;
 
-    return `${minutes.toString().padStart(2,"0")}:${seconds
+    return `${m.toString().padStart(2,"0")}:${s
       .toString()
       .padStart(2,"0")}`;
   };
 
-  // --------------------------
+  // =============================
   // COLOR SEGÚN TIEMPO
-  // --------------------------
+  // =============================
   const getTimeColor = (createdAt) => {
 
     if (!createdAt) return "bg-gray-700";
 
     const start = new Date(createdAt);
-
-    if (isNaN(start)) return "bg-gray-700";
 
     const minutes = Math.floor((now - start) / 60000);
 
@@ -71,21 +78,14 @@ const KitchenDisplay = () => {
     return "bg-red-600 animate-pulse";
   };
 
-  // --------------------------
-  // CARGAR ÓRDENES INICIALES
-  // --------------------------
+  // =============================
+  // CARGAR ÓRDENES
+  // =============================
   const loadOrders = async () => {
 
     try {
 
-      const res = await fetch("http://localhost:5162/api/orders/active");
-
-      if (!res.ok) {
-        console.error("Error cargando órdenes");
-        return;
-      }
-
-      const data = await res.json();
+      const data = await getActiveOrders();
 
       const filtered = data.filter(o => {
         const status = STATUS[o.status] ?? o.status;
@@ -95,22 +95,21 @@ const KitchenDisplay = () => {
       setOrders(filtered);
 
     } catch (err) {
+
       console.error("Error cargando órdenes:", err);
     }
   };
 
-  // --------------------------
+  // =============================
   // SIGNALR
-  // --------------------------
+  // =============================
   useEffect(() => {
 
     const init = async () => {
 
       await startConnection(["cocina"]);
 
-      const unsubscribe = subscribeConnectionStatus((status) => {
-        setIsConnected(status);
-      });
+      const unsubscribe = subscribeConnectionStatus(setIsConnected);
 
       await loadOrders();
 
@@ -119,16 +118,17 @@ const KitchenDisplay = () => {
 
     init();
 
-    // evitar listeners duplicados
+    // evitar duplicados
     connection.off("ReceiveOrder");
-    connection.off("UpdateOrderStatus");
+    connection.off("OrderPreparing");
+    connection.off("OrderReady");
 
-    // --------------------------
+    // =============================
     // NUEVA ORDEN
-    // --------------------------
-    connection.on("ReceiveOrder", (newOrder) => {
+    // =============================
+    connection.on("ReceiveOrder", (order) => {
 
-      const id = newOrder.id ?? newOrder._id;
+      const id = order.id ?? order._id;
 
       setOrders(prev => {
 
@@ -138,10 +138,11 @@ const KitchenDisplay = () => {
 
         playSound();
 
-        return [{ ...newOrder, isNew: true }, ...prev];
+        return [{ ...order, isNew: true }, ...prev];
       });
 
       setTimeout(() => {
+
         setOrders(prev =>
           prev.map(o =>
             (o.id ?? o._id) === id
@@ -149,48 +150,56 @@ const KitchenDisplay = () => {
               : o
           )
         );
-      }, 3000);
 
+      }, 2000);
     });
 
-    // --------------------------
-    // CAMBIO DE ESTADO
-    // --------------------------
-    connection.on("UpdateOrderStatus", (orderId, newStatus) => {
+    // =============================
+    // PREPARING
+    // =============================
+    connection.on("OrderPreparing", (order) => {
+
+      const id = order.id ?? order._id;
 
       setOrders(prev =>
-        prev.map(o => {
-
-          const id = o.id ?? o._id;
-
-          if (id === orderId) {
-            return { ...o, status: newStatus };
-          }
-
-          return o;
-        })
+        prev.map(o =>
+          (o.id ?? o._id) === id
+            ? { ...o, status: 1 }
+            : o
+        )
       );
+    });
 
-      if (newStatus === 2) {
-        setTimeout(() => {
-          setOrders(prev =>
-            prev.filter(o => (o.id ?? o._id) !== orderId)
-          );
-        }, 500);
-      }
+    // =============================
+    // READY
+    // =============================
+    connection.on("OrderReady", (order) => {
+
+      const id = order.id ?? order._id;
+
+      setTimeout(() => {
+
+        setOrders(prev =>
+          prev.filter(o => (o.id ?? o._id) !== id)
+        );
+
+      }, 300);
 
     });
 
     return () => {
+
       connection.off("ReceiveOrder");
-      connection.off("UpdateOrderStatus");
+      connection.off("OrderPreparing");
+      connection.off("OrderReady");
+
     };
 
   }, []);
 
-  // --------------------------
+  // =============================
   // RELOJ GLOBAL
-  // --------------------------
+  // =============================
   useEffect(() => {
 
     const timer = setInterval(() => {
@@ -201,50 +210,46 @@ const KitchenDisplay = () => {
 
   }, []);
 
-  // --------------------------
+  // =============================
   // ACCIONES
-  // --------------------------
-  const markAsPreparing = async (orderId) => {
+  // =============================
+  const handlePreparing = async (orderId) => {
 
     try {
 
-      const res = await fetch(
-        `http://localhost:5162/api/orders/${orderId}/preparing`,
-        { method: "PATCH" }
-      );
+      await markOrderPreparing(orderId);
 
-      if (!res.ok) {
-        console.error("Error cambiando a preparing");
-      }
+      setOrders(prev =>
+        prev.map(o =>
+          (o.id ?? o._id) === orderId
+            ? { ...o, status: 1 }
+            : o
+        )
+      );
 
     } catch (err) {
       console.error(err);
     }
-
   };
 
-  const markAsReady = async (orderId) => {
+  const handleReady = async (orderId) => {
 
     try {
 
-      const res = await fetch(
-        `http://localhost:5162/api/orders/${orderId}/ready`,
-        { method: "PATCH" }
-      );
+      await markOrderReady(orderId);
 
-      if (!res.ok) {
-        console.error("Error cambiando a ready");
-      }
+      setOrders(prev =>
+        prev.filter(o => (o.id ?? o._id) !== orderId)
+      );
 
     } catch (err) {
       console.error(err);
     }
-
   };
 
-  // --------------------------
+  // =============================
   // UI
-  // --------------------------
+  // =============================
   return (
 
     <div className="p-6 bg-gray-900 min-h-screen text-white">
@@ -279,22 +284,26 @@ const KitchenDisplay = () => {
 
           const id = order.id ?? order._id;
           const status = STATUS[order.status] ?? order.status;
-          const time = getElapsedTime(order.createdAt);
 
           return (
 
             <div
               key={id}
               className={`rounded-xl bg-gray-800 shadow-lg overflow-hidden ${
-                order.isNew ? "animate-pulse border-2 border-yellow-400" : ""
+                order.isNew ? "border-2 border-yellow-400 animate-pulse" : ""
               }`}
             >
 
               <div className={`${getTimeColor(order.createdAt)} p-3`}>
 
                 <div className="flex justify-between font-bold">
+
                   <span>Mesa {order.tableNumber}</span>
-                  <span>{time}</span>
+
+                  <span>
+                    {getElapsedTime(order.createdAt)}
+                  </span>
+
                 </div>
 
               </div>
@@ -326,9 +335,11 @@ const KitchenDisplay = () => {
                   onClick={() => {
 
                     if (status === "Pending") {
-                      markAsPreparing(id);
-                    } else if (status === "Preparing") {
-                      markAsReady(id);
+                      handlePreparing(id);
+                    }
+
+                    if (status === "Preparing") {
+                      handleReady(id);
                     }
 
                   }}
@@ -370,3 +381,4 @@ const KitchenDisplay = () => {
 };
 
 export default KitchenDisplay;
+

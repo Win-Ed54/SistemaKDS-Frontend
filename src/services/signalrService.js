@@ -32,6 +32,7 @@ let listeners = [];
 // SUBSCRIBE STATUS
 // ---------------------------
 export const subscribeConnectionStatus = (callback) => {
+
     listeners.push(callback);
 
     return () => {
@@ -40,7 +41,9 @@ export const subscribeConnectionStatus = (callback) => {
 };
 
 const notifyStatusChange = (status) => {
+
     isConnected = status;
+
     listeners.forEach(cb => cb(status));
 };
 
@@ -52,16 +55,23 @@ export const getConnectionState = () => isConnected;
 const startWithRetry = async (groups = []) => {
 
     while (connection.state !== signalR.HubConnectionState.Connected) {
+
         try {
+
             console.log("Intentando conectar a SignalR...");
+
             await connection.start();
+
             console.log(">>> Conectado a SignalR");
+
             notifyStatusChange(true);
+
             break;
 
         } catch (err) {
 
             console.error("Error conectando. Reintentando...", err);
+
             notifyStatusChange(false);
 
             await new Promise(res => setTimeout(res, 5000));
@@ -80,8 +90,12 @@ const startWithRetry = async (groups = []) => {
 // ---------------------------
 export const startConnection = async (groups = []) => {
 
-    if (connection.state === signalR.HubConnectionState.Connected) return;
-    if (connection.state === signalR.HubConnectionState.Connecting) return;
+    if (
+        connection.state === signalR.HubConnectionState.Connected ||
+        connection.state === signalR.HubConnectionState.Connecting
+    ) {
+        return;
+    }
 
     await startWithRetry(groups);
 
@@ -90,7 +104,9 @@ export const startConnection = async (groups = []) => {
         handlersRegistered = true;
 
         connection.onreconnecting(() => {
+
             console.warn("Reconectando...");
+
             notifyStatusChange(false);
         });
 
@@ -108,6 +124,7 @@ export const startConnection = async (groups = []) => {
         connection.onclose(async () => {
 
             console.warn("Conexión cerrada. Reintentando...");
+
             notifyStatusChange(false);
 
             await startWithRetry(currentGroups);
@@ -124,12 +141,18 @@ export const joinGroup = async (group) => {
 
     try {
 
-        if (group === "cocina") {
-            await connection.invoke("JoinKitchenGroup");
-        }
+        switch (group) {
 
-        if (group === "waiters") {
-            await connection.invoke("JoinWaiterGroup");
+            case "cocina":
+                await connection.invoke("JoinKitchenGroup");
+                break;
+
+            case "waiters":
+                await connection.invoke("JoinWaiterGroup");
+                break;
+
+            default:
+                console.warn(`Grupo no reconocido: ${group}`);
         }
 
         console.log(`>>> Unido al grupo: ${group}`);
@@ -141,21 +164,36 @@ export const joinGroup = async (group) => {
 };
 
 // ---------------------------
+// REMOVE HANDLER (evita duplicados)
+// ---------------------------
+export const offEvent = (eventName) => {
+    connection.off(eventName);
+};
+
+// ---------------------------
 // EVENTOS KDS
 // ---------------------------
 export const onReceiveOrder = (callback) => {
+
+    connection.off("ReceiveOrder");
     connection.on("ReceiveOrder", callback);
 };
 
 export const onOrderReady = (callback) => {
+
+    connection.off("OrderReady");
     connection.on("OrderReady", callback);
 };
 
 export const onOrderPreparing = (callback) => {
+
+    connection.off("OrderPreparing");
     connection.on("OrderPreparing", callback);
 };
 
 export const onOrderDelivered = (callback) => {
+
+    connection.off("OrderDelivered");
     connection.on("OrderDelivered", callback);
 };
 
