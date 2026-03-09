@@ -2,13 +2,13 @@ import React, { useEffect, useState, useRef } from "react";
 import connection, {
   startConnection,
   subscribeConnectionStatus
-} from "../services/signalrService";
+} from "../services/signalrService.js";
 
 import {
   getActiveOrders,
   markOrderPreparing,
   markOrderReady
-} from "../services/apiService";
+} from "../services/api.service.js";
 
 const STATUS = {
   0: "Pending",
