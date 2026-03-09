@@ -13,7 +13,9 @@ if (!HUB_URL) {
 // CONEXIÓN (Singleton)
 // ---------------------------
 const connection = new signalR.HubConnectionBuilder()
-    .withUrl(HUB_URL)
+    .withUrl(HUB_URL, {
+        accessTokenFactory: () => localStorage.getItem("token") || ""
+    })
     .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
     .configureLogging(signalR.LogLevel.Information)
     .build();
@@ -31,6 +33,10 @@ let listeners = [];
 // ---------------------------
 export const subscribeConnectionStatus = (callback) => {
     listeners.push(callback);
+
+    return () => {
+        listeners = listeners.filter(cb => cb !== callback);
+    };
 };
 
 const notifyStatusChange = (status) => {
@@ -41,20 +47,23 @@ const notifyStatusChange = (status) => {
 export const getConnectionState = () => isConnected;
 
 // ---------------------------
-//START CON RETRY
+// START CON RETRY
 // ---------------------------
 const startWithRetry = async (groups = []) => {
 
     while (connection.state !== signalR.HubConnectionState.Connected) {
         try {
-            console.log("Intentando conectar...");
+            console.log("Intentando conectar a SignalR...");
             await connection.start();
             console.log(">>> Conectado a SignalR");
             notifyStatusChange(true);
             break;
+
         } catch (err) {
+
             console.error("Error conectando. Reintentando...", err);
             notifyStatusChange(false);
+
             await new Promise(res => setTimeout(res, 5000));
         }
     }
@@ -77,6 +86,7 @@ export const startConnection = async (groups = []) => {
     await startWithRetry(groups);
 
     if (!handlersRegistered) {
+
         handlersRegistered = true;
 
         connection.onreconnecting(() => {
@@ -85,16 +95,21 @@ export const startConnection = async (groups = []) => {
         });
 
         connection.onreconnected(async () => {
+
             console.log("Reconectado");
+
             for (const group of currentGroups) {
                 await joinGroup(group);
             }
+
             notifyStatusChange(true);
         });
 
         connection.onclose(async () => {
+
             console.warn("Conexión cerrada. Reintentando...");
             notifyStatusChange(false);
+
             await startWithRetry(currentGroups);
         });
     }
@@ -108,6 +123,7 @@ export const joinGroup = async (group) => {
     if (connection.state !== signalR.HubConnectionState.Connected) return;
 
     try {
+
         if (group === "cocina") {
             await connection.invoke("JoinKitchenGroup");
         }
@@ -119,8 +135,28 @@ export const joinGroup = async (group) => {
         console.log(`>>> Unido al grupo: ${group}`);
 
     } catch (err) {
+
         console.error("Error join group:", err);
     }
+};
+
+// ---------------------------
+// EVENTOS KDS
+// ---------------------------
+export const onReceiveOrder = (callback) => {
+    connection.on("ReceiveOrder", callback);
+};
+
+export const onOrderReady = (callback) => {
+    connection.on("OrderReady", callback);
+};
+
+export const onOrderPreparing = (callback) => {
+    connection.on("OrderPreparing", callback);
+};
+
+export const onOrderDelivered = (callback) => {
+    connection.on("OrderDelivered", callback);
 };
 
 // ---------------------------

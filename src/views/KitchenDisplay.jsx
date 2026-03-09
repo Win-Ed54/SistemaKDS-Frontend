@@ -1,288 +1,372 @@
-import React, { useEffect, useState, useRef } from 'react';
-import connection, { startConnection, subscribeConnectionStatus } from '../services/signalrService';
+import React, { useEffect, useState, useRef } from "react";
+import connection, { startConnection, subscribeConnectionStatus } from "../services/signalrService";
 
 const STATUS = {
-    0: "Pending",
-    1: "Preparing",
-    2: "Ready",
-    3: "Delivered",
-    4: "Cancelled"
+  0: "Pending",
+  1: "Preparing",
+  2: "Ready",
+  3: "Delivered",
+  4: "Cancelled"
 };
 
 const KitchenDisplay = () => {
 
-    const [orders, setOrders] = useState([]);
-    const [isConnected, setIsConnected] = useState(false);
-    const [now, setNow] = useState(new Date());
+  const [orders, setOrders] = useState([]);
+  const [isConnected, setIsConnected] = useState(false);
+  const [now, setNow] = useState(new Date());
 
-    const audioRef = useRef(null);
+  const audioRef = useRef(null);
 
-    //SONIDO
-    useEffect(() => {
-        audioRef.current = new Audio('/notification.mp3');
-    }, []);
+  // --------------------------
+  // SONIDO
+  // --------------------------
+  useEffect(() => {
+    audioRef.current = new Audio("/notification.mp3");
+  }, []);
 
-    const playSound = () => {
-        if (audioRef.current) {
-            audioRef.current.currentTime = 0;
-            audioRef.current.play().catch(() => {});
-        }
+  const playSound = () => {
+    if (!audioRef.current) return;
+
+    audioRef.current.currentTime = 0;
+    audioRef.current.play().catch(() => {});
+  };
+
+  // --------------------------
+  // TIEMPO mm:ss
+  // --------------------------
+  const getElapsedTime = (createdAt) => {
+
+    if (!createdAt) return "00:00";
+
+    const start = new Date(createdAt);
+
+    if (isNaN(start)) return "00:00";
+
+    const diff = Math.floor((now.getTime() - start.getTime()) / 1000);
+
+    const minutes = Math.floor(diff / 60);
+    const seconds = diff % 60;
+
+    return `${minutes.toString().padStart(2,"0")}:${seconds
+      .toString()
+      .padStart(2,"0")}`;
+  };
+
+  // --------------------------
+  // COLOR SEGÚN TIEMPO
+  // --------------------------
+  const getTimeColor = (createdAt) => {
+
+    if (!createdAt) return "bg-gray-700";
+
+    const start = new Date(createdAt);
+
+    if (isNaN(start)) return "bg-gray-700";
+
+    const minutes = Math.floor((now - start) / 60000);
+
+    if (minutes < 5) return "bg-green-600";
+    if (minutes < 10) return "bg-yellow-500 text-black";
+
+    return "bg-red-600 animate-pulse";
+  };
+
+  // --------------------------
+  // CARGAR ÓRDENES INICIALES
+  // --------------------------
+  const loadOrders = async () => {
+
+    try {
+
+      const res = await fetch("http://localhost:5162/api/orders/active");
+
+      if (!res.ok) {
+        console.error("Error cargando órdenes");
+        return;
+      }
+
+      const data = await res.json();
+
+      const filtered = data.filter(o => {
+        const status = STATUS[o.status] ?? o.status;
+        return status !== "Ready";
+      });
+
+      setOrders(filtered);
+
+    } catch (err) {
+      console.error("Error cargando órdenes:", err);
+    }
+  };
+
+  // --------------------------
+  // SIGNALR
+  // --------------------------
+  useEffect(() => {
+
+    const init = async () => {
+
+      await startConnection(["cocina"]);
+
+      const unsubscribe = subscribeConnectionStatus((status) => {
+        setIsConnected(status);
+      });
+
+      await loadOrders();
+
+      return unsubscribe;
     };
 
-    //SIGNALR
-    useEffect(() => {
+    init();
 
-        const init = async () => {
-            await startConnection(["cocina"]);
+    // evitar listeners duplicados
+    connection.off("ReceiveOrder");
+    connection.off("UpdateOrderStatus");
 
-            subscribeConnectionStatus((status) => {
-                setIsConnected(status);
-            });
+    // --------------------------
+    // NUEVA ORDEN
+    // --------------------------
+    connection.on("ReceiveOrder", (newOrder) => {
 
-            try {
-                const res = await fetch("http://localhost:5162/api/orders/active");
-                if (res.ok) {
-                    const data = await res.json();
+      const id = newOrder.id ?? newOrder._id;
 
-                    
-                    const filtered = data.filter(o => {
-                        const status = STATUS[o.status] ?? o.status;
-                        return status !== "Ready";
-                    });
+      setOrders(prev => {
 
-                    setOrders(filtered);
-                }
-            } catch (err) {
-                console.error("Error al cargar órdenes:", err);
-            }
-        };
+        const exists = prev.some(o => (o.id ?? o._id) === id);
 
-        init();
+        if (exists) return prev;
 
-        
-        connection.on("ReceiveOrder", (newOrder) => {
+        playSound();
 
-            setOrders(prev => {
-                const exists = prev.some(o =>
-                    (o.id || o._id) === (newOrder.id || newOrder._id)
-                );
+        return [{ ...newOrder, isNew: true }, ...prev];
+      });
 
-                if (exists) return prev;
+      setTimeout(() => {
+        setOrders(prev =>
+          prev.map(o =>
+            (o.id ?? o._id) === id
+              ? { ...o, isNew: false }
+              : o
+          )
+        );
+      }, 3000);
 
-                playSound();
+    });
 
-                return [
-                    { ...newOrder, isNew: true },
-                    ...prev
-                ];
-            });
+    // --------------------------
+    // CAMBIO DE ESTADO
+    // --------------------------
+    connection.on("UpdateOrderStatus", (orderId, newStatus) => {
 
-            
-            setTimeout(() => {
-                setOrders(prev =>
-                    prev.map(o =>
-                        (o.id || o._id) === (newOrder.id || newOrder._id)
-                            ? { ...o, isNew: false }
-                            : o
-                    )
-                );
-            }, 3000);
-        });
+      setOrders(prev =>
+        prev.map(o => {
 
-       
-        connection.on("UpdateOrderStatus", (orderId, newStatus) => {
+          const id = o.id ?? o._id;
 
-            setOrders(prev =>
-                prev.map(o => {
-                    const id = o.id || o._id;
+          if (id === orderId) {
+            return { ...o, status: newStatus };
+          }
 
-                    if (id === orderId) {
-                        return {
-                            ...o,
-                            status: newStatus,
-                            updated: true,
-                            removing: newStatus === 2 // Ready
-                        };
-                    }
-                    return o;
-                })
-            );
+          return o;
+        })
+      );
 
-            
-            setTimeout(() => {
-                setOrders(prev =>
-                    prev.map(o => ({ ...o, updated: false }))
-                );
-            }, 1500);
+      if (newStatus === 2) {
+        setTimeout(() => {
+          setOrders(prev =>
+            prev.filter(o => (o.id ?? o._id) !== orderId)
+          );
+        }, 500);
+      }
 
-           
-            if (newStatus === 2) {
-                setTimeout(() => {
-                    setOrders(prev =>
-                        prev.filter(o => (o.id || o._id) !== orderId)
-                    );
-                }, 500);
-            }
-        });
+    });
 
-        return () => {
-            connection.off("ReceiveOrder");
-            connection.off("UpdateOrderStatus");
-        };
-
-    }, []);
-
-    //RELOJ
-    useEffect(() => {
-        const timer = setInterval(() => setNow(new Date()), 1000);
-        return () => clearInterval(timer);
-    }, []);
-
-    //TIEMPO
-    const getMinutesElapsed = (createdAt) => {
-        const start = new Date(createdAt);
-        return Math.floor((now - start) / 60000);
+    return () => {
+      connection.off("ReceiveOrder");
+      connection.off("UpdateOrderStatus");
     };
 
-    //COLORES
-    const getStatusColor = (status) => {
-        switch (status) {
-            case "Pending": return "bg-yellow-600";
-            case "Preparing": return "bg-blue-600";
-            case "Ready": return "bg-green-600";
-            default: return "bg-gray-600";
-        }
-    };
+  }, []);
 
-    //ACCIONES
-    const markAsPreparing = async (orderId) => {
-        await fetch(`http://localhost:5162/api/orders/${orderId}/preparing`, {
-            method: 'PATCH'
-        });
-    };
+  // --------------------------
+  // RELOJ GLOBAL
+  // --------------------------
+  useEffect(() => {
 
-    const markAsReady = async (orderId) => {
-        await fetch(`http://localhost:5162/api/orders/${orderId}/ready`, {
-            method: 'PATCH'
-        });
-    };
+    const timer = setInterval(() => {
+      setNow(new Date());
+    }, 1000);
 
-    return (
-        <div className="p-6 bg-gray-900 min-h-screen text-white">
+    return () => clearInterval(timer);
 
-            {/* HEADER */}
-            <header className="flex justify-between mb-6">
-                <h1 className="text-3xl font-bold">KDS - Cocina</h1>
+  }, []);
 
-                <div className={`px-4 py-1 rounded-full border ${
-                    isConnected
-                        ? 'border-green-500 text-green-500'
-                        : 'border-red-500 text-red-500 animate-pulse'
-                }`}>
-                    {isConnected ? "ONLINE" : "OFFLINE"}
-                </div>
-            </header>
+  // --------------------------
+  // ACCIONES
+  // --------------------------
+  const markAsPreparing = async (orderId) => {
 
-            {/* GRID */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    try {
 
-                {orders.length === 0 && (
-                    <div className="col-span-full text-center opacity-40">
-                        Esperando pedidos...
-                    </div>
-                )}
+      const res = await fetch(
+        `http://localhost:5162/api/orders/${orderId}/preparing`,
+        { method: "PATCH" }
+      );
 
-                {orders
-                    
-                    .filter(order => {
-                        const status = STATUS[order.status] ?? order.status;
-                        return status !== "Ready";
-                    })
-                    .map(order => {
+      if (!res.ok) {
+        console.error("Error cambiando a preparing");
+      }
 
-                        const id = order.id || order._id;
-                        const status = STATUS[order.status] ?? order.status;
-                        const minutes = getMinutesElapsed(order.createdAt);
+    } catch (err) {
+      console.error(err);
+    }
 
-                        const isLate = minutes >= 10;
-                        const isCritical = minutes >= 15;
+  };
 
-                        return (
-                            <div
-                                key={id}
-                                className={`
-                                    rounded-xl border-2 bg-gray-800 transition-all duration-300
-                                    ${isCritical ? 'border-red-800 animate-pulse' :
-                                      isLate ? 'border-red-500' : 'border-gray-700'}
-                                    ${order.isNew ? 'scale-105 ring-4 ring-green-400' : ''}
-                                    ${order.updated ? 'ring-4 ring-blue-400' : ''}
-                                    ${order.removing ? 'opacity-0 scale-95' : ''}
-                                `}
-                            >
+  const markAsReady = async (orderId) => {
 
-                                {/* HEADER */}
-                                <div className={`${getStatusColor(status)} p-3`}>
-                                    <div className="flex justify-between">
-                                        <h3>Mesa #{order.tableNumber}</h3>
-                                        <span>{minutes}m</span>
-                                    </div>
+    try {
 
-                                    <p className="text-xs">{order.customerName}</p>
-                                    <p className="text-xs uppercase opacity-80">{status}</p>
-                                </div>
+      const res = await fetch(
+        `http://localhost:5162/api/orders/${orderId}/ready`,
+        { method: "PATCH" }
+      );
 
-                                {/* ITEMS */}
-                                <div className="p-3 space-y-2">
-                                    {order.items.map((item, i) => (
-                                        <div key={i}>
-                                            <b>{item.quantity}x</b> {item.productName}
+      if (!res.ok) {
+        console.error("Error cambiando a ready");
+      }
 
-                                            {item.notes && (
-                                                <p className="text-yellow-400 text-xs">
-                                                    ⚠ {item.notes}
-                                                </p>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
+    } catch (err) {
+      console.error(err);
+    }
 
-                                {/* ACTION */}
-                                <div className="p-3">
-                                    <button
-                                        disabled={!isConnected}
-                                        onClick={() => {
-                                            if (status === "Pending") {
-                                                markAsPreparing(id);
-                                            } else if (status === "Preparing") {
-                                                markAsReady(id);
-                                            }
-                                        }}
-                                        className={`w-full py-3 rounded-lg font-bold ${
-                                            status === "Pending"
-                                                ? 'bg-yellow-600'
-                                                : status === "Preparing"
-                                                    ? 'bg-green-600'
-                                                    : 'bg-gray-600'
-                                        }`}
-                                    >
-                                        {status === "Pending"
-                                            ? "Preparar"
-                                            : status === "Preparing"
-                                                ? "Listo"
-                                                : "Finalizado"}
-                                    </button>
+  };
 
-                                    <p className="text-xs text-center mt-2">
-                                        Mesero: {order.waiterName}
-                                    </p>
-                                </div>
+  // --------------------------
+  // UI
+  // --------------------------
+  return (
 
-                            </div>
-                        );
-                    })}
-            </div>
+    <div className="p-6 bg-gray-900 min-h-screen text-white">
+
+      <header className="flex justify-between mb-6">
+
+        <h1 className="text-3xl font-bold">
+          Panel de Cocina (KDS)
+        </h1>
+
+        <div
+          className={`px-4 py-1 rounded-full border ${
+            isConnected
+              ? "border-green-500 text-green-500"
+              : "border-red-500 text-red-500 animate-pulse"
+          }`}
+        >
+          {isConnected ? "ONLINE" : "OFFLINE"}
         </div>
-    );
+
+      </header>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+
+        {orders.length === 0 && (
+          <div className="col-span-full text-center opacity-40">
+            Esperando pedidos...
+          </div>
+        )}
+
+        {orders.map(order => {
+
+          const id = order.id ?? order._id;
+          const status = STATUS[order.status] ?? order.status;
+          const time = getElapsedTime(order.createdAt);
+
+          return (
+
+            <div
+              key={id}
+              className={`rounded-xl bg-gray-800 shadow-lg overflow-hidden ${
+                order.isNew ? "animate-pulse border-2 border-yellow-400" : ""
+              }`}
+            >
+
+              <div className={`${getTimeColor(order.createdAt)} p-3`}>
+
+                <div className="flex justify-between font-bold">
+                  <span>Mesa {order.tableNumber}</span>
+                  <span>{time}</span>
+                </div>
+
+              </div>
+
+              <div className="p-4 space-y-2">
+
+                {order.items?.map((item, i) => (
+
+                  <div key={i} className="border-b border-gray-700 pb-1">
+
+                    <b>{item.quantity}x</b> {item.productName}
+
+                    {item.notes && (
+                      <p className="text-yellow-400 text-xs">
+                        ⚠ {item.notes}
+                      </p>
+                    )}
+
+                  </div>
+
+                ))}
+
+              </div>
+
+              <div className="p-3">
+
+                <button
+                  disabled={!isConnected}
+                  onClick={() => {
+
+                    if (status === "Pending") {
+                      markAsPreparing(id);
+                    } else if (status === "Preparing") {
+                      markAsReady(id);
+                    }
+
+                  }}
+                  className={`w-full py-3 rounded-lg font-bold ${
+                    status === "Pending"
+                      ? "bg-yellow-600"
+                      : status === "Preparing"
+                      ? "bg-green-600"
+                      : "bg-gray-600"
+                  }`}
+                >
+
+                  {status === "Pending"
+                    ? "Preparar"
+                    : status === "Preparing"
+                    ? "Listo"
+                    : "Finalizado"}
+
+                </button>
+
+                <p className="text-xs text-center mt-2 opacity-70">
+                  Mesero: {order.waiterName}
+                </p>
+
+              </div>
+
+            </div>
+
+          );
+
+        })}
+
+      </div>
+
+    </div>
+
+  );
+
 };
 
 export default KitchenDisplay;

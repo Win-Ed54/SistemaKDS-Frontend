@@ -1,78 +1,83 @@
-const API_URL = import.meta.env.VITE_API_URL; // ✅ PUERTO CORRECTO
+const API_URL = import.meta.env.VITE_API_URL;
 
 // ===============================
-//CREAR ORDEN (MESERO)
+// FUNCIÓN BASE PARA REQUESTS
 // ===============================
-export const createOrder = async (orderData) => {
-    const response = await fetch(`${API_URL}/orders`, {
+const request = async (endpoint, options = {}) => {
+
+    const response = await fetch(`${API_URL}${endpoint}`, {
+        headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+        },
+        ...options
+    });
+
+    if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || "Error en la petición");
+    }
+
+    try {
+        return await response.json();
+    } catch {
+        return null;
+    }
+};
+
+
+// ===============================
+// CREAR ORDEN (MESERO)
+// ===============================
+export const createOrder = (orderData) => {
+    return request('/orders', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(orderData)
     });
-
-    if (!response.ok) {
-        throw new Error("Error al crear la orden");
-    }
-
-    return response.json();
 };
 
 
 // ===============================
-//OBTENER ÓRDENES ACTIVAS (KDS)
+// OBTENER ÓRDENES ACTIVAS (KDS)
 // ===============================
-export const getActiveOrders = async () => {
-    const response = await fetch(`${API_URL}/orders/active`);
-
-    if (!response.ok) {
-        throw new Error("Error al obtener órdenes");
-    }
-
-    return response.json();
+export const getActiveOrders = () => {
+    return request('/orders/active');
 };
 
 
 // ===============================
-//MARCAR COMO READY (COCINA)
+// MARCAR COMO PREPARING (COCINA)
 // ===============================
-export const markOrderReady = async (orderId) => {
-    const response = await fetch(`${API_URL}/orders/${orderId}/ready`, {
+export const markOrderPreparing = (orderId) => {
+    return request(`/orders/${orderId}/preparing`, {
         method: 'PATCH'
     });
-
-    if (!response.ok) {
-        throw new Error("Error al marcar como Ready");
-    }
-
-    return response.json();
 };
 
 
 // ===============================
-//FINALIZAR ORDEN (MESERO)
+// MARCAR COMO READY (COCINA)
 // ===============================
-export const finishOrder = async (orderId) => {
-    const response = await fetch(`${API_URL}/orders/${orderId}/finish`, {
+export const markOrderReady = (orderId) => {
+    return request(`/orders/${orderId}/ready`, {
         method: 'PATCH'
     });
-
-    if (!response.ok) {
-        throw new Error("Error al finalizar la orden");
-    }
-
-    return response.json();
 };
 
 
 // ===============================
-//TABLAS
+// FINALIZAR ORDEN (MESERO)
 // ===============================
-export const getTables = async () => {
-    const response = await fetch(`${API_URL}/tables`);
+export const finishOrder = (orderId) => {
+    return request(`/orders/${orderId}/finish`, {
+        method: 'PATCH'
+    });
+};
 
-    if (!response.ok) {
-        throw new Error("Error al obtener mesas");
-    }
 
-    return response.json();
+// ===============================
+// TABLAS
+// ===============================
+export const getTables = () => {
+    return request('/tables');
 };
