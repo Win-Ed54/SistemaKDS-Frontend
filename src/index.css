@@ -1,2 +1,54 @@
 @import "tailwindcss";
 
+/* ============================= */
+/* AUTO GRID PARA KDS */
+/* ============================= */
+
+.auto-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+}
+
+/* ============================= */
+/* ANIMACION ENTRADA */
+/* ============================= */
+
+@keyframes orderEnter {
+  0% {
+    opacity: 0;
+    transform: scale(0.8) translateY(20px);
+  }
+
+  60% {
+    opacity: 1;
+    transform: scale(1.05) translateY(0);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+.animate-order-enter {
+  animation: orderEnter 0.35s ease-out;
+}
+
+/* ============================= */
+/* ANIMACION SALIDA */
+/* ============================= */
+
+@keyframes orderExit {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+}
+
+.animate-order-exit {
+  animation: orderExit 0.3s ease-in forwards;
+}
