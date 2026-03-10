@@ -108,3 +108,19 @@ export const cancelOrder = (orderId) => {
 export const getTables = () => {
     return request("/tables");
 };
+
+// =============================
+// PRODUCTOS (MENÚ)
+// =============================
+
+export const getProducts = async () => {
+
+  const res = await fetch("http://localhost:5162/api/products");
+
+  if (!res.ok) {
+    throw new Error("Error cargando productos");
+  }
+
+  return await res.json();
+
+};
