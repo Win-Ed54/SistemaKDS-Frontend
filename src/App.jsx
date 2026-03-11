@@ -1,14 +1,22 @@
-import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+
 import KitchenDisplay from "./views/KitchenDisplay";
 import WaiterView from "./views/WaiterView";
 import Login from "./pages/Login";
+import { getUserRole } from "./services/authService";
 
-const PrivateRoute = ({ children }) => {
+const PrivateRoute = ({ children, role }) => {
 
   const token = localStorage.getItem("token");
 
   if (!token) {
-    return <Login />;
+    return <Navigate to="/login" />;
+  }
+
+  const userRole = getUserRole();
+
+  if (userRole !== role) {
+    return <Navigate to="/login" />;
   }
 
   return children;
@@ -19,28 +27,14 @@ function App() {
   return (
     <BrowserRouter>
 
-      <nav className="p-4 bg-gray-800 text-white flex gap-4">
-        <Link to="/kitchen">Cocina</Link>
-        <Link to="/waiter">Mesero</Link>
-      </nav>
-
       <Routes>
 
         <Route path="/login" element={<Login />} />
 
         <Route
-          path="/"
-          element={
-            <PrivateRoute>
-              <KitchenDisplay />
-            </PrivateRoute>
-          }
-        />
-
-        <Route
           path="/kitchen"
           element={
-            <PrivateRoute>
+            <PrivateRoute role="kitchen">
               <KitchenDisplay />
             </PrivateRoute>
           }
@@ -49,11 +43,13 @@ function App() {
         <Route
           path="/waiter"
           element={
-            <PrivateRoute>
+            <PrivateRoute role="waiter">
               <WaiterView />
             </PrivateRoute>
           }
         />
+
+        <Route path="*" element={<Navigate to="/login" />} />
 
       </Routes>
 
