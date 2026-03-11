@@ -1,7 +1,7 @@
 const API_URL = import.meta.env.VITE_API_URL;
 
 if (!API_URL) {
-    throw new Error("VITE_API_URL no definido");
+  throw new Error("VITE_API_URL no definido");
 }
 
 // ===============================
@@ -9,75 +9,80 @@ if (!API_URL) {
 // ===============================
 const request = async (endpoint, options = {}) => {
 
-    try {
+  try {
 
-        const token = localStorage.getItem("token");
+    const token = localStorage.getItem("token");
 
-        const response = await fetch(`${API_URL}${endpoint}`, {
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": token ? `Bearer ${token}` : "",
-                ...(options.headers || {})
-            },
-            ...options
-        });
+    const headers = {
+      "Content-Type": "application/json",
+      ...(options.headers || {})
+    };
 
-        // si el token expiró
-        if (response.status === 401) {
-            localStorage.removeItem("token");
-            window.location.href = "/login";
-            return;
-        }
-
-        if (!response.ok) {
-
-            let errorMessage = "Error en la petición";
-
-            try {
-                const data = await response.json();
-                errorMessage = data.message || errorMessage;
-            } catch {
-                errorMessage = await response.text();
-            }
-
-            throw new Error(errorMessage);
-        }
-
-        // respuestas sin body
-        if (response.status === 204) {
-            return null;
-        }
-
-        return await response.json();
-
-    } catch (err) {
-
-        console.error("API Error:", err);
-
-        throw err;
+    // agregar token solo si existe
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
     }
+
+    const response = await fetch(`${API_URL}${endpoint}`, {
+      ...options,
+      headers
+    });
+
+    // si el token expiró
+    if (response.status === 401) {
+      localStorage.removeItem("token");
+      window.location.href = "/login";
+      return;
+    }
+
+    // manejar errores
+    if (!response.ok) {
+
+      let errorMessage = "Error en la petición";
+
+      try {
+        const text = await response.text();
+        errorMessage = text || errorMessage;
+      } catch {}
+
+      throw new Error(errorMessage);
+    }
+
+    // respuestas sin contenido
+    if (response.status === 204) {
+      return null;
+    }
+
+    return await response.json();
+
+  } catch (err) {
+
+    console.error("API Error:", err);
+    throw err;
+
+  }
 };
 
 // ===============================
 // ÓRDENES
 // ===============================
 
-// Crear orden (mesero)
+// Crear orden
 export const createOrder = (orderData) => {
-    return request("/orders", {
-        method: "POST",
-        body: JSON.stringify(orderData)
-    });
+  return request("/orders", {
+    method: "POST",
+    body: JSON.stringify(orderData)
+  });
 };
 
-// Obtener órdenes activas (KDS)
+// Obtener órdenes activas
 export const getActiveOrders = () => {
-    return request("/orders/active");
+  return request("/orders/active");
 };
 
-// Obtener historial
+// Historial
 export const getOrderHistory = () => {
-    return request("/orders/history");
+  return request("/orders/history");
 };
 
 // ===============================
@@ -86,42 +91,44 @@ export const getOrderHistory = () => {
 
 // Pending → Preparing
 export const markOrderPreparing = (orderId) => {
-    return request(`/orders/${orderId}/preparing`, {
-        method: "PATCH"
-    });
+  return request(`/orders/${orderId}/preparing`, {
+    method: "PATCH"
+  });
 };
 
 // Preparing → Ready
 export const markOrderReady = (orderId) => {
-    return request(`/orders/${orderId}/ready`, {
-        method: "PATCH"
-    });
+  return request(`/orders/${orderId}/ready`, {
+    method: "PATCH"
+  });
 };
 
 // Ready → Delivered
 export const finishOrder = (orderId) => {
-    return request(`/orders/${orderId}/finish`, {
-        method: "PATCH"
-    });
+  return request(`/orders/${orderId}/finish`, {
+    method: "PATCH"
+  });
 };
 
 // Cancelar orden
 export const cancelOrder = (orderId) => {
-    return request(`/orders/${orderId}/cancel`, {
-        method: "PATCH"
-    });
+  return request(`/orders/${orderId}/cancel`, {
+    method: "PATCH"
+  });
 };
 
 // ===============================
 // TABLAS
 // ===============================
+
 export const getTables = () => {
-    return request("/tables");
+  return request("/tables");
 };
 
 // ===============================
-// PRODUCTOS (MENÚ)
+// PRODUCTOS
 // ===============================
+
 export const getProducts = () => {
-    return request("/products");
+  return request("/products");
 };
