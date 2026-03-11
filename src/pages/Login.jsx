@@ -1,93 +1,58 @@
 import { useState } from "react";
-
-const API_URL = import.meta.env.VITE_API_URL;
+import { useNavigate } from "react-router-dom";
+import { login, getUserRole } from "../services/authService";
 
 export default function Login() {
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
+  const navigate = useNavigate();
 
-    setError("");
-    setLoading(true);
+  const handleLogin = async () => {
 
     try {
 
-      const response = await fetch(`${API_URL}/auth/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          username,
-          password
-        })
-      });
+      await login(username, password);
 
-      if (!response.ok) {
-        throw new Error("Credenciales incorrectas");
-      }
+      const role = getUserRole();
 
-      const data = await response.json();
-
-      if (!data.token) {
-        throw new Error("El servidor no devolvió token");
-      }
-
-      // guardar token
-      localStorage.setItem("token", data.token);
-
-      // redirigir
-      window.location.href = "/";
+      if (role === "kitchen") navigate("/kitchen");
+      if (role === "waiter") navigate("/waiter");
+      if (role === "admin") navigate("/kitchen");
 
     } catch (err) {
-
-      console.error("Error login:", err);
-      setError(err.message);
-
-    } finally {
-      setLoading(false);
+      alert("Usuario o contraseña incorrectos");
     }
   };
 
   return (
-    <div style={{padding:40}}>
-      <h2>Login</h2>
+    <div className="p-10">
 
-      <form onSubmit={handleLogin}>
+      <h2 className="text-xl mb-4">Login KDS</h2>
 
-        <input
-          placeholder="Usuario"
-          value={username}
-          onChange={(e)=>setUsername(e.target.value)}
-        />
+      <input
+        className="border p-2 block mb-3"
+        placeholder="Usuario"
+        value={username}
+        onChange={(e)=>setUsername(e.target.value)}
+      />
 
-        <br/><br/>
+      <input
+        className="border p-2 block mb-3"
+        type="password"
+        placeholder="Contraseña"
+        value={password}
+        onChange={(e)=>setPassword(e.target.value)}
+      />
 
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e)=>setPassword(e.target.value)}
-        />
+      <button
+        className="bg-blue-500 text-white p-2"
+        onClick={handleLogin}
+      >
+        Iniciar sesión
+      </button>
 
-        <br/><br/>
-
-        <button type="submit" disabled={loading}>
-          {loading ? "Entrando..." : "Entrar"}
-        </button>
-
-        {error && (
-          <p style={{color:"red"}}>
-            {error}
-          </p>
-        )}
-
-      </form>
     </div>
   );
 }
