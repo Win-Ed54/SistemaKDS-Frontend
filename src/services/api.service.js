@@ -11,13 +11,23 @@ const request = async (endpoint, options = {}) => {
 
     try {
 
+        const token = localStorage.getItem("token");
+
         const response = await fetch(`${API_URL}${endpoint}`, {
             headers: {
                 "Content-Type": "application/json",
+                "Authorization": token ? `Bearer ${token}` : "",
                 ...(options.headers || {})
             },
             ...options
         });
+
+        // si el token expiró
+        if (response.status === 401) {
+            localStorage.removeItem("token");
+            window.location.href = "/login";
+            return;
+        }
 
         if (!response.ok) {
 
@@ -109,18 +119,9 @@ export const getTables = () => {
     return request("/tables");
 };
 
-// =============================
+// ===============================
 // PRODUCTOS (MENÚ)
-// =============================
-
-export const getProducts = async () => {
-
-  const res = await fetch("http://localhost:5162/api/products");
-
-  if (!res.ok) {
-    throw new Error("Error cargando productos");
-  }
-
-  return await res.json();
-
+// ===============================
+export const getProducts = () => {
+    return request("/products");
 };
