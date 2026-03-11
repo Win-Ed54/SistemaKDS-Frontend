@@ -14,7 +14,7 @@ if (!HUB_URL) {
 // ---------------------------
 const connection = new signalR.HubConnectionBuilder()
     .withUrl(HUB_URL, {
-        accessTokenFactory: () => localStorage.getItem("token") || ""
+        accessTokenFactory: () => localStorage.getItem("token")
     })
     .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
     .configureLogging(signalR.LogLevel.Information)
@@ -73,6 +73,13 @@ const startWithRetry = async (groups = []) => {
             console.error("Error conectando. Reintentando...", err);
 
             notifyStatusChange(false);
+
+            if(err?.message?.includes("401")){
+                console.error("Token expirado. Redirigiendo a login...");
+                localStorage.removeItem("token");
+                window.location.href = "/login";
+                return;
+            }
 
             await new Promise(res => setTimeout(res, 5000));
         }
