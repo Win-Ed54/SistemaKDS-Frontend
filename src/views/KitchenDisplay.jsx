@@ -40,7 +40,7 @@ const sortOrders = (ordersList) => {
     const aAge = nowTime - new Date(a.createdAt).getTime();
     const bAge = nowTime - new Date(b.createdAt).getTime();
 
-    return bAge - aAge; // más antigua primero
+    return bAge - aAge; 
 
     });
 
