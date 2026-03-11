@@ -16,8 +16,17 @@ const OrderCard = ({
   onReady
 }) => {
 
+  // =============================
+  // NORMALIZAR ID (MongoDB)
+  // =============================
+
   const id = order.id ?? order._id;
+
   const status = STATUS[order.status] ?? order.status;
+
+  // =============================
+  // TIEMPO TRANSCURRIDO
+  // =============================
 
   const getElapsedTime = (createdAt) => {
 
@@ -34,6 +43,10 @@ const OrderCard = ({
       .padStart(2,"0")}`;
   };
 
+  // =============================
+  // COLOR SEGÚN TIEMPO
+  // =============================
+
   const getTimeColor = (createdAt) => {
 
     const start = new Date(createdAt);
@@ -45,24 +58,55 @@ const OrderCard = ({
     return "bg-red-600 animate-pulse";
   };
 
+  // =============================
+  // AGRUPAR ITEMS
+  // =============================
+
   const groupItems = (items = []) => {
+
     const grouped = {};
 
     items.forEach((item) => {
+
       const key = `${item.productName}_${item.notes || ""}`;
 
       if (!grouped[key]) {
+
         grouped[key] = {
           ...item,
           quantity: 0,
         };
+
       }
 
       grouped[key].quantity += item.quantity;
+
     });
 
     return Object.values(grouped);
   };
+
+  // =============================
+  // ACCIÓN BOTÓN
+  // =============================
+
+  const handleAction = () => {
+
+    if (!isConnected) return;
+
+    if (order.status === 0) {
+      onPreparing(id);
+    }
+
+    if (order.status === 1) {
+      onReady(id);
+    }
+
+  };
+
+  // =============================
+  // UI
+  // =============================
 
   return (
 
@@ -72,14 +116,21 @@ const OrderCard = ({
       ${order.removing ? "animate-order-exit" : ""}`}
     >
 
+      {/* HEADER TIEMPO */}
+
       <div className={`${getTimeColor(order.createdAt)} p-3`}>
 
         <div className="flex justify-between font-bold">
+
           <span>Mesa {order.tableNumber}</span>
+
           <span>{getElapsedTime(order.createdAt)}</span>
+
         </div>
 
       </div>
+
+      {/* ITEMS */}
 
       <div className="p-4 space-y-2">
 
@@ -101,33 +152,25 @@ const OrderCard = ({
 
       </div>
 
+      {/* BOTÓN ACCIÓN */}
+
       <div className="p-3">
 
         <button
-          disabled={!isConnected}
-          onClick={() => {
-
-            if (status === "Pending") {
-              onPreparing(id);
-            }
-
-            if (status === "Preparing") {
-              onReady(id);
-            }
-
-          }}
-          className={`w-full py-3 rounded-lg font-bold ${
-            status === "Pending"
-              ? "bg-yellow-600"
-              : status === "Preparing"
-              ? "bg-green-600"
+          disabled={!isConnected || order.status > 1}
+          onClick={handleAction}
+          className={`w-full py-3 rounded-lg font-bold transition ${
+            order.status === 0
+              ? "bg-yellow-600 hover:bg-yellow-700"
+              : order.status === 1
+              ? "bg-green-600 hover:bg-green-700"
               : "bg-gray-600"
           }`}
         >
 
-          {status === "Pending"
+          {order.status === 0
             ? "Preparar"
-            : status === "Preparing"
+            : order.status === 1
             ? "Listo"
             : "Finalizado"}
 
