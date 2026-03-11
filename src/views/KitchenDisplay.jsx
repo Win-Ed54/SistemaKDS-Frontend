@@ -13,47 +13,41 @@ import {
 
 import OrderCard from "../components/OrderCard";
 
-const STATUS = {
-  0: "Pending",
-  1: "Preparing",
-  2: "Ready",
-  3: "Delivered",
-  4: "Cancelled"
-};
-
 const KitchenDisplay = () => {
 
   const [orders, setOrders] = useState([]);
   const [isConnected, setIsConnected] = useState(false);
   const [now, setNow] = useState(new Date());
 
+  const audioRef = useRef(null);
+
   // =============================
-// ORDEN FIFO (PRIORIDAD COCINA)
-// =============================
+  // ORDEN FIFO (PRIORIDAD)
+  // =============================
 
-const sortOrders = (ordersList) => {
+  const sortOrders = (ordersList) => {
 
-  return [...ordersList].sort((a, b) => {
+    return [...ordersList].sort((a, b) => {
 
-    const nowTime = new Date().getTime();
+      const nowTime = new Date().getTime();
 
-    const aAge = nowTime - new Date(a.createdAt).getTime();
-    const bAge = nowTime - new Date(b.createdAt).getTime();
+      const aAge = nowTime - new Date(a.createdAt).getTime();
+      const bAge = nowTime - new Date(b.createdAt).getTime();
 
-    return bAge - aAge; 
+      return bAge - aAge;
 
     });
 
-};
-
-  const audioRef = useRef(null);
+  };
 
   // =============================
   // SONIDO
   // =============================
 
   useEffect(() => {
+
     audioRef.current = new Audio("/notification.mp3");
+
   }, []);
 
   const playSound = () => {
@@ -75,12 +69,8 @@ const sortOrders = (ordersList) => {
 
       const data = await getActiveOrders();
 
-      const filtered = data.filter(o => {
-
-        const status = STATUS[o.status] ?? o.status;
-        return status !== "Ready";
-
-      });
+      // solo mostrar Pending y Preparing
+      const filtered = data.filter(o => o.status < 2);
 
       setOrders(filtered);
 
@@ -98,104 +88,111 @@ const sortOrders = (ordersList) => {
 
   useEffect(() => {
 
-   const unsubscribe = subscribeConnectionStatus(setIsConnected);
-
-  connection.off("ReceiveOrder");
-  connection.off("OrderPreparing");
-  connection.off("OrderReady");
-
-  // =============================
-  // NUEVA ORDEN
-  // =============================
-
-  connection.on("ReceiveOrder", (order) => {
-
-    const id = order.id ?? order._id;
-
-    setOrders(prev => {
-
-      const exists = prev.some(o => (o.id ?? o._id) === id);
-
-      if (exists) return prev;
-
-      playSound();
-
-      return [{ ...order, isNew: true }, ...prev];
-
-    });
-
-    setTimeout(() => {
-
-      setOrders(prev =>
-        prev.map(o =>
-          (o.id ?? o._id) === id
-            ? { ...o, isNew: false }
-            : o
-        )
-      );
-
-    }, 2000);
-
-  });
-
-  // =============================
-  // PREPARING
-  // =============================
-
-  connection.on("OrderPreparing", (order) => {
-
-    const id = order.id ?? order._id;
-
-    setOrders(prev =>
-      prev.map(o =>
-        (o.id ?? o._id) === id
-          ? { ...o, status: 1 }
-          : o
-      )
-    );
-
-  });
-
-  // =============================
-  // READY
-  // =============================
-
-  connection.on("OrderReady", (order) => {
-
-    const id = order.id ?? order._id;
-
-    setTimeout(() => {
-
-      setOrders(prev =>
-        prev.filter(o => (o.id ?? o._id) !== id)
-      );
-
-    }, 300);
-
-  });
-
-  const init = async () => {
-
-    await startConnection(["cocina"]);
-
-    await loadOrders();
-
-  };
-
-  init();
-
-  return () => {
-
-    unsubscribe();
+    const unsubscribe = subscribeConnectionStatus(setIsConnected);
 
     connection.off("ReceiveOrder");
     connection.off("OrderPreparing");
     connection.off("OrderReady");
 
-  };
+    // =============================
+    // NUEVA ORDEN
+    // =============================
 
-}, []);
-   
+    connection.on("ReceiveOrder", (order) => {
+
+      const id = order.id ?? order._id;
+
+      setOrders(prev => {
+
+        const exists = prev.some(o => (o.id ?? o._id) === id);
+
+        if (exists) return prev;
+
+        playSound();
+
+        return [{ ...order, isNew: true }, ...prev];
+
+      });
+
+      setTimeout(() => {
+
+        setOrders(prev =>
+          prev.map(o =>
+            (o.id ?? o._id) === id
+              ? { ...o, isNew: false }
+              : o
+          )
+        );
+
+      }, 2000);
+
+    });
+
+    // =============================
+    // PREPARING
+    // =============================
+
+    connection.on("OrderPreparing", (order) => {
+
+      const id = order.id ?? order._id;
+
+      setOrders(prev =>
+        prev.map(o =>
+          (o.id ?? o._id) === id
+            ? { ...o, status: 1 }
+            : o
+        )
+      );
+
+    });
+
+    // =============================
+    // READY → eliminar automáticamente
+    // =============================
+
+    connection.on("OrderReady", (order) => {
+
+      const id = order.id ?? order._id;
+
+      // animación de salida
+      setOrders(prev =>
+        prev.map(o =>
+          (o.id ?? o._id) === id
+            ? { ...o, removing: true }
+            : o
+        )
+      );
+
+      setTimeout(() => {
+
+        setOrders(prev =>
+          prev.filter(o => (o.id ?? o._id) !== id)
+        );
+
+      }, 400);
+
+    });
+
+    const init = async () => {
+
+      await startConnection(["cocina"]);
+      await loadOrders();
+
+    };
+
+    init();
+
+    return () => {
+
+      unsubscribe();
+
+      connection.off("ReceiveOrder");
+      connection.off("OrderPreparing");
+      connection.off("OrderReady");
+
+    };
+
+  }, []);
 
   // =============================
   // RELOJ GLOBAL
@@ -217,13 +214,15 @@ const sortOrders = (ordersList) => {
 
   const handlePreparing = async (orderId) => {
 
+    const id = orderId?.id ?? orderId?._id ?? orderId;
+
     try {
 
-      await markOrderPreparing(orderId);
+      await markOrderPreparing(id);
 
       setOrders(prev =>
         prev.map(o =>
-          (o.id ?? o._id) === orderId
+          (o.id ?? o._id) === id
             ? { ...o, status: 1 }
             : o
         )
@@ -231,7 +230,7 @@ const sortOrders = (ordersList) => {
 
     } catch (err) {
 
-      console.error(err);
+      console.error("Error preparando orden:", err);
 
     }
 
@@ -239,17 +238,19 @@ const sortOrders = (ordersList) => {
 
   const handleReady = async (orderId) => {
 
+    const id = orderId?.id ?? orderId?._id ?? orderId;
+
     try {
 
-      await markOrderReady(orderId);
+      await markOrderReady(id);
 
       setOrders(prev =>
-        prev.filter(o => (o.id ?? o._id) !== orderId)
+        prev.filter(o => (o.id ?? o._id) !== id)
       );
 
     } catch (err) {
 
-      console.error(err);
+      console.error("Error marcando lista:", err);
 
     }
 
