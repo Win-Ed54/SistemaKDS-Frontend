@@ -17,7 +17,7 @@ const OrderCard = ({
   onFinish
 }) => {
 
-  const id = order.id ?? order._id;
+  const id = order.id || order._id || order.Id; 
   const status = STATUS[order.status] ?? order.status;
 
   const getElapsedTime = (createdAt) => {
@@ -54,8 +54,13 @@ const OrderCard = ({
 
   const handleAction = () => {
     if (!isConnected) return;
-    const orderId = order.id || order._id;
+    const orderId = order.id || order._id || order.Id;
+    console.log("Intentando acción para ID:", orderId);
 
+    if (!orderId) {
+      alert("Error: No se encontró el ID de la orden en el objeto");
+      return;
+    }
     if (order.status === 0) {
       onPreparing(orderId);
     } else if (order.status === 1) {

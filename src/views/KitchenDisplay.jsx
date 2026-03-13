@@ -121,15 +121,17 @@ const Column = ({ title, orders, now, isConnected, getOrderId }) => {
           <div className="text-gray-400 text-center p-6">Sin órdenes</div>
         )}
 
-        {orders?.map((order) => (
+        {orders?.map((order, index) => (
           <OrderCard
-            key={getOrderId(order)}
+            // Agregamos el index al key por si hay IDs duplicados en la DB
+            key={`${getOrderId(order)}-${index}`} 
             order={order}
             now={now}
             isConnected={isConnected}
-            onPreparing={markOrderPreparing}
-            onReady={markOrderReady}
-            onFinish={finishOrder}
+            // AQUÍ ESTÁ EL CAMBIO CLAVE:
+            onPreparing={() => markOrderPreparing(getOrderId(order))}
+            onReady={() => markOrderReady(getOrderId(order))}
+            onFinish={() => finishOrder(getOrderId(order))}
           />
         ))}
       </div>

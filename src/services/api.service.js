@@ -30,7 +30,10 @@ const request = async (endpoint, options = {}) => {
     const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
     if (token) headers["Authorization"] = `Bearer ${token}`;
 
-    const response = await fetch(`${API_URL}${endpoint}`, { ...options, headers });
+    const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
+    const cleanUrl = API_URL.endsWith('/') ? API_URL : `${API_URL}/`;
+
+    const response = await fetch(`${cleanUrl}${cleanEndpoint}`, { ...options, headers });
 
     // Si la respuesta fue exitosa (200-299)
     if (response.ok) {
@@ -79,7 +82,8 @@ export const getOrderHistory = () => {
 
 export const markOrderPreparing = (orderId) => {
   return request(`/orders/${orderId}/preparing`, {
-    method: "PATCH"
+    method: "PATCH",
+    body: JSON.stringify({})
   });
 };
 
