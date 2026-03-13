@@ -43,13 +43,7 @@ const OrderBuilder = () => {
 
       {/* INPUTS DE NOMBRES */}
       <div className="space-y-3 mb-4">
-        <input
-          type="text"
-          placeholder="Nombre del Cliente..."
-          className="w-full bg-gray-700 p-2 rounded border border-gray-600 outline-none focus:border-green-500"
-          value={customerName || ""}
-          onChange={(e) => setCustomer(e.target.value)}
-        />
+       
         <input
           type="text"
           placeholder="Tu nombre (Mesero)..."
