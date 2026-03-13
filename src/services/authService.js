@@ -1,8 +1,12 @@
 import request from "./api.service";
 
+// ===============================
+// AUTENTICACIÓN (CORREGIDO)
+// ===============================
 export const login = async (username, password) => {
-
-  const response = await request("/auth/login", {
+  // 'data' recibe directamente el objeto JSON (token, role, etc.) 
+  // porque el servicio 'request' ya hace el .json() internamente.
+  const data = await request("/auth/login", {
     method: "POST",
     body: JSON.stringify({
       username,
@@ -10,52 +14,47 @@ export const login = async (username, password) => {
     })
   });
 
-  const data = await response.json();
-
-  if (!data.token) {
-    throw new Error("Login failed");
+  // VERIFICACIÓN
+  if (!data || !data.token) {
+    throw new Error("Login failed: No se recibió un token válido");
   }
 
-  // guardar sesión
+  // GUARDAR SESIÓN
+  // Es vital usar 'token' y 'role' para que SignalR y los paneles los encuentren
   localStorage.setItem("token", data.token);
   localStorage.setItem("role", data.role);
 
   return data;
 };
 
+// ===============================
+// SESIÓN
+// ===============================
 export const getSession = () => {
-
   const token = localStorage.getItem("token");
   const role = localStorage.getItem("role");
 
-  if (!token || !role) {
-    return null;
-  }
+  if (!token || !role) return null;
 
-  return {
-    token,
-    role
-  };
-
+  return { token, role };
 };
 
 export const logout = () => {
-
   localStorage.removeItem("token");
   localStorage.removeItem("role");
-
+  // Opcional: limpiar también los tokens específicos por ruta si los usas
+  localStorage.removeItem("waiter_token");
+  localStorage.removeItem("kitchen_token");
 };
 
-export const getProducts = async () => {
-
-  const res = await fetch(`${API}/products`);
-  return await res.json();
-
+// ===============================
+// OTROS (CORREGIDOS)
+// ===============================
+// Usamos 'request' para heredar el token y la URL base automáticamente
+export const getProducts = () => {
+  return request("/products");
 };
 
-export const getTables = async () => {
-
-  const res = await fetch(`${API}/tables`);
-  return await res.json();
-
+export const getTables = () => {
+  return request("/tables");
 };
