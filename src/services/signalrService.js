@@ -184,9 +184,9 @@ export const offEvent = (eventName) => {
 // ---------------------------
 export const onReceiveOrder = () => {
 
-  connection.off("receiveOrder");
+  connection.off("receiveorder");
 
-  connection.on("receiveOrder", (order) => {
+  connection.on("receiveorder", (order) => {
 
     const { addOrder } = useOrderStore.getState();
 
@@ -198,9 +198,9 @@ export const onReceiveOrder = () => {
 
 export const onOrderReady = () => {
 
-  connection.off("orderReady");
+  connection.off("orderready");
 
-  connection.on("orderReady", (order) => {
+  connection.on("orderready", (order) => {
 
     const { updateOrder } = useOrderStore.getState();
 
@@ -215,9 +215,9 @@ export const onOrderReady = () => {
 
 export const onOrderPreparing = () => {
 
-  connection.off("orderPreparing");
+  connection.off("orderpreparing");
 
-  connection.on("orderPreparing", (order) => {
+  connection.on("orderpreparing", (order) => {
 
     const { updateOrder } = useOrderStore.getState();
 
@@ -229,9 +229,9 @@ export const onOrderPreparing = () => {
 
 export const onOrderDelivered = () => {
 
-  connection.off("orderDelivered");
+  connection.off("orderdelivered");
 
-  connection.on("orderDelivered", (orderId) => {
+  connection.on("orderdelivered", (orderId) => {
 
     const { removeOrder } = useOrderStore.getState();
 
