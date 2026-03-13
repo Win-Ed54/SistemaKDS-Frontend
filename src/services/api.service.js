@@ -4,58 +4,52 @@ if (!API_URL) {
   throw new Error("VITE_API_URL no definido");
 }
 
+// ---------------------------
+// OBTENER TOKEN (CORREGIDO)
+// ---------------------------
 const getToken = () => {
-
   const path = window.location.pathname;
+  let token = null;
 
-  if (path.includes("kitchen"))
-    return localStorage.getItem("kitchen_token");
+  // 1. Intenta obtener el específico por ruta (lo que ya tenías)
+  if (path.includes("kitchen")) token = localStorage.getItem("kitchen_token");
+  else if (path.includes("waiter")) token = localStorage.getItem("waiter_token");
+  else if (path.includes("admin")) token = localStorage.getItem("admin_token");
 
-  if (path.includes("waiter"))
-    return localStorage.getItem("waiter_token");
-
-  if (path.includes("admin"))
-    return localStorage.getItem("admin_token");
-
-  return null;
+  // 2. Si lo anterior es null, usa el genérico 'token' como respaldo
+  // Esto soluciona el error 401 si tu login guarda el token con nombre simple
+  return token || localStorage.getItem("token");
 };
 
+// ---------------------------
+// REQUEST GENÉRICO (CORREGIDO)
+// ---------------------------
 const request = async (endpoint, options = {}) => {
-
   try {
-
     const token = getToken();
+    const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
 
-    const headers = {
-      "Content-Type": "application/json",
-      ...(options.headers || {})
-    };
+    const response = await fetch(`${API_URL}${endpoint}`, { ...options, headers });
 
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
+    // Si la respuesta fue exitosa (200-299)
+    if (response.ok) {
+      // VERIFICACIÓN CLAVE: Si no hay contenido (204) o el body está vacío
+      if (response.status === 204 || response.headers.get("content-length") === "0") {
+        return null; 
+      }
+      // Intentar leer JSON solo si hay contenido
+      return await response.json();
     }
 
-    const response = await fetch(`${API_URL}${endpoint}`, {
-      ...options,
-      headers
-    });
-
-    if (!response.ok) {
-      throw new Error("Error en la petición");
-    }
-
-    return response;
-
+    throw new Error(`Error en la petición: ${response.status}`);
   } catch (error) {
-
     console.error("API Error:", error);
     throw error;
-
   }
 };
 
 export default request;
-
 
 // ===============================
 // ÓRDENES
@@ -83,28 +77,24 @@ export const getOrderHistory = () => {
 // CAMBIOS DE ESTADO
 // ===============================
 
-// Pending → Preparing
 export const markOrderPreparing = (orderId) => {
   return request(`/orders/${orderId}/preparing`, {
     method: "PATCH"
   });
 };
 
-// Preparing → Ready
 export const markOrderReady = (orderId) => {
   return request(`/orders/${orderId}/ready`, {
     method: "PATCH"
   });
 };
 
-// Ready → Delivered
 export const finishOrder = (orderId) => {
   return request(`/orders/${orderId}/finish`, {
     method: "PATCH"
   });
 };
 
-// Cancelar orden
 export const cancelOrder = (orderId) => {
   return request(`/orders/${orderId}/cancel`, {
     method: "PATCH"
@@ -112,16 +102,12 @@ export const cancelOrder = (orderId) => {
 };
 
 // ===============================
-// TABLAS
+// TABLAS Y PRODUCTOS
 // ===============================
 
 export const getTables = () => {
   return request("/tables");
 };
-
-// ===============================
-// PRODUCTOS
-// ===============================
 
 export const getProducts = () => {
   return request("/products");
