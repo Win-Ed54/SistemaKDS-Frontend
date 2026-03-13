@@ -16,7 +16,7 @@ const WaiterView = () => {
 
   const navigate = useNavigate();
 
-  const { isConnected } = useSignalRConnection(["waiter"]);
+  const { isConnected } = useSignalRConnection("waiter");
   const { products } = useProducts();
   const { tables } = useTables();
 
