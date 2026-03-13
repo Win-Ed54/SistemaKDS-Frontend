@@ -8,13 +8,14 @@ import OrderCard from "../components/OrderCard";
 
 import {
   markOrderPreparing,
-  markOrderReady
+  markOrderReady,
+  finishOrder
 } from "../services/api.service";
 
 const KitchenDisplay = () => {
 
   const { orders } = useKitchenOrders();
-  const { isConnected } = useSignalRConnection(["kitchen"]);
+  const { isConnected } = useSignalRConnection("kitchen");
   const { now } = useKitchenClock();
   useOrderSound();
 
@@ -161,6 +162,7 @@ const Column = ({
             isConnected={isConnected}
             onPreparing={markOrderPreparing}
             onReady={markOrderReady}
+            onFinish={finishOrder}
           />
 
         ))}
