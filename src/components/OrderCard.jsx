@@ -83,8 +83,6 @@ const OrderCard = ({
       <div className="p-4 space-y-2">
         {/* --- NOMBRE DEL CLIENTE (NUEVO) --- */}
         <div className="mb-3 text-center border-b border-gray-700 pb-2">
-           <p className="text-xs text-gray-400 uppercase font-semibold">Cliente</p>
-           <p className="text-lg font-bold text-white">{order.customerName || "General"}</p>
         </div>
 
         {groupItems(order.items)?.map((item, i) => (
