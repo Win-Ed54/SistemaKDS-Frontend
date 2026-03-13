@@ -1,60 +1,49 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
+import Login from "./pages/Login";
+
 import KitchenDisplay from "./views/KitchenDisplay";
 import WaiterView from "./views/WaiterView";
-import Login from "./pages/Login";
-import { getUserRole } from "./services/authService";
 
-const PrivateRoute = ({ children, role }) => {
-
-  const token = localStorage.getItem("token");
-
-  if (!token) {
-    return <Navigate to="/login" />;
-  }
-
-  const userRole = getUserRole();
-
-  if (userRole !== role) {
-    return <Navigate to="/login" />;
-  }
-
-  return children;
-};
+import RoleProtectedRoute from "./routes/RoleProtectedRoute";
 
 function App() {
 
   return (
+
     <BrowserRouter>
 
       <Routes>
+
+        {/* REDIRECCIÓN INICIAL */}
+        <Route path="/" element={<Navigate to="/login" />} />
 
         <Route path="/login" element={<Login />} />
 
         <Route
           path="/kitchen"
           element={
-            <PrivateRoute role="kitchen">
+            <RoleProtectedRoute role="kitchen">
               <KitchenDisplay />
-            </PrivateRoute>
+            </RoleProtectedRoute>
           }
         />
 
         <Route
           path="/waiter"
           element={
-            <PrivateRoute role="waiter">
+            <RoleProtectedRoute role="waiter">
               <WaiterView />
-            </PrivateRoute>
+            </RoleProtectedRoute>
           }
         />
-
-        <Route path="*" element={<Navigate to="/login" />} />
 
       </Routes>
 
     </BrowserRouter>
+
   );
+
 }
 
 export default App;

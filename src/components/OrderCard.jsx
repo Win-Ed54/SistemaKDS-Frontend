@@ -95,11 +95,12 @@ const OrderCard = ({
     if (!isConnected) return;
 
     if (order.status === 0) {
-      onPreparing(id);
+      onPreparing(order.id || order._id);
     }
 
     if (order.status === 1) {
-      onReady(id);
+      onReady(order.id || order._id);
+      console.log("Order ID:", order.id);
     }
 
   };

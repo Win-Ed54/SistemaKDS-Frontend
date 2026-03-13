@@ -1,255 +1,93 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
+import { logout } from "../services/authService";
+import { useNavigate } from "react-router-dom";
 
-import { createOrder, getTables, getProducts } from "../services/api.service";
+import useSignalRConnection from "../hooks/useSignalRConnection";
+import useProducts from "../hooks/useProducts";
+import useTables from "../hooks/useTables";
 
-const WaiterPanel = () => {
-  const [tables, setTables] = useState([]);
-  const [tableNumber, setTableNumber] = useState("");
+import TableSelector from "../components/TableSelector";
+import ProductList from "../components/ProductList";
+import OrderPanel from "../components/OrderPanel";
 
-  const [customerName, setCustomerName] = useState("");
-  const [waiterName, setWaiterName] = useState("Mesero 1");
+const WaiterView = () => {
 
-  const [products, setProducts] = useState([]);
+  
 
-  const [cart, setCart] = useState([]);
+  const navigate = useNavigate();
 
-  // =============================
-  // CARGAR PRODUCTOS
-  // =============================
+  const { isConnected } = useSignalRConnection(["waiter"]);
+  const { products } = useProducts();
+  const { tables } = useTables();
 
-  useEffect(() => {
-    const loadProducts = async () => {
-      try {
-        const data = await getProducts();
-
-        setProducts(data);
-      } catch (err) {
-        console.error("Error cargando menú:", err);
-      }
-    };
-
-    loadProducts();
-  }, []);
-
-  // =============================
-  // CARGAR MESAS
-  // =============================
-
-  useEffect(() => {
-    const loadTables = async () => {
-      try {
-        const data = await getTables();
-        setTables(data);
-      } catch (err) {
-        console.error(err);
-      }
-    };
-
-    loadTables();
-  }, []);
-
-  // =============================
-  // AGREGAR PRODUCTO
-  // =============================
-
-  const addProduct = (product) => {
-    const exists = cart.find((i) => i.productId === product.id);
-
-    if (exists) {
-      setCart((prev) =>
-        prev.map((i) =>
-          i.productId === product.id ? { ...i, quantity: i.quantity + 1 } : i,
-        ),
-      );
-    } else {
-      setCart((prev) => [
-        ...prev,
-        {
-          productId: product.id,
-          productName: product.name,
-          quantity: 1,
-          notes: "",
-          modifiers: [],
-        },
-      ]);
-    }
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
   };
-
-  // =============================
-  // REMOVER PRODUCTO
-  //==============================
-  const removeProduct = (productId) => {
-    setCart((prev) => {
-      const item = prev.find((i) => i.productId === productId);
-
-      if (!item) return prev;
-
-      if (item.quantity === 1) {
-        return prev.filter((i) => i.productId !== productId);
-      }
-
-      return prev.map((i) =>
-        i.productId === productId ? { ...i, quantity: i.quantity - 1 } : i,
-      );
-    });
-  };
-
-  //==============================
-  //ACTUALIZAR NOTA
-  //=============================
-  const updateNotes = (productId, value) => {
-    setCart((prev) =>
-      prev.map((item) =>
-        item.productId === productId ? { ...item, notes: value } : item,
-      ),
-    );
-  };
-
-  // =============================
-  // ENVIAR ORDEN
-  // =============================
-
-  const sendOrder = async () => {
-    if (!tableNumber) {
-      alert("Selecciona una mesa");
-      return;
-    }
-
-    if (cart.length === 0) {
-      alert("Agrega productos");
-      return;
-    }
-
-    const order = {
-      tableNumber: Number(tableNumber),
-      customerName,
-      waiterName,
-      items: cart,
-    };
-
-    try {
-      await createOrder(order);
-
-      alert("Orden enviada a cocina");
-
-      setCart([]);
-      setCustomerName("");
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  // =============================
-  // UI
-  // =============================
 
   return (
-    <div className="p-6 bg-gray-900 min-h-screen text-white">
-      <h1 className="text-3xl font-bold mb-6">Panel Mesero</h1>
 
-      {/* =============================
-      DATOS ORDEN
-      ============================= */}
+    <div className="min-h-screen bg-slate-900 text-white">
 
-      <div className="grid grid-cols-3 gap-4 mb-6">
-        <select
-          value={tableNumber}
-          onChange={(e) => setTableNumber(e.target.value)}
-          className="p-2 rounded bg-white text-black border"
-        >
-          <option value="">Mesa</option>
+      {/* HEADER */}
 
-          {tables.map((t) => (
-            <option key={t.number} value={t.number}>
-              Mesa {t.number}
-            </option>
-          ))}
-        </select>
+      <div className="flex justify-between items-center p-6">
 
-        <input
-          placeholder="Cliente"
-          value={customerName}
-          onChange={(e) => setCustomerName(e.target.value)}
-          className="p-2 rounded bg-white text-black border"
-        />
+        <h1 className="text-3xl font-bold">
+          Panel de Ordenes
+        </h1>
 
-        <input
-          value={waiterName}
-          onChange={(e) => setWaiterName(e.target.value)}
-          className="p-2 rounded bg-white text-black border"
-        />
-      </div>
+        <div className="flex items-center gap-6">
 
-      <div className="grid grid-cols-2 gap-6">
-        {/* =============================
-        PRODUCTOS
-        ============================= */}
+          <div className="flex items-center gap-2">
 
-        <div>
-          <h2 className="text-xl mb-4">Productos</h2>
+            <div className="w-4 h-4 bg-green-500 rounded-full"></div>
 
-          <div className="grid grid-cols-2 gap-3">
-            {products.map((p) => (
-              <button
-                key={p.id}
-                onClick={() => addProduct(p)}
-                className="bg-blue-600 hover:bg-blue-700 p-4 rounded-lg font-bold"
-              >
-                <div>{p.name}</div>
+            <span className="text-green-400">
+              {isConnected ? "Conectado" : "Desconectado"}
+            </span>
 
-                <div className="text-sm opacity-80">${p.price}</div>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* =============================
-        CARRITO
-        ============================= */}
-
-        <div>
-          <h2 className="text-xl mb-4">Orden</h2>
-
-          <div className="bg-gray-800 p-4 rounded-lg space-y-2">
-            {cart.length === 0 && (
-              <p className="opacity-50">No hay productos</p>
-            )}
-
-            {cart.map((item, i) => (
-              <div
-                key={i}
-                className="flex justify-between item-center border-b border-gray-700 pb-1"
-              >
-                <span>
-                  {item.quantity}x {item.productName}
-                </span>
-                <button
-                  onClick={() => removeProduct(item.productId)}
-                  className="text-red-400 hover:text-red-600 font-bold"
-                >
-                  X
-                </button>
-
-                <input
-                  placeholder="Nota (ej: sin cebolla)"
-                  value={item.notes}
-                  onChange={(e) => updateNotes(item.productId, e.target.value)}
-                  className="mt-1 w-full p-1 text-sm rounded bg-gray-700"
-                />
-              </div>
-            ))}
           </div>
 
           <button
-            onClick={sendOrder}
-            className="mt-4 w-full bg-green-600 p-4 rounded-lg font-bold"
+            onClick={handleLogout}
+            className="bg-red-600 hover:bg-red-700 px-5 py-2 rounded font-bold"
           >
-            Enviar a Cocina
+            Logout
           </button>
+
         </div>
+
       </div>
+
+      {/* CONTENT */}
+
+      <div className="grid grid-cols-2 gap-6 p-6">
+
+        <div className="bg-slate-800 p-6 rounded-xl">
+
+          <h2 className="text-xl mb-4 font-semibold">
+            Mesas
+          </h2>
+
+          <TableSelector tables={tables} />
+
+          <h2 className="text-xl mt-6 mb-4 font-semibold">
+            Productos
+          </h2>
+
+          <ProductList products={products} />
+
+        </div>
+
+        <OrderPanel />
+
+      </div>
+
     </div>
+
   );
+
 };
 
-export default WaiterPanel;
+export default WaiterView;

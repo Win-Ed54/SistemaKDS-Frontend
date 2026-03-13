@@ -4,21 +4,33 @@ if (!API_URL) {
   throw new Error("VITE_API_URL no definido");
 }
 
-// ===============================
-// FUNCIÓN BASE PARA REQUESTS
-// ===============================
+const getToken = () => {
+
+  const path = window.location.pathname;
+
+  if (path.includes("kitchen"))
+    return localStorage.getItem("kitchen_token");
+
+  if (path.includes("waiter"))
+    return localStorage.getItem("waiter_token");
+
+  if (path.includes("admin"))
+    return localStorage.getItem("admin_token");
+
+  return null;
+};
+
 const request = async (endpoint, options = {}) => {
 
   try {
 
-    const token = localStorage.getItem("token");
+    const token = getToken();
 
     const headers = {
       "Content-Type": "application/json",
       ...(options.headers || {})
     };
 
-    // agregar token solo si existe
     if (token) {
       headers["Authorization"] = `Bearer ${token}`;
     }
@@ -28,40 +40,22 @@ const request = async (endpoint, options = {}) => {
       headers
     });
 
-    // si el token expiró
-    if (response.status === 401) {
-      localStorage.removeItem("token");
-      window.location.href = "/login";
-      return;
-    }
-
-    // manejar errores
     if (!response.ok) {
-
-      let errorMessage = "Error en la petición";
-
-      try {
-        const text = await response.text();
-        errorMessage = text || errorMessage;
-      } catch {}
-
-      throw new Error(errorMessage);
+      throw new Error("Error en la petición");
     }
 
-    // respuestas sin contenido
-    if (response.status === 204) {
-      return null;
-    }
+    return response;
 
-    return await response.json();
+  } catch (error) {
 
-  } catch (err) {
-
-    console.error("API Error:", err);
-    throw err;
+    console.error("API Error:", error);
+    throw error;
 
   }
 };
+
+export default request;
+
 
 // ===============================
 // ÓRDENES

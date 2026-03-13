@@ -1,4 +1,5 @@
 import * as signalR from "@microsoft/signalr";
+import useOrderStore from "../store/orderStore";
 
 // ---------------------------
 // CONFIG
@@ -6,19 +7,19 @@ import * as signalR from "@microsoft/signalr";
 const HUB_URL = import.meta.env.VITE_HUB_URL;
 
 if (!HUB_URL) {
-    throw new Error("VITE_HUB_URL no definido");
+  throw new Error("VITE_HUB_URL no definido");
 }
 
 // ---------------------------
 // CONEXIÓN (Singleton)
 // ---------------------------
 const connection = new signalR.HubConnectionBuilder()
-    .withUrl(HUB_URL, {
-        accessTokenFactory: () => localStorage.getItem("token")
-    })
-    .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
-    .configureLogging(signalR.LogLevel.Information)
-    .build();
+  .withUrl(HUB_URL, {
+    accessTokenFactory: () => localStorage.getItem("token")
+  })
+  .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
+  .configureLogging(signalR.LogLevel.Information)
+  .build();
 
 // ---------------------------
 // ESTADO GLOBAL
@@ -33,18 +34,18 @@ let listeners = [];
 // ---------------------------
 export const subscribeConnectionStatus = (callback) => {
 
-    listeners.push(callback);
+  listeners.push(callback);
 
-    return () => {
-        listeners = listeners.filter(cb => cb !== callback);
-    };
+  return () => {
+    listeners = listeners.filter(cb => cb !== callback);
+  };
 };
 
 const notifyStatusChange = (status) => {
 
-    isConnected = status;
+  isConnected = status;
 
-    listeners.forEach(cb => cb(status));
+  listeners.forEach(cb => cb(status));
 };
 
 export const getConnectionState = () => isConnected;
@@ -54,154 +55,190 @@ export const getConnectionState = () => isConnected;
 // ---------------------------
 const startWithRetry = async (groups = []) => {
 
-    while (connection.state !== signalR.HubConnectionState.Connected) {
+  while (connection.state !== signalR.HubConnectionState.Connected) {
 
-        try {
+    try {
 
-            console.log("Intentando conectar a SignalR...");
+      console.log("Intentando conectar a SignalR...");
 
-            await connection.start();
+      await connection.start();
 
-            console.log(">>> Conectado a SignalR");
+      console.log(">>> Conectado a SignalR");
 
-            notifyStatusChange(true);
+      notifyStatusChange(true);
 
-            break;
+      break;
 
-        } catch (err) {
+    } catch (err) {
 
-            console.error("Error conectando. Reintentando...", err);
+      console.error("Error conectando. Reintentando...", err);
 
-            notifyStatusChange(false);
+      notifyStatusChange(false);
 
-            if(err?.message?.includes("401")){
-                console.error("Token expirado. Redirigiendo a login...");
-                localStorage.removeItem("token");
-                window.location.href = "/login";
-                return;
-            }
+      if (err?.message?.includes("401")) {
+        console.error("Token expirado. Redirigiendo a login...");
+        localStorage.removeItem("token");
+        window.location.href = "/login";
+        return;
+      }
 
-            await new Promise(res => setTimeout(res, 5000));
-        }
+      await new Promise(res => setTimeout(res, 5000));
     }
+  }
 
-    currentGroups = groups;
+  currentGroups = groups;
 
-    for (const group of groups) {
-        await joinGroup(group);
-    }
+  for (const group of groups) {
+    await joinGroup(group);
+  }
 };
 
 // ---------------------------
 // START CONNECTION
 // ---------------------------
-export const startConnection = async (groups = []) => {
+  export const startConnection = async (groups = []) => {
 
-    if (
-        connection.state === signalR.HubConnectionState.Connected ||
-        connection.state === signalR.HubConnectionState.Connecting
-    ) {
-        return;
-    }
+  if (
+    connection.state === signalR.HubConnectionState.Connected ||
+    connection.state === signalR.HubConnectionState.Connecting
+  ) {
+    return;
+  }
 
-    await startWithRetry(groups);
+  await startWithRetry(groups);
 
-    if (!handlersRegistered) {
+  if (!handlersRegistered) {
 
-        handlersRegistered = true;
+    handlersRegistered = true;
 
-        connection.onreconnecting(() => {
+    connection.onreconnecting(() => {
 
-            console.warn("Reconectando...");
+      console.warn("Reconectando...");
+      notifyStatusChange(false);
 
-            notifyStatusChange(false);
-        });
+    });
 
-        connection.onreconnected(async () => {
+    connection.onreconnected(async () => {
 
-            console.log("Reconectado");
+      console.log("Reconectado");
 
-            for (const group of currentGroups) {
-                await joinGroup(group);
-            }
+      for (const group of currentGroups) {
+        await joinGroup(group);
+      }
 
-            notifyStatusChange(true);
-        });
+      notifyStatusChange(true);
+    });
 
-        connection.onclose(async () => {
+    connection.onclose(async () => {
 
-            console.warn("Conexión cerrada. Reintentando...");
+      console.warn("Conexión cerrada. Reintentando...");
+      notifyStatusChange(false);
 
-            notifyStatusChange(false);
-
-            await startWithRetry(currentGroups);
-        });
-    }
+      await startWithRetry(currentGroups);
+    });
+  }
 };
+
 
 // ---------------------------
 // JOIN GROUP
 // ---------------------------
 export const joinGroup = async (group) => {
 
-    if (connection.state !== signalR.HubConnectionState.Connected) return;
+  if (connection.state !== signalR.HubConnectionState.Connected) return;
 
-    try {
+  try {
 
-        switch (group) {
+    switch (group) {
 
-            case "cocina":
-                await connection.invoke("JoinKitchenGroup");
-                break;
+      case "kitchen":
+        await connection.invoke("JoinKitchenGroup");
+        break;
 
-            case "waiters":
-                await connection.invoke("JoinWaiterGroup");
-                break;
+      case "waiter":
+        await connection.invoke("JoinWaiterGroup");
+        break;
 
-            default:
-                console.warn(`Grupo no reconocido: ${group}`);
-        }
-
-        console.log(`>>> Unido al grupo: ${group}`);
-
-    } catch (err) {
-
-        console.error("Error join group:", err);
+      default:
+        console.warn(`Grupo no reconocido: ${group}`);
+        return;
     }
+
+    console.log(`>>> Unido al grupo: ${group}`);
+
+  } catch (err) {
+
+    console.error("Error join group:", err);
+  }
 };
 
 // ---------------------------
-// REMOVE HANDLER (evita duplicados)
+// REMOVE HANDLER
 // ---------------------------
 export const offEvent = (eventName) => {
-    connection.off(eventName);
+  connection.off(eventName);
 };
 
 // ---------------------------
 // EVENTOS KDS
 // ---------------------------
-export const onReceiveOrder = (callback) => {
+export const onReceiveOrder = () => {
 
-    connection.off("ReceiveOrder");
-    connection.on("ReceiveOrder", callback);
+  connection.off("ReceiveOrder");
+
+  connection.on("ReceiveOrder", (order) => {
+
+    const { addOrder } = useOrderStore.getState();
+
+    console.log("Nueva orden recibida:", order);
+
+    addOrder(order);
+  });
 };
 
-export const onOrderReady = (callback) => {
+export const onOrderReady = () => {
 
-    connection.off("OrderReady");
-    connection.on("OrderReady", callback);
+  connection.off("OrderReady");
+
+  connection.on("OrderReady", (order) => {
+
+    const { updateOrder } = useOrderStore.getState();
+
+    console.log("Orden lista:", order);
+
+    updateOrder(order);
+
+  });
+
 };
 
-export const onOrderPreparing = (callback) => {
 
-    connection.off("OrderPreparing");
-    connection.on("OrderPreparing", callback);
+export const onOrderPreparing = () => {
+
+  connection.off("OrderPreparing");
+
+  connection.on("OrderPreparing", (order) => {
+
+    const { updateOrder } = useOrderStore.getState();
+
+    console.log("Orden preparando:", order);
+
+    updateOrder(order);
+  });
 };
 
-export const onOrderDelivered = (callback) => {
+export const onOrderDelivered = () => {
 
-    connection.off("OrderDelivered");
-    connection.on("OrderDelivered", callback);
+  connection.off("OrderDelivered");
+
+  connection.on("OrderDelivered", (orderId) => {
+
+    const { removeOrder } = useOrderStore.getState();
+
+    console.log("Orden entregada:", orderId);
+
+    removeOrder(orderId);
+  });
 };
 
 // ---------------------------

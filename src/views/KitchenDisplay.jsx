@@ -1,304 +1,166 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, {useEffect} from "react";
+import useOrderSound from "../hooks/useOrderSound";
+import useKitchenOrders from "../hooks/useKitchenOrders";
+import useSignalRConnection from "../hooks/useSignalRConnection";
+import useKitchenClock from "../hooks/useKitchenClock";
 
-import connection, {
-  startConnection,
-  subscribeConnectionStatus
-} from "../services/signalrService";
+import OrderCard from "../components/OrderCard";
 
 import {
-  getActiveOrders,
   markOrderPreparing,
   markOrderReady
 } from "../services/api.service";
 
-import OrderCard from "../components/OrderCard";
-
 const KitchenDisplay = () => {
 
-  const [orders, setOrders] = useState([]);
-  const [isConnected, setIsConnected] = useState(false);
-  const [now, setNow] = useState(new Date());
+  const { orders } = useKitchenOrders();
+  const { isConnected } = useSignalRConnection(["kitchen"]);
+  const { now } = useKitchenClock();
+  useOrderSound();
 
-  const audioRef = useRef(null);
+
+  const getOrderId = (order) => order.id || order._id;
 
   // =============================
-  // ORDEN FIFO (PRIORIDAD)
+  // FILTRAR POR STATUS
   // =============================
 
-  const sortOrders = (ordersList) => {
+  const pending = orders
+    ?.filter(o => o.status === 0)
+    .sort((a,b)=> new Date(a.createdAt) - new Date(b.createdAt));
 
-    return [...ordersList].sort((a, b) => {
+  const preparing = orders
+    ?.filter(o => o.status === 1)
+    .sort((a,b)=> new Date(a.createdAt) - new Date(b.createdAt));
 
-      const nowTime = new Date().getTime();
+  const ready = orders
+    ?.filter(o => o.status === 2)
+    .sort((a,b)=> new Date(a.createdAt) - new Date(b.createdAt));
 
-      const aAge = nowTime - new Date(a.createdAt).getTime();
-      const bAge = nowTime - new Date(b.createdAt).getTime();
+  // =============================
+  // LOGOUT
+  // =============================
 
-      return bAge - aAge;
+  const logout = () => {
 
-    });
+    localStorage.removeItem("token");
+
+    window.location.href = "/login";
 
   };
-
-  // =============================
-  // SONIDO
-  // =============================
-
-  useEffect(() => {
-
-    audioRef.current = new Audio("/notification.mp3");
-
-  }, []);
-
-  const playSound = () => {
-
-    if (!audioRef.current) return;
-
-    audioRef.current.currentTime = 0;
-    audioRef.current.play().catch(() => {});
-
-  };
-
-  // =============================
-  // CARGAR ÓRDENES
-  // =============================
-
-  const loadOrders = async () => {
-
-    try {
-
-      const data = await getActiveOrders();
-
-      // solo mostrar Pending y Preparing
-      const filtered = data.filter(o => o.status < 2);
-
-      setOrders(filtered);
-
-    } catch (err) {
-
-      console.error("Error cargando órdenes:", err);
-
-    }
-
-  };
-
-  // =============================
-  // SIGNALR
-  // =============================
-
-  useEffect(() => {
-
-    const unsubscribe = subscribeConnectionStatus(setIsConnected);
-
-    connection.off("ReceiveOrder");
-    connection.off("OrderPreparing");
-    connection.off("OrderReady");
-
-    // =============================
-    // NUEVA ORDEN
-    // =============================
-
-    connection.on("ReceiveOrder", (order) => {
-
-      const id = order.id ?? order._id;
-
-      setOrders(prev => {
-
-        const exists = prev.some(o => (o.id ?? o._id) === id);
-
-        if (exists) return prev;
-
-        playSound();
-
-        return [{ ...order, isNew: true }, ...prev];
-
-      });
-
-      setTimeout(() => {
-
-        setOrders(prev =>
-          prev.map(o =>
-            (o.id ?? o._id) === id
-              ? { ...o, isNew: false }
-              : o
-          )
-        );
-
-      }, 2000);
-
-    });
-
-    // =============================
-    // PREPARING
-    // =============================
-
-    connection.on("OrderPreparing", (order) => {
-
-      const id = order.id ?? order._id;
-
-      setOrders(prev =>
-        prev.map(o =>
-          (o.id ?? o._id) === id
-            ? { ...o, status: 1 }
-            : o
-        )
-      );
-
-    });
-
-    // =============================
-    // READY → eliminar automáticamente
-    // =============================
-
-    connection.on("OrderReady", (order) => {
-
-      const id = order.id ?? order._id;
-
-      // animación de salida
-      setOrders(prev =>
-        prev.map(o =>
-          (o.id ?? o._id) === id
-            ? { ...o, removing: true }
-            : o
-        )
-      );
-
-      setTimeout(() => {
-
-        setOrders(prev =>
-          prev.filter(o => (o.id ?? o._id) !== id)
-        );
-
-      }, 400);
-
-    });
-
-    const init = async () => {
-
-      await startConnection(["cocina"]);
-      await loadOrders();
-
-    };
-
-    init();
-
-    return () => {
-
-      unsubscribe();
-
-      connection.off("ReceiveOrder");
-      connection.off("OrderPreparing");
-      connection.off("OrderReady");
-
-    };
-
-  }, []);
-
-  // =============================
-  // RELOJ GLOBAL
-  // =============================
-
-  useEffect(() => {
-
-    const timer = setInterval(() => {
-      setNow(new Date());
-    }, 1000);
-
-    return () => clearInterval(timer);
-
-  }, []);
-
-  // =============================
-  // ACCIONES
-  // =============================
-
-  const handlePreparing = async (orderId) => {
-
-    const id = orderId?.id ?? orderId?._id ?? orderId;
-
-    try {
-
-      await markOrderPreparing(id);
-
-      setOrders(prev =>
-        prev.map(o =>
-          (o.id ?? o._id) === id
-            ? { ...o, status: 1 }
-            : o
-        )
-      );
-
-    } catch (err) {
-
-      console.error("Error preparando orden:", err);
-
-    }
-
-  };
-
-  const handleReady = async (orderId) => {
-
-    const id = orderId?.id ?? orderId?._id ?? orderId;
-
-    try {
-
-      await markOrderReady(id);
-
-      setOrders(prev =>
-        prev.filter(o => (o.id ?? o._id) !== id)
-      );
-
-    } catch (err) {
-
-      console.error("Error marcando lista:", err);
-
-    }
-
-  };
-
-  // =============================
-  // UI
-  // =============================
 
   return (
 
-    <div className="p-6 bg-gray-900 min-h-screen text-white">
+    <div className="min-h-screen bg-gray-900 text-white p-6">
 
-      <header className="flex justify-between mb-6">
+      {/* HEADER */}
+
+      <div className="flex justify-between items-center mb-6">
 
         <h1 className="text-3xl font-bold">
-          Panel de Cocina (KDS)
+          Kitchen Display System
         </h1>
 
-        <div
-          className={`px-4 py-1 rounded-full border ${
-            isConnected
-              ? "border-green-500 text-green-500"
-              : "border-red-500 text-red-500 animate-pulse"
-          }`}
-        >
-          {isConnected ? "ONLINE" : "OFFLINE"}
+        <div className="flex gap-6 items-center">
+
+          {isConnected ? (
+            <span className="text-green-400 font-semibold">
+              🟢 Conectado
+            </span>
+          ) : (
+            <span className="text-red-400 font-semibold">
+              🔴 Sin conexión
+            </span>
+          )}
+
+          <button
+            onClick={logout}
+            className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg font-bold"
+          >
+            Logout
+          </button>
+
         </div>
 
-      </header>
+      </div>
 
-      <div className="auto-grid gap-6">
+      {/* COLUMNAS */}
 
-        {orders.length === 0 && (
-          <div className="col-span-full text-center opacity-40">
-            Esperando pedidos...
+      <div className="grid grid-cols-3 gap-6">
+
+        {/* PENDING */}
+
+        <Column
+          title="Pending"
+          orders={pending}
+          now={now}
+          isConnected={isConnected}
+          getOrderId={getOrderId}
+        />
+
+        {/* PREPARING */}
+
+        <Column
+          title="Preparing"
+          orders={preparing}
+          now={now}
+          isConnected={isConnected}
+          getOrderId={getOrderId}
+        />
+
+        {/* READY */}
+
+        <Column
+          title="Ready"
+          orders={ready}
+          now={now}
+          isConnected={isConnected}
+          getOrderId={getOrderId}
+        />
+
+      </div>
+
+    </div>
+
+  );
+
+};
+
+const Column = ({
+  title,
+  orders,
+  now,
+  isConnected,
+  getOrderId
+}) => {
+
+  return (
+
+    <div className="bg-gray-800 rounded-xl p-4">
+
+      <h2 className="text-xl font-bold mb-4 border-b pb-2">
+        {title}
+      </h2>
+
+      <div className="space-y-4">
+
+        {orders?.length === 0 && (
+
+          <div className="text-gray-400 text-center p-6">
+            Sin órdenes
           </div>
+
         )}
 
-        {sortOrders(orders).map(order => (
+        {orders?.map(order => (
 
           <OrderCard
-            key={order.id ?? order._id}
+            key={getOrderId(order)}
             order={order}
             now={now}
             isConnected={isConnected}
-            onPreparing={handlePreparing}
-            onReady={handleReady}
+            onPreparing={markOrderPreparing}
+            onReady={markOrderReady}
           />
 
         ))}

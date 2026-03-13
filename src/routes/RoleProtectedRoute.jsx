@@ -1,21 +1,17 @@
 import { Navigate } from "react-router-dom";
-import { getUserRole } from "../services/authService";
 
-const RoleProtectedRoute = ({ children, role }) => {
+export default function RoleProtectedRoute({ role, children }) {
 
   const token = localStorage.getItem("token");
+  const userRole = localStorage.getItem("role");
 
   if (!token) {
-    return <Navigate to="/login" />;
+    return <Navigate to="/login" replace />;
   }
 
-  const userRole = getUserRole();
-
-  if (userRole !== role) {
-    return <Navigate to="/login" />;
+  if (role && role !== userRole) {
+    return <Navigate to="/login" replace />;
   }
 
   return children;
-};
-
-export default RoleProtectedRoute;
+}

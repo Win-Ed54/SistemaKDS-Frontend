@@ -1,42 +1,61 @@
-import { jwtDecode } from "jwt-decode";
-
-const API_URL = "http://localhost:5162/api";
+import request from "./api.service";
 
 export const login = async (username, password) => {
 
-  const res = await fetch(`${API_URL}/auth/login`, {
+  const response = await request("/auth/login", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
     body: JSON.stringify({
       username,
       password
     })
   });
 
-  if (!res.ok) {
-    throw new Error("Credenciales incorrectas");
+  const data = await response.json();
+
+  if (!data.token) {
+    throw new Error("Login failed");
   }
 
-  const data = await res.json();
-
+  // guardar sesión
   localStorage.setItem("token", data.token);
+  localStorage.setItem("role", data.role);
 
-  return data.token;
+  return data;
 };
 
-export const getUserRole = () => {
+export const getSession = () => {
 
   const token = localStorage.getItem("token");
+  const role = localStorage.getItem("role");
 
-  if (!token) return null;
+  if (!token || !role) {
+    return null;
+  }
 
-  const decoded = jwtDecode(token);
+  return {
+    token,
+    role
+  };
 
-  return decoded["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"];
 };
 
 export const logout = () => {
+
   localStorage.removeItem("token");
+  localStorage.removeItem("role");
+
+};
+
+export const getProducts = async () => {
+
+  const res = await fetch(`${API}/products`);
+  return await res.json();
+
+};
+
+export const getTables = async () => {
+
+  const res = await fetch(`${API}/tables`);
+  return await res.json();
+
 };
