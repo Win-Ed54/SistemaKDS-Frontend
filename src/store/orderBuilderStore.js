@@ -1,30 +1,20 @@
 import { create } from "zustand";
 
 const useOrderBuilderStore = create((set) => ({
-
   tableId: null,
   waiterName: "",
   customerName: "",
   items: [],
 
-  setTable: (tableId) =>
-    set({ tableId }),
-
-  setWaiter: (name) =>
-    set({ waiterName: name }),
-
-  setCustomer: (name) =>
-    set({ customerName: name }),
+  setTable: (tableId) => set({ tableId }),
+  setWaiter: (name) => set({ waiterName: name }),
+  setCustomer: (name) => set({ customerName: name }),
 
   addItem: (product) =>
     set((state) => {
-
-      const existing = state.items.find(
-        (i) => i.productId === product.id
-      );
+      const existing = state.items.find((i) => i.productId === product.id);
 
       if (existing) {
-
         return {
           items: state.items.map((i) =>
             i.productId === product.id
@@ -32,7 +22,6 @@ const useOrderBuilderStore = create((set) => ({
               : i
           ),
         };
-
       }
 
       return {
@@ -41,18 +30,23 @@ const useOrderBuilderStore = create((set) => ({
           {
             productId: product.id,
             productName: product.name,
+            price: product.price, // <--- ¡AQUÍ ESTÁ EL ARREGLO!
             quantity: 1,
-            notes: "",
+            notes: "", 
           },
         ],
       };
-
     }),
 
   removeItem: (productId) =>
     set((state) => ({
-      items: state.items.filter(
-        (i) => i.productId !== productId
+      items: state.items.filter((i) => i.productId !== productId),
+    })),
+
+  updateItemNotes: (productId, notes) =>
+    set((state) => ({
+      items: state.items.map((item) =>
+        item.productId === productId ? { ...item, notes } : item
       ),
     })),
 
@@ -60,8 +54,8 @@ const useOrderBuilderStore = create((set) => ({
     set({
       items: [],
       customerName: "",
+      tableId: null, // Te sugiero limpiar la mesa también al terminar
     }),
-
 }));
 
 export default useOrderBuilderStore;
