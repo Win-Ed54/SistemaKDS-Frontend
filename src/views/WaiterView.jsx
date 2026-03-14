@@ -18,7 +18,7 @@ const WaiterView = () => {
   const { isConnected } = useSignalRConnection("waiter");
   const { products } = useProducts();
   const { tables } = useTables();
-  const { tableId, customerName, setCustomerName } = useOrderBuilder();
+  const { tableId, customerName, setCustomer } = useOrderBuilder();
 
   const waiterName = localStorage.getItem("user_name") || "Mesero de Turno";
 
@@ -122,7 +122,7 @@ const WaiterView = () => {
                   type="text" 
                   placeholder="Ej: Familia García"
                   value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
+                  onChange={(e) => setCustomer(e.target.value)}
                   className="w-full bg-slate-950 border-2 border-slate-800 rounded-2xl p-4 text-white focus:outline-none focus:border-[#00FFFF] transition-all placeholder:text-slate-700"
                 />
               </div>
