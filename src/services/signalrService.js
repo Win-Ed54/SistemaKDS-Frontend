@@ -160,7 +160,9 @@ export const joinGroup = async (group) => {
       case "waiter":
         await connection.invoke("JoinWaiterGroup");
         break;
-
+      case "admin":
+        await connection.invoke("JoinAdminGroup");
+        break;
       default:
         console.warn(`Grupo no reconocido: ${group}`);
         return;
@@ -266,4 +268,21 @@ export const onStockUpdated = (callback) => {
 };
 
 // ---------------------------
+// EVENTO ADMIN / DASHBOARD
+// ---------------------------
+export const onOrderCreated = () => {
+  connection.off("ordercreated");
+
+  connection.on("ordercreated", (data) => {
+    // Cambiamos el log para ver TODO lo que llega
+    console.log("Datos recibidos en ordercreated:", data); 
+    
+    if (data) {
+      const { addOrder } = useOrderStore.getState();
+      addOrder(data);
+    }
+  });
+};
+
+
 export default connection;
