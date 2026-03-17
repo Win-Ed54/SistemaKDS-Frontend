@@ -1,4 +1,4 @@
-import React, {useEffect} from "react";
+import React, { useEffect } from "react";
 import useOrderSound from "../hooks/useOrderSound";
 import useKitchenOrders from "../hooks/useKitchenOrders";
 import useSignalRConnection from "../hooks/useSignalRConnection";
@@ -9,16 +9,14 @@ import OrderCard from "../components/OrderCard";
 import {
   markOrderPreparing,
   markOrderReady,
-  finishOrder
+  finishOrder,
 } from "../services/api.service";
 
 const KitchenDisplay = () => {
-
   const { orders } = useKitchenOrders();
   const { isConnected } = useSignalRConnection("kitchen");
   const { now } = useKitchenClock();
   useOrderSound();
-
 
   const getOrderId = (order) => order.id || order._id;
 
@@ -27,52 +25,45 @@ const KitchenDisplay = () => {
   // =============================
 
   const pending = orders
-    ?.filter(o => o.status === 0)
-    .sort((a,b)=> new Date(a.createdAt) - new Date(b.createdAt));
+    ?.filter((o) => o.status === 0)
+    .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
 
   const preparing = orders
-    ?.filter(o => o.status === 1)
-    .sort((a,b)=> new Date(a.createdAt) - new Date(b.createdAt));
+    ?.filter((o) => o.status === 1)
+    .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
 
   const ready = orders
-    ?.filter(o => o.status === 2)
-    .sort((a,b)=> new Date(a.createdAt) - new Date(b.createdAt));
+    ?.filter((o) => o.status === 2)
+    .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
 
   // =============================
   // LOGOUT
   // =============================
 
   const logout = () => {
-
     localStorage.removeItem("token");
 
     window.location.href = "/login";
-
   };
 
   return (
-
     <div className="min-h-screen bg-gray-900 text-white p-6">
-
       {/* HEADER */}
 
       <div className="flex justify-between items-center mb-6">
-
-        <h1 className="text-3xl font-bold">
-          Kitchen Display System
-        </h1>
+        <h1 className="text-3xl font-bold">Pantalla de Cocina</h1>
 
         <div className="flex gap-6 items-center">
-
-          {isConnected ? (
-            <span className="text-green-400 font-semibold">
-              🟢 Conectado
+          <div className="flex items-center gap-2">
+            <div
+              className={`w-3 h-3 rounded-full ${isConnected ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]" : "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]"}`}
+            ></div>
+            <span
+              className={`font-semibold ${isConnected ? "text-green-400" : "text-red-400"}`}
+            >
+              {isConnected ? "Conectado" : "Sin conexión"}
             </span>
-          ) : (
-            <span className="text-red-400 font-semibold">
-              🔴 Sin conexión
-            </span>
-          )}
+          </div>
 
           <button
             onClick={logout}
@@ -80,15 +71,12 @@ const KitchenDisplay = () => {
           >
             Logout
           </button>
-
         </div>
-
       </div>
 
       {/* COLUMNAS */}
 
       <div className="grid grid-cols-3 gap-6">
-
         {/* PENDING */}
 
         <Column
@@ -118,61 +106,37 @@ const KitchenDisplay = () => {
           isConnected={isConnected}
           getOrderId={getOrderId}
         />
-
       </div>
-
     </div>
-
   );
-
 };
 
-const Column = ({
-  title,
-  orders,
-  now,
-  isConnected,
-  getOrderId
-}) => {
-
+const Column = ({ title, orders, now, isConnected, getOrderId }) => {
   return (
-
     <div className="bg-gray-800 rounded-xl p-4">
-
-      <h2 className="text-xl font-bold mb-4 border-b pb-2">
-        {title}
-      </h2>
+      <h2 className="text-xl font-bold mb-4 border-b pb-2">{title}</h2>
 
       <div className="space-y-4">
-
         {orders?.length === 0 && (
-
-          <div className="text-gray-400 text-center p-6">
-            Sin órdenes
-          </div>
-
+          <div className="text-gray-400 text-center p-6">Sin órdenes</div>
         )}
 
-        {orders?.map(order => (
-
+        {orders?.map((order, index) => (
           <OrderCard
-            key={getOrderId(order)}
+            // Agregamos el index al key por si hay IDs duplicados en la DB
+            key={`${getOrderId(order)}-${index}`} 
             order={order}
             now={now}
             isConnected={isConnected}
-            onPreparing={markOrderPreparing}
-            onReady={markOrderReady}
-            onFinish={finishOrder}
+            // AQUÍ ESTÁ EL CAMBIO CLAVE:
+            onPreparing={() => markOrderPreparing(getOrderId(order))}
+            onReady={() => markOrderReady(getOrderId(order))}
+            onFinish={() => finishOrder(getOrderId(order))}
           />
-
         ))}
-
       </div>
-
     </div>
-
   );
-
 };
 
 export default KitchenDisplay;

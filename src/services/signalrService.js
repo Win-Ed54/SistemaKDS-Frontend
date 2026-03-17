@@ -243,6 +243,28 @@ export const onOrderDelivered = () => {
   });
 };
 
+export const onProductOutOfStock = (callback) => {
+  // Limpiamos cualquier escucha previa para evitar duplicados visuales
+  connection.off("productoutofstock");
+
+  connection.on("productoutofstock", (data) => {
+    console.warn("SignalR: Stock insuficiente detectado", data);
+    
+    // Si pasaste una función para mostrar un alert o notificación, la ejecutamos
+    if (callback) {
+      callback(data);
+    }
+  });
+};
+
+export const onStockUpdated = (callback) => {
+  connection.off("StockUpdated"); // Limpieza para evitar duplicados
+  connection.on("StockUpdated", (productId, newStock) => {
+    console.log(` Stock actualizado: Producto ${productId} -> ${newStock}`);
+    if (callback) callback(productId, newStock);
+  });
+};
+
 // ---------------------------
 // EVENTO ADMIN / DASHBOARD
 // ---------------------------

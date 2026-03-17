@@ -7,14 +7,24 @@ const useOrderStore = create(
       orders: [],
 
       addOrder: (order) =>
-        set((state) => ({
-          orders: [order, ...state.orders],
-        })),
+        set((state) => {
+          // --- FILTRO ANTI-DUPLICADOS ---
+          // Si el ID de la orden ya existe en el estado actual, 
+          // devolvemos el estado sin cambios.
+          if (state.orders.some((o) => o.id === order.id)) {
+            return state;
+          }
+          // ------------------------------
+
+          return {
+            orders: [order, ...state.orders],
+          };
+        }),
 
       updateOrder: (order) =>
         set((state) => ({
           orders: state.orders.map((o) =>
-            o.id === order.id ? order : o
+            o.id === order.id ? { ...o, ...order } : o
           ),
         })),
 
@@ -24,7 +34,7 @@ const useOrderStore = create(
         })),
     }),
     {
-      name: "kds-orders",
+      name: "kds-orders", // Esto mantiene tus órdenes en el LocalStorage
     }
   )
 );

@@ -10,24 +10,26 @@ import {
 } from "../services/signalrService";
 
 const useKitchenOrders = () => {
-
   const { orders } = useOrderStore();
 
   useEffect(() => {
-
-    // iniciar conexión y unirse al grupo kitchen
+    // Iniciar conexión
     startConnection(["kitchen"]);
 
-    // escuchar eventos
+    // Escuchar eventos
     onReceiveOrder();
     onOrderPreparing();
     onOrderReady();
     onOrderDelivered();
 
-  }, []);
+    // FUNCIÓN DE LIMPIEZA (Cleanup)
+    return () => {
+      // Si tu signalrService tiene una función para apagar, úsala aquí
+      // Ejemplo: connection.off("ReceiveOrder");
+    };
+  }, []); // El array vacío [] con StrictMode causa la doble ejecución
 
   return { orders };
-
 };
 
 export default useKitchenOrders;

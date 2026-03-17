@@ -13,6 +13,7 @@ const useOrderBuilder = () => {
     addItem,
     removeItem,
     clearOrder,
+    updateItemNotes, // <--- 1. Extraemos la función del store
   } = useOrderBuilderStore();
 
   return {
@@ -26,6 +27,7 @@ const useOrderBuilder = () => {
     addItem,
     removeItem,
     clearOrder,
+    updateItemNotes, // <--- 2. La devolvemos para usarla en el componente
   };
 
 };

@@ -14,10 +14,10 @@ const OrderCard = ({
   isConnected,
   onPreparing,
   onReady,
-  onFinish // <--- Agregamos la prop para finalizar/entregar
+  onFinish
 }) => {
 
-  const id = order.id ?? order._id;
+  const id = order.id || order._id || order.Id; 
   const status = STATUS[order.status] ?? order.status;
 
   const getElapsedTime = (createdAt) => {
@@ -26,15 +26,18 @@ const OrderCard = ({
     const diff = Math.floor((now - start) / 1000);
     const m = Math.floor(diff / 60);
     const s = diff % 60;
-    return `${m.toString().padStart(2,"0")}:${s.toString().padStart(2,"0")}`;
+    return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   };
 
   const getTimeColor = (createdAt) => {
     const start = new Date(createdAt);
     const minutes = Math.floor((now - start) / 60000);
-    if (minutes < 5) return "bg-green-600";
-    if (minutes < 10) return "bg-yellow-500 text-black";
-    return "bg-red-600 animate-pulse";
+
+    // COLORES VIVOS PARA EL TIEMPO
+    if (minutes < 5) return "bg-[#39FF14] text-black"; 
+    if (minutes < 10) return "bg-[#FFFF00] text-black"; 
+
+    return "bg-[#FF0000] text-white animate-pulse shadow-[0_0_15px_rgba(255,0,0,0.5)]"; 
   };
 
   const groupItems = (items = []) => {
@@ -49,81 +52,96 @@ const OrderCard = ({
     return Object.values(grouped);
   };
 
-  // =============================
-  // ACCIÓN BOTÓN (ACTUALIZADO)
-  // =============================
   const handleAction = () => {
     if (!isConnected) return;
-    const orderId = order.id || order._id;
+    const orderId = order.id || order._id || order.Id;
+    console.log("Intentando acción para ID:", orderId);
 
+    if (!orderId) {
+      alert("Error: No se encontró el ID de la orden en el objeto");
+      return;
+    }
     if (order.status === 0) {
       onPreparing(orderId);
     } else if (order.status === 1) {
       onReady(orderId);
     } else if (order.status === 2) {
-      onFinish(orderId); // <--- Llama a la función de finalizar
+      onFinish(orderId);
     }
   };
 
   return (
     <div
-      className={`rounded-xl bg-gray-800 shadow-lg overflow-hidden
-      ${order.isNew ? "animate-order-enter border-2 border-yellow-400" : ""}
+      className={`rounded-2xl bg-white shadow-2xl overflow-hidden border-4 
+      ${order.isNew ? "animate-bounce border-[#00E5FF]" : "border-gray-200"}
       ${order.removing ? "animate-order-exit" : ""}`}
     >
-      {/* HEADER TIEMPO */}
-      <div className={`${getTimeColor(order.createdAt)} p-3`}>
-        <div className="flex justify-between font-bold">
-          <span>Mesa {order.tableNumber}</span>
-          <span>{getElapsedTime(order.createdAt)}</span>
+      {/* HEADER TIEMPO - COLORES NEÓN */}
+      <div className={`${getTimeColor(order.createdAt)} p-4 border-b-4 border-black/10`}>
+        <div className="flex justify-between items-center font-black text-2xl tracking-tighter">
+          <span>MESA {order.tableNumber}</span>
+          <span className="bg-black/10 px-2 rounded-md">{getElapsedTime(order.createdAt)}</span>
         </div>
       </div>
 
-      {/* ITEMS */}
-      <div className="p-4 space-y-2">
-        {/* --- NOMBRE DEL CLIENTE (NUEVO) --- */}
-        <div className="mb-3 text-center border-b border-gray-700 pb-2">
-           <p className="text-xs text-gray-400 uppercase font-semibold">Cliente</p>
-           <p className="text-lg font-bold text-white">{order.customerName || "General"}</p>
+      {/* ITEMS - TEXTO NEGRO SOBRE BLANCO */}
+      <div className="p-4 space-y-3">
+        {/* NOMBRE DEL CLIENTE */}
+        <div className="mb-3 text-center border-b-2 border-gray-100 pb-2">
+           <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest">Cliente</p>
+           <p className="text-2xl font-black text-black uppercase">{order.customerName || "General"}</p>
         </div>
 
         {groupItems(order.items)?.map((item, i) => (
-          <div key={i} className="border-b border-gray-700 pb-1">
-            <b>{item.quantity}x</b> {item.productName}
+          <div key={i} className="border-b-2 border-gray-100 pb-3 last:border-0">
+            <div className="flex items-center gap-3">
+              {/* CANTIDAD: AZUL INTENSO */}
+              <span className="text-[#0077FF] font-black text-4xl leading-none">
+                {item.quantity}x
+              </span>
+              <span className="text-black font-black text-2xl uppercase leading-tight tracking-tight">
+                {item.productName}
+              </span>
+            </div>
+
+            {/* NOTAS: AMARILLO FUERTE */}
             {item.notes && (
-              <p className="text-yellow-400 text-xs italic">⚠ {item.notes}</p>
+              <div className="mt-2 bg-[#FFD700] p-2 rounded-md border-l-8 border-red-600">
+                <p className="text-black font-black text-sm uppercase italic">
+                  ⚠ {item.notes}
+                </p>
+              </div>
             )}
           </div>
         ))}
       </div>
 
-      {/* BOTÓN ACCIÓN (ACTUALIZADO) */}
-      <div className="p-3">
+      {/* BOTONES DE ACCIÓN - COLORES VIVOS ACTUALIZADOS */}
+      <div className="p-4 bg-gray-50 border-t border-gray-100">
         <button
-          // Ahora habilitado hasta el status 2
           disabled={!isConnected || order.status > 2}
           onClick={handleAction}
-          className={`w-full py-3 rounded-lg font-bold transition ${
+          className={`w-full py-5 rounded-2xl font-black text-2xl shadow-[0_5px_0_rgba(0,0,0,0.15)] active:translate-y-1 active:shadow-none transition-all ${
             order.status === 0
-              ? "bg-yellow-600 hover:bg-yellow-700"
+              ? "bg-[#FFFF00] text-black hover:bg-[#E6E600]" // Amarillo Neón (Preparar)
               : order.status === 1
-              ? "bg-green-600 hover:bg-green-700"
+              ? "bg-[#39FF14] text-black hover:bg-[#32CD32]" // Verde Neón (Listo)
               : order.status === 2
-              ? "bg-blue-600 hover:bg-blue-700 shadow-[0_0_15px_rgba(37,99,235,0.4)]"
-              : "bg-gray-700 text-gray-500"
+              ? "bg-[#0077FF] text-white hover:bg-[#0056b3] shadow-[0_0_20px_rgba(0,119,255,0.4)]" // Azul Eléctrico (Entregar)
+              : "bg-gray-300 text-gray-500"
           }`}
         >
           {order.status === 0
-            ? "Preparar"
+            ? "PREPARAR"
             : order.status === 1
-            ? "Listo"
+            ? "LISTO"
             : order.status === 2
-            ? "Entregar Pedido" // <-- Texto nuevo
-            : "Finalizado"}
+            ? "ENTREGAR"
+            : "FINALIZADO"}
         </button>
 
-        <p className="text-[10px] text-center mt-2 opacity-50 uppercase tracking-widest">
-          Mesero: {order.waiterName || "No asignado"}
+        <p className="text-[10px] text-center mt-4 text-gray-400 font-black uppercase tracking-[0.2em]">
+          MESERO: {order.waiterName || "NO ASIGNADO"}
         </p>
       </div>
     </div>
