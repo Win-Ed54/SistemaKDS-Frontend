@@ -5,6 +5,7 @@ import useOrderStore from "../store/orderStore";
 // CONFIG
 // ---------------------------
 const HUB_URL = import.meta.env.VITE_HUB_URL;
+const isDev = import.meta.env.DEV;
 
 if (!HUB_URL) {
   throw new Error("VITE_HUB_URL no definido");
@@ -18,8 +19,9 @@ const connection = new signalR.HubConnectionBuilder()
     accessTokenFactory: () => localStorage.getItem("token")
   })
   .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
-  .configureLogging(signalR.LogLevel.Information)
+  .configureLogging(import.meta.env.DEV? signalR.LogLevel.Information: signalR.LogLevel.Error)
   .build();
+
 
 // ---------------------------
 // ESTADO GLOBAL
@@ -59,11 +61,11 @@ const startWithRetry = async (groups = []) => {
 
     try {
 
-      console.log("Intentando conectar a SignalR...");
+      if(isDev)console.log("Intentando conectar a SignalR...");
 
       await connection.start();
 
-      console.log(">>> Conectado a SignalR");
+      if(isDev)console.log(">>> Conectado a SignalR");
 
       notifyStatusChange(true);
 
@@ -71,7 +73,7 @@ const startWithRetry = async (groups = []) => {
 
     } catch (err) {
 
-      console.error("Error conectando. Reintentando...", err);
+      if(isDev)console.error("Error conectando. Reintentando...", err);
 
       notifyStatusChange(false);
 
@@ -190,7 +192,7 @@ export const onReceiveOrder = () => {
 
     const { addOrder } = useOrderStore.getState();
 
-    console.log("Nueva orden recibida:", order);
+    if(isDev)console.log("Nueva orden recibida:", order);
 
     addOrder(order);
   });
@@ -204,7 +206,7 @@ export const onOrderReady = () => {
 
     const { updateOrder } = useOrderStore.getState();
 
-    console.log("Orden lista:", order);
+    if(isDev)console.log("Orden lista:", order);
 
     updateOrder(order);
 
@@ -221,7 +223,7 @@ export const onOrderPreparing = () => {
 
     const { updateOrder } = useOrderStore.getState();
 
-    console.log("Orden preparando:", order);
+    if(isDev)console.log("Orden preparando:", order);
 
     updateOrder(order);
   });
@@ -235,7 +237,7 @@ export const onOrderDelivered = () => {
 
     const { removeOrder } = useOrderStore.getState();
 
-    console.log("Orden entregada:", orderId);
+    if(isDev)console.log("Orden entregada:", orderId);
 
     removeOrder(orderId);
   });
@@ -258,7 +260,7 @@ export const onProductOutOfStock = (callback) => {
 export const onStockUpdated = (callback) => {
   connection.off("StockUpdated"); // Limpieza para evitar duplicados
   connection.on("StockUpdated", (productId, newStock) => {
-    console.log(` Stock actualizado: Producto ${productId} -> ${newStock}`);
+    if(isDev)console.log(` Stock actualizado: Producto ${productId} -> ${newStock}`);
     if (callback) callback(productId, newStock);
   });
 };
