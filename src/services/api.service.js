@@ -17,7 +17,6 @@ const getToken = () => {
 
   return token || localStorage.getItem("token");
 };
-
 // ---------------------------
 // REQUEST GENÉRICO (MEJORADO PARA CAPTURAR ERRORES DE STOCK)
 // ---------------------------
@@ -72,5 +71,10 @@ export const cancelOrder = (orderId) => request(`/orders/${orderId}/cancel`, { m
 // ===============================
 export const getTables = () => request("/tables");
 export const getProducts = () => request("/products");
+export const updateProductStock = (productId, newStock) => 
+  request(`/products/${productId}/stock`, { 
+    method: "PATCH", 
+    body: JSON.stringify({ newStock }) 
+  });
 
 
