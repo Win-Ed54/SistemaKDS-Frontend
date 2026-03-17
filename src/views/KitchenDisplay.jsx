@@ -4,7 +4,7 @@ import useKitchenOrders from "../hooks/useKitchenOrders";
 import useSignalRConnection from "../hooks/useSignalRConnection";
 import useKitchenClock from "../hooks/useKitchenClock";
 
-import OrderCard from "../components/OrderCard";
+import OrderCard from "../components/kitchen/OrderCard";
 
 import {
   markOrderPreparing,

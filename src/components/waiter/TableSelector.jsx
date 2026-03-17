@@ -1,5 +1,5 @@
 import React from "react";
-import useOrderBuilder from "../hooks/useOrderBuilder";
+import useOrderBuilder from "../../hooks/useOrderBuilder";
 
 const TableSelector = ({ tables }) => {
   const { setTable, tableId } = useOrderBuilder(); // Traemos el ID actual del store

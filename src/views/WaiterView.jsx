@@ -9,9 +9,9 @@ import useOrderBuilder from "../hooks/useOrderBuilder"; // Importante para saber
 
 import { onOrderReady, onOrderDelivered } from "../services/signalrService";
 
-import TableSelector from "../components/TableSelector";
-import ProductList from "../components/ProductList";
-import OrderPanel from "../components/OrderPanel";
+import TableSelector from "../components/waiter/TableSelector";
+import ProductList from "../components/waiter/ProductList";
+import OrderPanel from "../components/waiter/OrderPanel";
 
 const WaiterView = () => {
   const navigate = useNavigate();
