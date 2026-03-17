@@ -7,19 +7,19 @@ import {
 
 export default function useSignalRConnection(role) {
   const [isConnected, setIsConnected] = useState(false);
-
+  const [connection, setConnection] = useState(null);
   useEffect(() => {
     // Prevent running if role is missing
     if (!role) return;
 
     const init = async () => {
-      // Pass the role as an array so startConnection stores it in currentGroups
-      await startConnection([role]);
+       const conn = await startConnection([role]); 
+      setConnection(conn);
       setIsConnected(true);
     };
 
     init();
   }, [role]);
 
-  return { isConnected };
+  return { connection, isConnected };
 }
