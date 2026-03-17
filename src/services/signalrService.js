@@ -104,7 +104,7 @@ const startWithRetry = async (groups = []) => {
     connection.state === signalR.HubConnectionState.Connected ||
     connection.state === signalR.HubConnectionState.Connecting
   ) {
-    return;
+    return connection;
   }
 
   await startWithRetry(groups);
@@ -139,6 +139,7 @@ const startWithRetry = async (groups = []) => {
       await startWithRetry(currentGroups);
     });
   }
+return connection;  
 };
 
 
