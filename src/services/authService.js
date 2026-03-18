@@ -1,32 +1,23 @@
 import request from "./api.service";
 
 // ===============================
-// AUTENTICACIÓN (CORREGIDO)
+// AUTENTICACIÓN 
 // ===============================
 export const login = async (username, password) => {
-  // 'data' recibe directamente el objeto JSON (token, role, etc.) 
-  // porque el servicio 'request' ya hace el .json() internamente.
   const data = await request("/auth/login", {
     method: "POST",
-    body: JSON.stringify({
-      username,
-      password
-    })
+    body: JSON.stringify({ username, password })
   });
 
-  // VERIFICACIÓN
-  if (!data || !data.token) {
-    throw new Error("Login failed: No se recibió un token válido");
-  }
+  if (!data?.token) throw new Error("No se recibió token");
 
-  // GUARDAR SESIÓN
-  // Es vital usar 'token' y 'role' para que SignalR y los paneles los encuentren
   localStorage.setItem("token", data.token);
   localStorage.setItem("role", data.role);
+  // ✅ Guardar también el token específico por rol:
+  localStorage.setItem(`${data.role}_token`, data.token);
 
   return data;
 };
-
 // ===============================
 // SESIÓN
 // ===============================

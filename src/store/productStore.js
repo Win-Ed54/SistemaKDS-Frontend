@@ -1,21 +1,29 @@
+// productStore.js — SOLO el store de Zustand, sin imports de hooks
 import { create } from "zustand";
 
-const useProductStore = create((set) => ({
+const getId = (p) => p?.id || p?._id || p?.Id;
 
+const useProductStore = create((set) => ({
   products: [],
 
-  setProducts: (products) =>
-    set({ products }),
+  setProducts: (incoming) =>
+    set(() => ({
+      products: (incoming ?? []).map((p) => ({ ...p, id: getId(p) })),
+    })),
 
-  updateStock: (productId, stock) =>
+  updateStock: (productId, newStock) =>
     set((state) => ({
       products: state.products.map((p) =>
-        p.id === productId
-          ? { ...p, stock }
-          : p
+        getId(p) === productId ? { ...p, stock: newStock } : p
       ),
     })),
 
+  markOutOfStock: (productId) =>
+    set((state) => ({
+      products: state.products.map((p) =>
+        getId(p) === productId ? { ...p, stock: 0 } : p
+      ),
+    })),
 }));
 
 export default useProductStore;

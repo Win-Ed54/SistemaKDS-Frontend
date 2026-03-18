@@ -57,6 +57,7 @@ export default request;
 export const createOrder = (orderData) => request("/orders", { method: "POST", body: JSON.stringify(orderData) });
 export const getActiveOrders = () => request("/orders/active");
 export const getOrderHistory = () => request("/orders/history");
+export const getTopProducts  = (limit = 10) => request(`/orders/top-products?limit=${limit}`);
 
 // ===============================
 // CAMBIOS DE ESTADO (PATCH)
@@ -76,5 +77,3 @@ export const updateProductStock = (productId, newStock) =>
     method: "PATCH", 
     body: JSON.stringify({ newStock }) 
   });
-
-

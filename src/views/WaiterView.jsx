@@ -5,9 +5,9 @@ import { useNavigate } from "react-router-dom";
 import useSignalRConnection from "../hooks/useSignalRConnection";
 import useProducts from "../hooks/useProducts";
 import useTables from "../hooks/useTables";
-import useOrderBuilder from "../hooks/useOrderBuilder"; // Importante para saber qué mesa está elegida
+import useOrderBuilder from "../hooks/useOrderBuilder";
 
-import { onOrderReady, onOrderDelivered } from "../services/signalrService";
+import { onOrderReady } from "../services/signalrService";
 
 import TableSelector from "../components/waiter/TableSelector";
 import ProductList from "../components/waiter/ProductList";
@@ -21,24 +21,24 @@ const WaiterView = () => {
   const { tableId, customerName, setCustomer } = useOrderBuilder();
 
   const waiterName = localStorage.getItem("user_name") || "Mesero de Turno";
-
   const [pax, setPax] = useState(1);
 
-  // --- LÓGICA DE CAPACIDAD (Viene de tu DbSeeder) ---
-  // Buscamos la mesa actual para saber cuántos soporta
-  const currentTable = tables.find(t => t.number === tableId);
-  const maxCapacity = currentTable ? currentTable.capacity : 10; // 10 por defecto si no hay selección
+  // ✅ FIX: buscar por number o id para evitar undefined
+  const currentTable = tables.find(
+    (t) => t.number === tableId || t.id === tableId || t.Number === tableId
+  );
+  const maxCapacity = currentTable?.capacity ?? currentTable?.Capacity ?? 10;
 
-  // --- LÓGICA DE CATEGORÍAS ---
   const [activeCategory, setActiveCategory] = useState("Todas");
-  const categories = ["Todas", ...new Set(products.map(p => p.category).filter(Boolean))];
-  const filteredProducts = activeCategory === "Todas" 
-    ? products 
-    : products.filter(p => p.category === activeCategory);
+  const categories = ["Todas", ...new Set(products.map((p) => p.category).filter(Boolean))];
+  const filteredProducts =
+    activeCategory === "Todas"
+      ? products
+      : products.filter((p) => p.category === activeCategory);
 
   useEffect(() => {
     onOrderReady((order) => {
-      alert(`🔔 ¡Atención! El pedido de la Mesa ${order.tableNumber} está LISTO.`);
+      alert(`🔔 ¡Atención! El pedido de la Mesa ${order?.tableNumber ?? ""} está LISTO.`);
     });
   }, []);
 
@@ -47,9 +47,23 @@ const WaiterView = () => {
     navigate("/login");
   };
 
+  const handlePaxChange = (e) => {
+    const val = parseInt(e.target.value) || 1;
+
+    // ✅ FIX: solo alerta si currentTable existe
+    if (currentTable && val > maxCapacity) {
+      alert(
+        `⚠️ Capacidad excedida. La ${currentTable.name ?? currentTable.Name ?? "mesa"} solo permite ${maxCapacity} personas.`
+      );
+      setPax(maxCapacity);
+    } else {
+      setPax(val);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 text-white selection:bg-[#00FFFF]">
-      
+
       <header className="sticky top-0 z-50 bg-slate-900 border-b border-slate-800 p-4 shadow-xl">
         <div className="max-w-[1600px] mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="flex flex-col items-center md:items-start">
@@ -60,15 +74,24 @@ const WaiterView = () => {
               Operador: <span className="text-slate-300">{waiterName}</span>
             </p>
           </div>
-          
+
           <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
-            <div className={`flex items-center gap-2 px-4 py-1.5 rounded-full border ${isConnected ? 'border-[#39FF14]/30 bg-[#39FF14]/5' : 'border-red-500/30 bg-red-500/5'}`}>
-              <div className={`w-2.5 h-2.5 rounded-full ${isConnected ? 'bg-[#39FF14] animate-pulse' : 'bg-red-500'}`}></div>
-              <span className={`text-[10px] font-black uppercase tracking-widest ${isConnected ? "text-[#39FF14]" : "text-red-400"}`}>
+            <div className={`flex items-center gap-2 px-4 py-1.5 rounded-full border ${
+              isConnected
+                ? "border-[#39FF14]/30 bg-[#39FF14]/5"
+                : "border-red-500/30 bg-red-500/5"
+            }`}>
+              <div className={`w-2.5 h-2.5 rounded-full ${isConnected ? "bg-[#39FF14] animate-pulse" : "bg-red-500"}`} />
+              <span className={`text-[10px] font-black uppercase tracking-widest ${
+                isConnected ? "text-[#39FF14]" : "text-red-400"
+              }`}>
                 {isConnected ? "Sistema Online" : "Sin Conexión"}
               </span>
             </div>
-            <button onClick={handleLogout} className="group flex items-center gap-2 bg-red-600/10 hover:bg-red-600 border border-red-600/50 text-red-500 hover:text-white px-5 py-2 rounded-xl font-black text-[10px] transition-all">
+            <button
+              onClick={handleLogout}
+              className="group flex items-center gap-2 bg-red-600/10 hover:bg-red-600 border border-red-600/50 text-red-500 hover:text-white px-5 py-2 rounded-xl font-black text-[10px] transition-all"
+            >
               SALIR
             </button>
           </div>
@@ -78,48 +101,54 @@ const WaiterView = () => {
       <main className="p-4 lg:p-6 max-w-[1600px] mx-auto">
         <div className="flex flex-col lg:grid lg:grid-cols-12 gap-6">
           <div className="lg:col-span-7 xl:col-span-8 space-y-6">
-            
+
+            {/* SECCIÓN 1: UBICACIÓN */}
             <section className="bg-slate-900/50 border border-slate-800 p-6 rounded-[2rem] shadow-2xl backdrop-blur-sm">
               <div className="flex items-center gap-3 mb-6">
-                <span className="w-1.5 h-6 bg-[#FFFF00] rounded-full shadow-[0_0_10px_#FFFF00]"></span>
-                <h2 className="text-sm font-black uppercase tracking-[0.3em] text-slate-400">1. Ubicación y Pax</h2>
+                <span className="w-1.5 h-6 bg-[#FFFF00] rounded-full shadow-[0_0_10px_#FFFF00]" />
+                <h2 className="text-sm font-black uppercase tracking-[0.3em] text-slate-400">
+                  1. Ubicación y Pax
+                </h2>
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-500 uppercase ml-2">Seleccionar Mesa</label>
+                  <label className="text-[10px] font-black text-slate-500 uppercase ml-2">
+                    Seleccionar Mesa
+                  </label>
                   <div className="bg-slate-950 border-2 border-slate-800 rounded-2xl p-1 hover:border-[#FFFF00]/50 transition-all cursor-pointer overflow-hidden">
-                    <TableSelector tables={tables}/>
+                    <TableSelector tables={tables} />
                   </div>
                 </div>
 
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-slate-500 uppercase ml-2">
-                    Cant. Personas {currentTable && <span className="text-cyan-400">(Máx: {maxCapacity})</span>}
+                    Cant. Personas{" "}
+                    {currentTable && (
+                      <span className="text-cyan-400">(Máx: {maxCapacity})</span>
+                    )}
                   </label>
-                  <input 
-                    type="number" 
+                  <input
+                    type="number"
                     min="1"
                     max={maxCapacity}
                     value={pax}
-                    onChange={(e) => {
-                      const val = parseInt(e.target.value);
-                      if (val > maxCapacity) {
-                        alert(`⚠️ Capacidad excedida. La ${currentTable.name} solo permite ${maxCapacity} personas.`);
-                        setPax(maxCapacity);
-                      } else {
-                        setPax(val || 1);
-                      }
-                    }}
-                    className={`w-full bg-slate-950 border-2 rounded-2xl p-4 font-black text-2xl outline-none transition-all ${pax >= maxCapacity ? 'text-orange-500 border-orange-500/50' : 'text-[#FFFF00] border-slate-800 focus:border-[#FFFF00]'}`}
+                    onChange={handlePaxChange}
+                    className={`w-full bg-slate-950 border-2 rounded-2xl p-4 font-black text-2xl outline-none transition-all ${
+                      pax >= maxCapacity
+                        ? "text-orange-500 border-orange-500/50"
+                        : "text-[#FFFF00] border-slate-800 focus:border-[#FFFF00]"
+                    }`}
                   />
                 </div>
               </div>
 
               <div className="mt-6 space-y-2">
-                <label className="text-[10px] font-black text-slate-500 uppercase ml-2">Nombre del Cliente (Opcional)</label>
-                <input 
-                  type="text" 
+                <label className="text-[10px] font-black text-slate-500 uppercase ml-2">
+                  Nombre del Cliente (Opcional)
+                </label>
+                <input
+                  type="text"
                   placeholder="Ej: Familia García"
                   value={customerName}
                   onChange={(e) => setCustomer(e.target.value)}
@@ -128,21 +157,24 @@ const WaiterView = () => {
               </div>
             </section>
 
+            {/* SECCIÓN 2: MENÚ */}
             <section className="bg-slate-900/50 border border-slate-800 p-6 rounded-[2rem] shadow-2xl backdrop-blur-sm">
               <div className="flex items-center gap-3 mb-6">
-                <span className="w-1.5 h-6 bg-[#00FFFF] rounded-full shadow-[0_0_10px_#00FFFF]"></span>
-                <h2 className="text-sm font-black uppercase tracking-[0.3em] text-slate-400">2. Menú de Productos</h2>
+                <span className="w-1.5 h-6 bg-[#00FFFF] rounded-full shadow-[0_0_10px_#00FFFF]" />
+                <h2 className="text-sm font-black uppercase tracking-[0.3em] text-slate-400">
+                  2. Menú de Productos
+                </h2>
               </div>
 
               <div className="flex gap-2 overflow-x-auto pb-6 no-scrollbar sticky top-[88px] bg-transparent z-20">
-                {categories.map(cat => (
+                {categories.map((cat) => (
                   <button
                     key={cat}
                     onClick={() => setActiveCategory(cat)}
                     className={`px-6 py-2 rounded-full font-black text-[10px] uppercase transition-all whitespace-nowrap border-2 ${
-                      activeCategory === cat 
-                      ? "bg-[#00FFFF] text-black border-[#00FFFF] shadow-[0_0_15px_rgba(0,255,255,0.4)]" 
-                      : "bg-slate-950 text-slate-500 border-slate-800 hover:border-slate-700"
+                      activeCategory === cat
+                        ? "bg-[#00FFFF] text-black border-[#00FFFF] shadow-[0_0_15px_rgba(0,255,255,0.4)]"
+                        : "bg-slate-950 text-slate-500 border-slate-800 hover:border-slate-700"
                     }`}
                   >
                     {cat}
@@ -150,9 +182,7 @@ const WaiterView = () => {
                 ))}
               </div>
 
-              <div className="w-full">
-                <ProductList products={filteredProducts} />
-              </div>
+              <ProductList products={filteredProducts} />
             </section>
           </div>
 

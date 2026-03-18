@@ -30,23 +30,40 @@ import { login, getSession } from "../services/authService";
   }, []);
 
   const handleLogin = async () => {
+  if (!username || !password) {
+    alert("Ingresa usuario y contraseña");
+    return;
+  }
 
-    try {
+  try {
+    console.log("Intentando login con:", username);
+    const data = await login(username, password);
+    console.log("Respuesta del backend:", data);
 
-      const data = await login(username, password);
+    // ✅ Guardar token específico por rol (para signalrService)
+    localStorage.setItem(`${data.role}_token`, data.token);
 
-      if (data.role === "kitchen") navigate("/kitchen");
-      if (data.role === "waiter") navigate("/waiter");
-      if (data.role === "admin") navigate("/admin");
+    const routes = {
+      kitchen: "/kitchen",
+      waiter: "/waiter", 
+      admin: "/admin",
+    };
 
-    } catch (error) {
+    const route = routes[data.role];
 
-      alert("Usuario o contraseña incorrectos");
-
+    if (!route) {
+      alert(`Rol desconocido: ${data.role}`);
+      return;
     }
 
-  };
+    // ✅ replace:true evita que el back-button regrese al login
+    navigate(route, { replace: true });
 
+  } catch (error) {
+    console.error("Error completo:", error);
+    alert(`Error: ${error.message}`);
+  }
+};
   return (
 
     <div style={styles.container}>
