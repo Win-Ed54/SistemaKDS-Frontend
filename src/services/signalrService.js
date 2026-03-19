@@ -2,7 +2,9 @@ import * as signalR from "@microsoft/signalr";
 import useOrderStore from "../store/orderStore";
 
 const HUB_URL = import.meta.env.VITE_HUB_URL;
-const isDev = import.meta.env.DEV;
+const isDev = import.meta.env.DEV
+  ?"/orderHUb"
+  :import.meta.env.VITE_HUB_URL;
 
 if (!HUB_URL) throw new Error("VITE_HUB_URL no definido");
 
@@ -194,12 +196,51 @@ export const onProductOutOfStock = (callback) => {
   });
 };
 
+///export const onStockUpdated = (callback) => {
+  //connection.off("stockupdated");
+  //connection.off("StockUpdated");
+  //connection.on("stockupdated", (productId, newStock) => {
+    //if (isDev) console.log(`Stock: ${productId} → ${newStock}`);
+    //callback?.(productId, newStock);
+  //});
+  //connection.on("StockUpdated", (productId, newStock) => {
+    //if (isDev) console.log(`Stock (Mayus): ${productId} → ${newStock}`);
+    //callback?.(productId, newStock);
+  //});
+//};
+// Reemplaza tu función actual por esta versión limpia
+// signalrService.js
+
+// signalrService.js
+
 export const onStockUpdated = (callback) => {
   connection.off("stockupdated");
-  connection.on("stockupdated", (productId, newStock) => {
-    if (isDev) console.log(`Stock: ${productId} → ${newStock}`);
-    callback?.(productId, newStock);
-  });
+  connection.off("StockUpdated");
+
+  const handleUpdate = (data, stock) => {
+    // Usamos 'let' para asegurar que las variables existan en este scope
+    let productId = null;
+    let currentStock = 0;
+
+    if (data && typeof data === 'object') {
+      productId = data.productId || data.id || data.Id;
+      currentStock = data.newStock ?? data.stock ?? data.Stock ?? 0;
+    } else {
+      productId = data;
+      currentStock = stock;
+    }
+
+    if (isDev) console.log(`📦 Sync: ${productId} -> ${currentStock}`);
+    
+    // ✅ Solo ejecutamos si productId tiene valor, evitando el error de referencia
+    if (productId !== undefined && productId !== null) {
+      callback?.(productId, currentStock);
+    }
+  };
+
+  connection.on("stockupdated", handleUpdate);
+  connection.on("StockUpdated", handleUpdate);
 };
+
 
 export default connection;

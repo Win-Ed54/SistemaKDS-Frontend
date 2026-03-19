@@ -20,6 +20,7 @@ const useProducts = () => {
     fetchProducts();
 
     onStockUpdated((productId, newStock) => {
+        console.log("⚡ ¡LLEGÓ AL MESERO!", { id, stock });
       updateStock(productId, newStock);
     });
 

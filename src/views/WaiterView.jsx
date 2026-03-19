@@ -15,7 +15,7 @@ import OrderPanel from "../components/waiter/OrderPanel";
 
 const WaiterView = () => {
   const navigate = useNavigate();
-  const { isConnected } = useSignalRConnection("waiter");
+  const { isConnected } = useSignalRConnection("waiter","admin");
   const { products } = useProducts();
   const { tables } = useTables();
   const { tableId, customerName, setCustomer } = useOrderBuilder();
