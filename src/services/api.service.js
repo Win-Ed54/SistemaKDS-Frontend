@@ -1,105 +1,93 @@
-const API_URL = import.meta.env.VITE_API_URL
-  ? "/api"
-  : import.meta.env.VITE_API_URL;
-if (!API_URL) {
-  throw new Error("VITE_API_URL no definido");
-}
+const API_URL = "/api";
 
-// ---------------------------
-// OBTENER TOKEN
-// ---------------------------
 const getToken = () => {
   const path = window.location.pathname;
-  let token = null;
-
-  if (path.includes("kitchen")) token = localStorage.getItem("kitchen_token");
-  else if (path.includes("waiter"))
-    token = localStorage.getItem("waiter_token");
-  else if (path.includes("admin")) token = localStorage.getItem("admin_token");
-
-  return token || localStorage.getItem("token");
+  if (path.includes("cocina"))   return localStorage.getItem("kitchen_token");
+  if (path.includes("terminal")) return localStorage.getItem("waiter_token");
+  if (path.includes("panel"))    return localStorage.getItem("admin_token");
+  return localStorage.getItem("token");
 };
-// ---------------------------
-// REQUEST GENÉRICO (MEJORADO PARA CAPTURAR ERRORES DE STOCK)
-// ---------------------------
-const request = async (endpoint, options = {}) => {
+
+let isRefreshing = false;
+let refreshQueue = [];
+
+const refreshAccessToken = async () => {
+  const refreshToken = localStorage.getItem("refresh_token");
+  if (!refreshToken) throw new Error("No refresh token");
+
+  const res = await fetch(`${API_URL}/auth/refresh`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ refreshToken }),
+  });
+
+  if (!res.ok) {
+    ["token","role","refresh_token","admin_token","waiter_token","kitchen_token"]
+      .forEach((k) => localStorage.removeItem(k));
+    window.location.href = "/login";
+    throw new Error("Session expired");
+  }
+
+  const data = await res.json();
+  localStorage.setItem("token", data.token);
+  localStorage.setItem("refresh_token", data.refreshToken);
+  localStorage.setItem(`${data.role}_token`, data.token);
+  return data.token;
+};
+
+const request = async (endpoint, options = {}, retry = true) => {
   const token = getToken();
-  const headers = {
-    "Content-Type": "application/json",
-    ...(options.headers || {}),
-  };
+  const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
   const cleanEndpoint = endpoint.startsWith("/") ? endpoint.slice(1) : endpoint;
-  const cleanUrl = API_URL.endsWith("/") ? API_URL : `${API_URL}/`;
+  const response = await fetch(`${API_URL}/${cleanEndpoint}`, { ...options, headers });
 
-  const response = await fetch(`${cleanUrl}${cleanEndpoint}`, {
-    ...options,
-    headers,
-  });
+  if (response.status === 401 && retry) {
+    if (!isRefreshing) {
+      isRefreshing = true;
+      try {
+        await refreshAccessToken();
+        isRefreshing = false;
+        refreshQueue.forEach((resolve) => resolve());
+        refreshQueue = [];
+        return request(endpoint, options, false);
+      } catch {
+        isRefreshing = false;
+        refreshQueue = [];
+        throw new Error("Session expired");
+      }
+    } else {
+      return new Promise((resolve) => {
+        refreshQueue.push(() => resolve(request(endpoint, options, false)));
+      });
+    }
+  }
 
-  // SI LA RESPUESTA NO ES OK (Ej: Error 400 de stock)
   if (!response.ok) {
-    // Intentamos leer el mensaje de error que envía el backend
     const errorData = await response.json().catch(() => ({}));
     const error = new Error(errorData.error || `Error: ${response.status}`);
-
-    // Adjuntamos la respuesta para que el componente pueda leerla
     error.response = { data: errorData };
     throw error;
   }
 
-  // Si no hay contenido (204)
-  if (
-    response.status === 204 ||
-    response.headers.get("content-length") === "0"
-  ) {
-    return null;
-  }
-
+  if (response.status === 204 || response.headers.get("content-length") === "0") return null;
   return await response.json();
 };
 
 export default request;
 
-// ===============================
-// ÓRDENES
-// ===============================
-export const createOrder = (orderData) =>
-  request("/orders", { method: "POST", body: JSON.stringify(orderData) });
-export const getActiveOrders = () => request("/orders/active");
-export const getOrderHistory = () => request("/orders/history");
-export const getTopProducts = (limit = 10) =>
-  request(`/orders/top-products?limit=${limit}`);
-
-// ===============================
-// CAMBIOS DE ESTADO (PATCH)
-// ===============================
-export const markOrderPreparing = (orderId) =>
-  request(`/orders/${orderId}/preparing`, {
-    method: "PATCH",
-    body: JSON.stringify({}),
-  });
-export const markOrderReady = (orderId) =>
-  request(`/orders/${orderId}/ready`, { method: "PATCH" });
-export const finishOrder = (orderId) =>
-  request(`/orders/${orderId}/finish`, { method: "PATCH" });
-export const cancelOrder = (orderId) =>
-  request(`/orders/${orderId}/cancel`, { method: "PATCH" });
-
-// ===============================
-// TABLAS Y PRODUCTOS
-// ===============================
-export const getTables = () => request("/tables");
-export const getProducts = () => request("/products");
-export const updateProductStock = (productId, newStock) =>
-  request(`/products/${productId}/stock`, {
-    method: "PATCH",
-    body: JSON.stringify({ newStock }),
-  });
-export const createProduct = (data) =>
-  request("/products", { method: "POST", body: JSON.stringify(data) });
-export const updateProduct = (id, data) =>
-  request(`/products/${id}`, { method: "PUT", body: JSON.stringify(data) });
-export const deleteProduct = (id) =>
-  request(`/products/${id}`, { method: "DELETE" });
+export const createOrder        = (data)       => request("/orders",                    { method: "POST",  body: JSON.stringify(data) });
+export const getActiveOrders    = ()           => request("/orders/active");
+export const getOrderHistory    = ()           => request("/orders/history");
+export const getTopProducts     = (limit = 10)=> request(`/orders/top-products?limit=${limit}`);
+export const markOrderPreparing = (id)        => request(`/orders/${id}/preparing`,     { method: "PATCH", body: JSON.stringify({}) });
+export const markOrderReady     = (id)        => request(`/orders/${id}/ready`,         { method: "PATCH" });
+export const finishOrder        = (id)        => request(`/orders/${id}/finish`,        { method: "PATCH" });
+export const cancelOrder        = (id)        => request(`/orders/${id}/cancel`,        { method: "PATCH" });
+export const getTables          = ()           => request("/tables");
+export const getProducts        = ()           => request("/products");
+export const updateProductStock = (id, stock) => request(`/products/${id}/stock`,       { method: "PATCH", body: JSON.stringify({ newStock: stock }) });
+export const createProduct      = (data)       => request("/products",                   { method: "POST",  body: JSON.stringify(data) });
+export const updateProduct      = (id, data)  => request(`/products/${id}`,             { method: "PUT",   body: JSON.stringify(data) });
+export const deleteProduct      = (id)        => request(`/products/${id}`,             { method: "DELETE" });

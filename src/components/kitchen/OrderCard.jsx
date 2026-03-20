@@ -1,110 +1,168 @@
-import React from "react";
+import React, { useState } from "react";
 
-// Normaliza status sin importar si llega como string o número
 const toStatusNumber = (status) => {
   if (typeof status === "number") return status;
   const map = { pending: 0, preparing: 1, ready: 2, delivered: 3, cancelled: 4 };
   return map[String(status).toLowerCase()] ?? -1;
 };
 
-const OrderCard = ({ order, now, isConnected, onPreparing, onReady, onFinish }) => {
+// Detectar si el usuario logueado es admin
+const isAdmin = () => localStorage.getItem("role") === "admin";
 
-  const id = order.id || order._id || order.Id;
-  // ✅ Siempre número — funciona con "Pending" o 0
+const OrderCard = ({ order, now, isConnected, onPreparing, onReady, onFinish, onCancel }) => {
+  const id     = order.id || order._id || order.Id;
   const status = toStatusNumber(order.status);
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  const userIsAdmin = isAdmin();
 
-  const getElapsedTime = (createdAt) => {
+  const getElapsed = (createdAt) => {
     if (!createdAt) return "00:00";
-    const start = new Date(createdAt);
-    const diff = Math.floor((now - start) / 1000);
+    const diff = Math.floor((now - new Date(createdAt)) / 1000);
     const m = Math.floor(diff / 60);
     const s = diff % 60;
     return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
   };
 
-  const getTimeColor = (createdAt) => {
-    const minutes = Math.floor((now - new Date(createdAt)) / 60000);
-    if (minutes < 5)  return "bg-[#39FF14] text-black";
-    if (minutes < 10) return "bg-[#FFFF00] text-black";
-    return "bg-[#FF0000] text-white animate-pulse shadow-[0_0_15px_rgba(255,0,0,0.5)]";
+  const timerInfo = (createdAt) => {
+    const min = Math.floor((now - new Date(createdAt)) / 60000);
+    if (min < 5)  return { color: "rgb(255, 255, 255)", bg: "#00ff2a", pulse: false, label: null       };
+    if (min < 10) return { color: "rgb(255, 255, 255)", bg: "#fcfc03", pulse: false, label: null };
+    if (min < 15) return { color: "rgb(255, 255, 255)", bg: "#ff8801", pulse: true,  label: null   };
+    return               { color: "rgb(255, 255, 255)", bg: "#ff0404", pulse: true,  label: null  };
   };
 
   const groupItems = (items = []) => {
-    const grouped = {};
+    const g = {};
     items.forEach((item) => {
       const key = `${item.productName}_${item.notes || ""}`;
-      if (!grouped[key]) grouped[key] = { ...item, quantity: 0 };
-      grouped[key].quantity += item.quantity;
+      if (!g[key]) g[key] = { ...item, quantity: 0 };
+      g[key].quantity += item.quantity;
     });
-    return Object.values(grouped);
+    return Object.values(g);
   };
 
   const handleAction = () => {
-    if (!isConnected) return;
-    if (!id) { alert("Error: No se encontró el ID de la orden"); return; }
-    // ✅ Usa 'status' (ya normalizado), no 'order.status' (podría ser string)
+    if (!isConnected || !id) return;
     if (status === 0) onPreparing(id);
     else if (status === 1) onReady(id);
     else if (status === 2) onFinish(id);
   };
 
+  const timer   = timerInfo(order.createdAt);
+  const elapsed = getElapsed(order.createdAt);
+
+  const btnConfig = {
+    0: { label: "PREPARAR", color: "#FFFF00" },
+    1: { label: "LISTO",    color: "#39FF14" },
+    2: { label: "ENTREGAR", color: "#00FFFF" },
+  };
+  const btn = btnConfig[status];
+
   return (
-    <div className={`rounded-2xl bg-white shadow-2xl overflow-hidden border-4 
-      ${order.isNew ? "animate-bounce border-[#00E5FF]" : "border-gray-200"}
-      ${order.removing ? "animate-order-exit" : ""}`}
-    >
-      {/* HEADER TIEMPO */}
-      <div className={`${getTimeColor(order.createdAt)} p-4 border-b-4 border-black/10`}>
-        <div className="flex justify-between items-center font-black text-2xl tracking-tighter">
-          <span>MESA {order.tableNumber}</span>
-          <span className="bg-black/10 px-2 rounded-md">{getElapsedTime(order.createdAt)}</span>
+    <div className={`rounded-2xl overflow-hidden border transition-all ${order.isNew ? "animate-bounce" : ""} ${timer.pulse ? "animate-pulse" : ""}`}
+      style={{
+        backgroundColor: "#1e293b",
+        borderColor: timer.color + "40",
+        boxShadow: timer.pulse ? `0 0 20px ${timer.color}25` : "none",
+      }}>
+
+      {/* ── HEADER: TIMER GRANDE ── */}
+      <div className="px-4 py-3 flex items-center justify-between"
+        style={{ backgroundColor: timer.bg, borderBottom: `1px solid ${timer.color}25` }}>
+
+        <div className="flex items-center gap-2">
+          <span className="text-slate-500 text-[9px] font-black text-white uppercase tracking-widest">Mesa</span>
+          <span className="font-black text-2xl text-white leading-none">{order.tableNumber}</span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {timer.label && (
+            <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full tracking-widest }`}
+              style={{ color: timer.color, border: `1px solid ${timer.color}50`, backgroundColor: timer.color + "15" }}>
+              {timer.label}
+            </span>
+          )}
+          {/* Timer grande y siempre visible */}
+          <span className={`font-black text-3xl tabular-nums leading-none}`}
+            style={{ color: timer.color, textShadow: "none" }}>
+            {elapsed}
+          </span>
         </div>
       </div>
 
-      {/* ITEMS */}
-      <div className="p-4 space-y-3">
-        <div className="mb-3 text-center border-b-2 border-gray-100 pb-2">
-          <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest">Cliente</p>
-          <p className="text-2xl font-black text-black uppercase">{order.customerName || "General"}</p>
-        </div>
+      {/* ── CLIENTE ── */}
+      <div className="px-4 pt-3 pb-2 border-b border-slate-700/30">
+        <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-500">Cliente</p>
+        <p className="font-black text-base text-white uppercase leading-tight">
+          {order.customerName || "General"}
+        </p>
+      </div>
 
+      {/* ── ITEMS ── */}
+      <div className="px-4 py-3 space-y-2">
         {groupItems(order.items)?.map((item, i) => (
-          <div key={i} className="border-b-2 border-gray-100 pb-3 last:border-0">
-            <div className="flex items-center gap-3">
-              <span className="text-[#0077FF] font-black text-4xl leading-none">{item.quantity}x</span>
-              <span className="text-black font-black text-2xl uppercase leading-tight tracking-tight">
+          <div key={i}>
+            <div className="flex items-baseline gap-2">
+              <span className="font-black text-2xl leading-none" style={{ color: "#00FFFF" }}>
+                {item.quantity}x
+              </span>
+              <span className="font-black text-base text-white uppercase leading-tight tracking-tight">
                 {item.productName}
               </span>
             </div>
             {item.notes && (
-              <div className="mt-2 bg-[#FFD700] p-2 rounded-md border-l-8 border-red-600">
-                <p className="text-black font-black text-sm uppercase italic">⚠ {item.notes}</p>
+              <div className="mt-1 px-3 py-1 rounded-lg border-l-4 text-[10px] font-black uppercase"
+                style={{ backgroundColor: "#FFFF0012", borderLeftColor: "#FFFF00", color: "#FFFF00" }}>
+                ⚠ {item.notes}
               </div>
             )}
           </div>
         ))}
       </div>
 
-      {/* BOTÓN DE ACCIÓN */}
-      <div className="p-4 bg-gray-50 border-t border-gray-100">
-        <button
-          disabled={!isConnected || status > 2}
-          onClick={handleAction}
-          className={`w-full py-5 rounded-2xl font-black text-2xl shadow-[0_5px_0_rgba(0,0,0,0.15)] active:translate-y-1 active:shadow-none transition-all ${
-            status === 0 ? "bg-[#FFFF00] text-black hover:bg-[#E6E600]"
-            : status === 1 ? "bg-[#39FF14] text-black hover:bg-[#32CD32]"
-            : status === 2 ? "bg-[#0077FF] text-white hover:bg-[#0056b3] shadow-[0_0_20px_rgba(0,119,255,0.4)]"
-            : "bg-gray-300 text-gray-500"
-          }`}
-        >
-          {status === 0 ? "PREPARAR"
-            : status === 1 ? "LISTO"
-            : status === 2 ? "ENTREGAR"
-            : "FINALIZADO"}
+      {/* ── BOTÓN ACCIÓN ── */}
+      <div className="px-4 pt-2 pb-2">
+        <button disabled={!isConnected || status > 2} onClick={handleAction}
+          className="w-full py-4 rounded-xl font-black text-lg uppercase tracking-wider transition-all active:scale-95 disabled:opacity-30"
+          style={btn
+            ? { backgroundColor: btn.color + "25", border: `2px solid ${btn.color}`, color: btn.color, boxShadow: `0 0 16px ${btn.color}20` }
+            : { backgroundColor: "#334155", border: "2px solid #475569", color: "#64748b" }
+          }>
+          {btn?.label ?? "FINALIZADO"}
         </button>
+      </div>
 
-        <p className="text-[10px] text-center mt-4 text-gray-400 font-black uppercase tracking-[0.2em]">
-          MESERO: {order.waiterName || "NO ASIGNADO"}
+      {/* ── CANCELAR — SOLO ADMIN ── */}
+      <div className="px-4 pb-4">
+        {userIsAdmin && status <= 2 && (
+          !confirmCancel ? (
+            <button onClick={() => setConfirmCancel(true)} disabled={!isConnected}
+              className="w-full py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all
+                bg-transparent border border-red-500/20 text-red-500/50
+                hover:border-red-500/60 hover:text-red-400 hover:bg-red-500/10 disabled:opacity-20">
+              Cancelar orden
+            </button>
+          ) : (
+            <div className="space-y-1">
+              <p className="text-[9px] text-center text-red-400 font-black uppercase tracking-widest mb-2">
+                ¿Confirmar cancelación?
+              </p>
+              <div className="flex gap-2">
+                <button onClick={() => setConfirmCancel(false)}
+                  className="flex-1 py-2 rounded-xl font-black text-[10px] uppercase border border-slate-700 text-slate-400 hover:text-white transition-all">
+                  No
+                </button>
+                <button onClick={() => { onCancel?.(id); setConfirmCancel(false); }}
+                  className="flex-1 py-2 rounded-xl font-black text-[10px] uppercase border border-red-500 text-red-400 bg-red-500/15 hover:bg-red-500/25 transition-all">
+                  Sí, cancelar
+                </button>
+              </div>
+            </div>
+          )
+        )}
+
+        <p className="text-[9px] text-center mt-2 text-slate-600 font-black uppercase tracking-[0.2em]">
+          {order.waiterName || "Sin asignar"}
         </p>
       </div>
     </div>

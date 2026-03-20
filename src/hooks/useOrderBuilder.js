@@ -1,7 +1,6 @@
 import useOrderBuilderStore from "../store/orderBuilderStore";
 
 const useOrderBuilder = () => {
-
   const {
     tableId,
     waiterName,
@@ -12,8 +11,10 @@ const useOrderBuilder = () => {
     setCustomer,
     addItem,
     removeItem,
+    decreaseItem,
     clearOrder,
-    updateItemNotes, // <--- 1. Extraemos la función del store
+    resetAfterOrder,
+    updateItemNotes,
   } = useOrderBuilderStore();
 
   return {
@@ -26,10 +27,11 @@ const useOrderBuilder = () => {
     setCustomer,
     addItem,
     removeItem,
+    decreaseItem,
     clearOrder,
-    updateItemNotes, // <--- 2. La devolvemos para usarla en el componente
+    resetAfterOrder,
+    updateItemNotes,
   };
-
 };
 
 export default useOrderBuilder;

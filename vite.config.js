@@ -4,20 +4,20 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: {
-    host: true,
+    host: true,   // permite acceso desde celular en la misma red
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://192.168.204.71:5162', // <-- Cambia localhost por la IP real
+        target: 'http://localhost:5162', // ← siempre localhost (mismo PC que Vite)
         changeOrigin: true,
         secure: false,
       },
       '/ordersHub': {
-        target: 'http://192.168.204.71:5162', // <-- Cambia localhost por la IP real
+        target: 'http://localhost:5162', // ← siempre localhost
         ws: true,
         changeOrigin: true,
         secure: false,
       }
     }
   }
-})
+});
