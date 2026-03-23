@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { logout } from "../services/authService";
 import { useNavigate } from "react-router-dom";
+import { useToast } from "../context/ToastContext";
 
 import useSignalRConnection from "../hooks/useSignalRConnection";
 import useProducts from "../hooks/useProducts";
@@ -19,6 +20,7 @@ const WaiterView = () => {
   const { products } = useProducts();
   const { tables } = useTables();
   const { tableId, customerName, setCustomer } = useOrderBuilder();
+  const { showToast } = useToast();
 
   const waiterName = localStorage.getItem("user_name") || "Mesero de Turno";
   const [pax, setPax] = useState(1);
@@ -38,7 +40,10 @@ const WaiterView = () => {
 
   useEffect(() => {
     onOrderReady((order) => {
-      alert(`🔔 ¡Atención! El pedido de la Mesa ${order?.tableNumber ?? ""} está LISTO.`);
+      showToast(
+        `🔔 ¡Atención! El pedido de la Mesa ${order?.tableNumber ?? ""} está LISTO.`,
+        "success"
+      );
     });
   }, []);
 
@@ -52,8 +57,9 @@ const WaiterView = () => {
 
     // ✅ FIX: solo alerta si currentTable existe
     if (currentTable && val > maxCapacity) {
-      alert(
-        `⚠️ Capacidad excedida. La ${currentTable.name ?? currentTable.Name ?? "mesa"} solo permite ${maxCapacity} personas.`
+      showToast(
+        `⚠️ Capacidad excedida. La ${currentTable.name ?? currentTable.Name ?? "mesa"} solo permite ${maxCapacity} personas.`,
+        "error"
       );
       setPax(maxCapacity);
     } else {

@@ -1,18 +1,20 @@
 import React, { useState } from "react";
 import useOrderBuilder from "../../hooks/useOrderBuilder";
 import { createOrder } from "../../services/api.service";
+import { useToast } from "../../context/ToastContext";
 
 const OrderBuilder = () => {
   const {
     tableId, waiterName, customerName, items,
     removeItem, decreaseItem, clearOrder, resetAfterOrder, updateItemNotes,
   } = useOrderBuilder();
+  const { showToast } = useToast();
 
   const [isSending, setIsSending] = useState(false);
   const total = items.reduce((acc, item) => acc + item.price * item.quantity, 0);
 
   const sendOrder = async () => {
-    if (!tableId || items.length === 0) { alert("⚠️ Seleccione mesa y productos"); return; }
+    if (!tableId || items.length === 0) { showToast("⚠️ Seleccione mesa y productos", "error"); return; }
     if (isSending) return;
 
     const order = {
@@ -27,9 +29,9 @@ const OrderBuilder = () => {
       setIsSending(true);
       await createOrder(order);
       resetAfterOrder();
-      alert("✅ Orden enviada con éxito");
+      showToast("✅ Orden enviada con éxito", "success");
     } catch (error) {
-      alert(`❌ ${error.response?.data?.error || "Error al enviar la orden"}`);
+      showToast(`❌ ${error.response?.data?.error || "Error al enviar la orden"}`, "error");
     } finally {
       setIsSending(false);
     }
