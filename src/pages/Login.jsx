@@ -5,6 +5,8 @@ import { login, getSession } from "../services/authService";
 export default function Login() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
 
@@ -17,21 +19,64 @@ export default function Login() {
   }, []);
 
   const handleLogin = async () => {
-    if (!username || !password) {
-      alert("Ingresa usuario y contraseña");
+
+  if (!username || !password) {
+    setError("Ingresa usuario y contraseña");
+    return;
+  }
+
+  setError(null);
+  setLoading(true);
+
+  try {
+    console.log("Intentando login con:", username);
+
+    const data = await login(username, password);
+
+    console.log("Respuesta del backend:", data);
+
+    localStorage.setItem(`${data.role}_token`, data.token);
+
+    const routes = {
+      kitchen: "/kitchen",
+      waiter: "/waiter", 
+      admin: "/admin",
+    };
+
+    const route = routes[data.role];
+
+    if (!route) {
+      setError(`Rol desconocido: ${data.role}`);
       return;
     }
-    try {
-      const data = await login(username, password);
-      localStorage.setItem(`${data.role}_token`, data.token);
-      const routes = { kitchen: "/kitchen", waiter: "/waiter", admin: "/admin" };
-      const route = routes[data.role];
-      if (!route) { alert(`Rol desconocido: ${data.role}`); return; }
-      navigate(route, { replace: true });
-    } catch (error) {
-      alert(`Error: ${error.message}`);
+
+    navigate(route, { replace: true });
+
+  } catch (error) {
+
+    console.error("Error completo:", error);
+
+    if (error.response?.status === 401) {
+      setError("Usuario o contraseña incorrectos");
+    } 
+    else if (error.response?.status === 403) {
+      setError("Usuario no autorizado");
     }
-  };
+    else if (error.response?.status === 500) {
+      setError("Error del servidor, intenta más tarde");
+    }
+    else if (!error.response) {
+      setError("No se pudo conectar al servidor");
+    }
+    else {
+      setError("Error inesperado");
+    }
+
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   return (
     <div style={styles.container}>
@@ -39,25 +84,70 @@ export default function Login() {
 
       <div style={styles.card}>
         <div style={styles.logoWrapper}>
-          <svg viewBox="0 0 120 120" width="90" height="90" style={styles.logoSvg}>
-            <path d="M 60 15 A 45 45 0 0 1 105 60" fill="none" stroke="#1a6fff" strokeWidth="2.5" strokeLinecap="round"/>
-            <path d="M 60 22 A 38 38 0 0 1 98 60" fill="none" stroke="#1a6fff" strokeWidth="2" strokeLinecap="round" opacity="0.7"/>
-            <path d="M 60 29 A 31 31 0 0 1 91 60" fill="none" stroke="#1a6fff" strokeWidth="1.5" strokeLinecap="round" opacity="0.5"/>
-            <path d="M 60 105 A 45 45 0 0 1 15 60" fill="none" stroke="#1a6fff" strokeWidth="2.5" strokeLinecap="round"/>
-            <path d="M 60 98 A 38 38 0 0 1 22 60" fill="none" stroke="#1a6fff" strokeWidth="2" strokeLinecap="round" opacity="0.7"/>
-            <path d="M 60 91 A 31 31 0 0 1 29 60" fill="none" stroke="#1a6fff" strokeWidth="1.5" strokeLinecap="round" opacity="0.5"/>
-            <circle cx="60" cy="15" r="3" fill="#1a6fff"/>
-            <circle cx="105" cy="60" r="3" fill="#1a6fff"/>
-            <circle cx="60" cy="105" r="3" fill="#1a6fff"/>
-            <circle cx="15" cy="60" r="3" fill="#1a6fff"/>
-            <circle cx="60" cy="22" r="2" fill="#1a6fff" opacity="0.7"/>
-            <circle cx="98" cy="60" r="2" fill="#1a6fff" opacity="0.7"/>
-            <circle cx="60" cy="98" r="2" fill="#1a6fff" opacity="0.7"/>
-            <circle cx="22" cy="60" r="2" fill="#1a6fff" opacity="0.7"/>
-            <circle cx="91" cy="33" r="2" fill="#1a6fff" opacity="0.6"/>
-            <circle cx="87" cy="38" r="1.5" fill="#1a6fff" opacity="0.5"/>
-            <circle cx="33" cy="87" r="2" fill="#1a6fff" opacity="0.6"/>
-            <circle cx="38" cy="83" r="1.5" fill="#1a6fff" opacity="0.5"/>
+          <svg
+            viewBox="0 0 120 120"
+            width="90"
+            height="90"
+            style={styles.logoSvg}
+          >
+            <path
+              d="M 60 15 A 45 45 0 0 1 105 60"
+              fill="none"
+              stroke="#1a6fff"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+            />
+            <path
+              d="M 60 22 A 38 38 0 0 1 98 60"
+              fill="none"
+              stroke="#1a6fff"
+              strokeWidth="2"
+              strokeLinecap="round"
+              opacity="0.7"
+            />
+            <path
+              d="M 60 29 A 31 31 0 0 1 91 60"
+              fill="none"
+              stroke="#1a6fff"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              opacity="0.5"
+            />
+            <path
+              d="M 60 105 A 45 45 0 0 1 15 60"
+              fill="none"
+              stroke="#1a6fff"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+            />
+            <path
+              d="M 60 98 A 38 38 0 0 1 22 60"
+              fill="none"
+              stroke="#1a6fff"
+              strokeWidth="2"
+              strokeLinecap="round"
+              opacity="0.7"
+            />
+            <path
+              d="M 60 91 A 31 31 0 0 1 29 60"
+              fill="none"
+              stroke="#1a6fff"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              opacity="0.5"
+            />
+            <circle cx="60" cy="15" r="3" fill="#1a6fff" />
+            <circle cx="105" cy="60" r="3" fill="#1a6fff" />
+            <circle cx="60" cy="105" r="3" fill="#1a6fff" />
+            <circle cx="15" cy="60" r="3" fill="#1a6fff" />
+            <circle cx="60" cy="22" r="2" fill="#1a6fff" opacity="0.7" />
+            <circle cx="98" cy="60" r="2" fill="#1a6fff" opacity="0.7" />
+            <circle cx="60" cy="98" r="2" fill="#1a6fff" opacity="0.7" />
+            <circle cx="22" cy="60" r="2" fill="#1a6fff" opacity="0.7" />
+            <circle cx="91" cy="33" r="2" fill="#1a6fff" opacity="0.6" />
+            <circle cx="87" cy="38" r="1.5" fill="#1a6fff" opacity="0.5" />
+            <circle cx="33" cy="87" r="2" fill="#1a6fff" opacity="0.6" />
+            <circle cx="38" cy="83" r="1.5" fill="#1a6fff" opacity="0.5" />
           </svg>
           <div style={styles.logoText}>
             <span style={styles.logoMain}>ALFA TECH</span>
@@ -73,7 +163,10 @@ export default function Login() {
           style={styles.input}
           placeholder="Usuario"
           value={username}
-          onChange={(e) => setUsername(e.target.value)}
+          onChange={(e) => {
+            setUsername(e.target.value);
+            setError(null);
+          }}
         />
 
         <input
@@ -81,7 +174,10 @@ export default function Login() {
           type="password"
           placeholder="Contraseña"
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={(e) => {
+            setPassword(e.target.value);
+            setError(null);
+          }}
         />
 
         <button
@@ -89,9 +185,15 @@ export default function Login() {
           onClick={handleLogin}
           onMouseEnter={(e) => (e.target.style.background = "#e05e00")}
           onMouseLeave={(e) => (e.target.style.background = "#ff6b00")}
-        >
-          Iniciar sesión
+           disabled={loading}
+           >
+          {loading ? "Ingresando..." : "Iniciar sesión"}
         </button>
+        {error && (
+          <p style={{ color: "red", marginTop: "8px", fontSize: "13px" }}>
+            {error}
+          </p>
+        )}
       </div>
     </div>
   );
