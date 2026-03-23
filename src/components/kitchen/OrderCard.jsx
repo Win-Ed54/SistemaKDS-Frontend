@@ -26,7 +26,7 @@ const OrderCard = ({ order, now, isConnected, onPreparing, onReady, onFinish, on
   const timerInfo = (createdAt) => {
     const min = Math.floor((now - new Date(createdAt)) / 60000);
     if (min < 5)  return { color: "rgb(255, 255, 255)", bg: "#00ff2a", pulse: false, label: null       };
-    if (min < 10) return { color: "rgb(255, 255, 255)", bg: "#fcfc03", pulse: false, label: null };
+    if (min < 10) return { color: "rgb(255, 255, 255)", bg: "#facc15", pulse: false, label: null };
     if (min < 15) return { color: "rgb(255, 255, 255)", bg: "#ff8801", pulse: true,  label: null   };
     return               { color: "rgb(255, 255, 255)", bg: "#ff0404", pulse: true,  label: null  };
   };
@@ -59,7 +59,8 @@ const OrderCard = ({ order, now, isConnected, onPreparing, onReady, onFinish, on
   const btn = btnConfig[status];
 
   return (
-    <div className={`rounded-2xl overflow-hidden border transition-all ${order.isNew ? "animate-bounce" : ""} ${timer.pulse ? "animate-pulse" : ""}`}
+    <div className={`rounded-2xl overflow-hidden border transition-all shrink-0
+       ${order.isNew ? "animate-bounce" : ""} ${timer.pulse ? "animate-pulse" : ""}`}
       style={{
         backgroundColor: "#1e293b",
         borderColor: timer.color + "40",
@@ -71,7 +72,7 @@ const OrderCard = ({ order, now, isConnected, onPreparing, onReady, onFinish, on
         style={{ backgroundColor: timer.bg, borderBottom: `1px solid ${timer.color}25` }}>
 
         <div className="flex items-center gap-2">
-          <span className="text-slate-500 text-[9px] font-black text-white uppercase tracking-widest">Mesa</span>
+          <span className="text-slate-500 text-[9px] font-black uppercase tracking-widest">Mesa</span>
           <span className="font-black text-2xl text-white leading-none">{order.tableNumber}</span>
         </div>
 
