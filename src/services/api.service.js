@@ -42,8 +42,9 @@ const request = async (endpoint, options = {}, retry = true) => {
 
   const cleanEndpoint = endpoint.startsWith("/") ? endpoint.slice(1) : endpoint;
   const response = await fetch(`${API_URL}/${cleanEndpoint}`, { ...options, headers });
+  const isAuthRoute = cleanEndpoint.startsWith("auth/login");
 
-  if (response.status === 401 && retry) {
+  if (response.status === 401 && retry && !isAuthRoute) {
     if (!isRefreshing) {
       isRefreshing = true;
       try {
@@ -66,8 +67,11 @@ const request = async (endpoint, options = {}, retry = true) => {
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    const error = new Error(errorData.error || `Error: ${response.status}`);
-    error.response = { data: errorData };
+    const message =
+      errorData?.message || errorData || `Error: ${response.status}`;
+
+    const error = new Error(message);
+    error.response = { status: response.status, data: errorData };
     throw error;
   }
 
