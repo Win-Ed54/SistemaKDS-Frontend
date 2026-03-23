@@ -25,7 +25,7 @@ const OrderCard = ({ order, now, isConnected, onPreparing, onReady, onFinish, on
 
   const timerInfo = (createdAt) => {
     const min = Math.floor((now - new Date(createdAt)) / 60000);
-    if (min < 5)  return { color: "rgb(255, 255, 255)", bg: "#00ff2a", pulse: false, label: null       };
+    if (min < 5)  return { color: "rgb(255, 255, 255)", bg: "#0ad12b", pulse: false, label: null       };
     if (min < 10) return { color: "rgb(255, 255, 255)", bg: "#facc15", pulse: false, label: null };
     if (min < 15) return { color: "rgb(255, 255, 255)", bg: "#ff8801", pulse: true,  label: null   };
     return               { color: "rgb(255, 255, 255)", bg: "#ff0404", pulse: true,  label: null  };
