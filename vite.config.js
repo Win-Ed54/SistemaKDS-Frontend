@@ -7,6 +7,11 @@ export default defineConfig({
     host: true,   // permite acceso desde celular en la misma red
     port: 5173,
     proxy: {
+      '/images': {
+    target: 'http://localhost:5162', 
+    changeOrigin: true,
+    secure: false,
+      },
       '/api': {
         target: 'http://localhost:5162', // ← siempre localhost (mismo PC que Vite)
         changeOrigin: true,
