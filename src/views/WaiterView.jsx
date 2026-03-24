@@ -30,13 +30,27 @@ const WaiterView = () => {
     (t) => t.number === tableId || t.id === tableId || t.Number === tableId
   );
   const maxCapacity = currentTable?.capacity ?? currentTable?.Capacity ?? 10;
+  
+    // 1. Mapeo simplificado gracias al proxy de Vite
+  const productsWithImages = products.map((product) => ({
+    ...product,
+    imageUrl: product.imageName?.startsWith("http")
+      ? product.imageName
+      : product.imageName 
+  }));
 
   const [activeCategory, setActiveCategory] = useState("Todas");
-  const categories = ["Todas", ...new Set(products.map((p) => p.category).filter(Boolean))];
-  const filteredProducts =
-    activeCategory === "Todas"
-      ? products
-      : products.filter((p) => p.category === activeCategory);
+
+  // 2. DEFINIR CATEGORIES (Esto es lo que falta y causa la pantalla blanca)
+  const categories = [
+    "Todas", 
+    ...new Set(productsWithImages.map((p) => p.category).filter(Boolean))
+  ];
+
+  // 3. Filtrar usando la nueva lista
+  const filteredProducts = activeCategory === "Todas"
+    ? productsWithImages
+    : productsWithImages.filter((p) => p.category === activeCategory);
 
   useEffect(() => {
     onOrderReady((order) => {
