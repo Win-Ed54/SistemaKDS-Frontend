@@ -23,7 +23,7 @@ const WaiterView = () => {
   const { showToast } = useToast();
 
   const waiterName = localStorage.getItem("user_name") || "Mesero de Turno";
-  const [pax, setPax] = useState(1);
+  const [pax, setPax] = useState("");
 
   // ✅ FIX: buscar por number o id para evitar undefined
   const currentTable = tables.find(
@@ -66,20 +66,31 @@ const WaiterView = () => {
     navigate("/login");
   };
 
-  const handlePaxChange = (e) => {
-    const val = parseInt(e.target.value) || 1;
+ const handlePaxChange = (e) => {
+   const inputValue = e.target.value;
 
-    // ✅ FIX: solo alerta si currentTable existe
-    if (currentTable && val > maxCapacity) {
-      showToast(
-        `⚠️ Capacidad excedida. La ${currentTable.name ?? currentTable.Name ?? "mesa"} solo permite ${maxCapacity} personas.`,
-        "error"
-      );
-      setPax(maxCapacity);
-    } else {
-      setPax(val);
+  // 1. SI ESTÁ VACÍO: Permitir borrar todo para que el usuario pueda escribir desde cero
+  if (inputValue === "") {
+    setPax("");
+    return;
+  }
+
+  const valNum = parseInt(inputValue, 10);
+
+  // 2. VALIDACIÓN DE CAPACIDAD: Solo si hay una mesa seleccionada
+  if (currentTable) {
+    const limit = currentTable.capacity ?? currentTable.Capacity ?? 10;
+    
+    if (valNum > limit) {
+      showToast(`⚠️ Capacidad máxima: ${limit}`, "error");
+      // Opcional: No actualizamos el estado, así el número "no entra" en el input
+      return; 
     }
-  };
+  }
+
+  // 3. ACTUALIZAR: Si pasó el filtro o no hay mesa seleccionada aún
+  setPax(valNum);
+};
 
   return (
     <div className="min-h-screen bg-slate-950 text-white selection:bg-[#00FFFF]">
@@ -149,11 +160,13 @@ const WaiterView = () => {
                     )}
                   </label>
                   <input
-                    type="number"
-                    min="1"
-                    max={maxCapacity}
-                    value={pax}
-                    onChange={handlePaxChange}
+                   type="number"
+                   inputMode="numeric" // Teclado numérico en móvil
+                   pattern="[0-9]*"    // Refuerzo para navegadores móviles
+                   placeholder="0"     // Se ve cuando borras todo
+                   value={pax}
+                   onChange={handlePaxChange}
+                   onFocus={(e) => e.target.select()} // Al tocar, selecciona todo para borrar fácil
                     className={`w-full bg-slate-950 border-2 rounded-2xl p-4 font-black text-2xl outline-none transition-all ${
                       pax >= maxCapacity
                         ? "text-orange-500 border-orange-500/50"
