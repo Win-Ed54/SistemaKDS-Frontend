@@ -43,8 +43,11 @@ const ProductModal = ({ product, onClose, onSaved }) => {
       price:       parseFloat(form.price),
       stock:       parseInt(form.stock),
       category:    form.category,
-      imageUrl:    form.imageUrl.trim(),   // ✅ campo de imagen
+      
     };
+    if (form.imageUrl && form.imageUrl.trim() !== "") {
+    payload.imageUrl = form.imageUrl.trim();
+  }
     try {
       if (isEdit) await updateProduct(product.id, payload);
       else        await createProduct(payload);

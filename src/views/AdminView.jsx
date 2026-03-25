@@ -29,14 +29,30 @@ const AdminView = () => {
       ]);
       setOrders(Array.isArray(ordersRes)   ? ordersRes   : []);
       setTables(Array.isArray(tablesRes)   ? tablesRes   : []);
-      setProducts(Array.isArray(productsRes) ? productsRes : []);
-      setLastUpdate(new Date().toLocaleTimeString());
-    } catch (err) {
-      if (isDev) console.error("[ADMIN ERROR]:", err);
-    } finally {
-      setLoading(false);
-    }
-  }, [isDev]);
+
+      // 🛡️ Lógica de protección de imágenes
+    setProducts((currentProducts) => {
+      if (!Array.isArray(productsRes)) return [];
+      
+      return productsRes.map((newP) => {
+        // Buscamos si ya tenemos este producto en el estado actual
+        const oldP = currentProducts.find((p) => (p.id || p._id) === (newP.id || newP._id));
+        
+        // Si el nuevo viene sin imagen pero el viejo SÍ tenía, mantenemos la vieja
+        if ((!newP.imageUrl || newP.imageUrl.trim() === "") && oldP?.imageUrl) {
+          return { ...newP, imageUrl: oldP.imageUrl };
+        }
+        return newP;
+      });
+    });
+
+    setLastUpdate(new Date().toLocaleTimeString());
+  } catch (err) {
+    if (isDev) console.error("[ADMIN ERROR]:", err);
+  } finally {
+    setLoading(false);
+  }
+}, [isDev]);
 
   useEffect(() => { loadData(); }, [loadData]);
 

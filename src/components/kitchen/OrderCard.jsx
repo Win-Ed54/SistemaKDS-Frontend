@@ -26,7 +26,7 @@ const OrderCard = ({ order, now, isConnected, onPreparing, onReady, onFinish, on
   const timerInfo = (createdAt) => {
     const min = Math.floor((now - new Date(createdAt)) / 60000);
     if (min < 5)  return { color: "rgb(255, 255, 255)", bg: "#0ad12b", pulse: false, label: null       };
-    if (min < 10) return { color: "rgb(255, 255, 255)", bg: "#facc15", pulse: false, label: null };
+    if (min < 10) return { color: "rgb(255, 255, 255)", bg: "#d4bc2b", pulse: false, label: null };
     if (min < 15) return { color: "rgb(255, 255, 255)", bg: "#ff8801", pulse: true,  label: null   };
     return               { color: "rgb(255, 255, 255)", bg: "#ff0404", pulse: true,  label: null  };
   };
@@ -72,7 +72,7 @@ const OrderCard = ({ order, now, isConnected, onPreparing, onReady, onFinish, on
         style={{ backgroundColor: timer.bg, borderBottom: `1px solid ${timer.color}25` }}>
 
         <div className="flex items-center gap-2">
-          <span className="text-slate-500 text-[9px] font-black uppercase tracking-widest">Mesa</span>
+          <span className="text-slate-500 text-[9px] font-black text-white uppercase tracking-widest">Mesa</span>
           <span className="font-black text-2xl text-white leading-none">{order.tableNumber}</span>
         </div>
 

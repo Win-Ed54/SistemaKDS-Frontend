@@ -34,9 +34,9 @@ const WaiterView = () => {
     // 1. Mapeo simplificado gracias al proxy de Vite
   const productsWithImages = products.map((product) => ({
     ...product,
-    imageUrl: product.imageName?.startsWith("http")
-      ? product.imageName
-      : product.imageName 
+    imageUrl: product.imageUrl?.startsWith("http")
+      ? product.imageUrl
+      : product.imageUrl 
   }));
 
   const [activeCategory, setActiveCategory] = useState("Todas");
