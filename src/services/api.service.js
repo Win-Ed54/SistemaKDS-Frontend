@@ -97,3 +97,12 @@ export const updateProduct      = (id, data)  => request(`/products/${id}`,     
 export const deleteProduct      = (id)        => request(`/products/${id}`,             { method: "DELETE" });
 export const getWaiterOrdersToday = (waiterName) => 
   request(`/orders/waiter/${waiterName}/today`);
+// --- NUEVAS EXPORTACIONES PARA ADMIN ---
+
+// ✅ Permite al Admin/Caja liberar una mesa manualmente
+export const closeTable = (tableNumber) => 
+  request(`/orders/table/${tableNumber}/close`, { method: "PATCH" });
+
+// ✅ Permite obtener el resumen de estadísticas del mesero (usado en WaiterProfile)
+export const getWaiterSummary = (userId) => 
+  request(`/orders/waiter/${userId}/summary`);

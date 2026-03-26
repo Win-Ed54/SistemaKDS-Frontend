@@ -11,17 +11,18 @@ const useProductStore = create((set) => ({
       products: (incoming ?? []).map((p) => ({ ...p, id: getId(p) })),
     })),
 
-  updateStock: (productId, newStock) =>
-    set((state) => ({
-      products: state.products.map((p) =>
-        getId(p) === productId ? { ...p, stock: newStock } : p
-      ),
-    })),
+  updateStock: (productId, newStock) => set((state) => ({
+  products: state.products.map((p) => 
+    (p.id === productId || p._id === productId) // Validar ambos formatos de ID
+      ? { ...p, stock: newStock } 
+      : p
+  )
+})),
 
   markOutOfStock: (productId) =>
     set((state) => ({
       products: state.products.map((p) =>
-        getId(p) === productId ? { ...p, stock: 0 } : p
+        (p.id === productId || p._id === productId) ? { ...p, stock: 0 } : p
       ),
     })),
 }));

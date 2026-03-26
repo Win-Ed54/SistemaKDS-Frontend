@@ -2,7 +2,6 @@ import * as signalR from "@microsoft/signalr";
 import useOrderStore from "../store/orderStore";
 
 const HUB_URL = import.meta.env.VITE_HUB_URL;
-// ✅ FIX 1: isDev es booleano, no una URL
 const isDev = import.meta.env.DEV;
 
 if (!HUB_URL) throw new Error("VITE_HUB_URL no definido");
@@ -109,47 +108,54 @@ export const joinGroup = async (group) => {
 
 export const offEvent = (name) => connection.off(name);
 
-const handleNewOrder = (order) => {
-  if (!order) return;
-  if (isDev) console.log("✅ Nueva orden:", order);
-  useOrderStore.getState().addOrder(order);
-};
-
-export const onReceiveOrder = () => {
+// ✅ Eventos actualizados para aceptar callback opcional
+export const onReceiveOrder = (callback) => {
   connection.off("receiveorder");
-  connection.on("receiveorder", handleNewOrder);
+  connection.on("receiveorder", (order) => {
+    if (!order) return;
+    if (isDev) console.log("✅ Nueva orden:", order);
+    useOrderStore.getState().addOrder(order);
+    if (callback) callback(order);
+  });
 };
 
-export const onOrderCreated = () => {
-  connection.off("ordercreated");
-  connection.off("receiveorder");
-  connection.on("receiveorder", handleNewOrder);
-};
-
-export const onOrderPreparing = () => {
+export const onOrderPreparing = (callback) => {
   connection.off("orderpreparing");
   connection.on("orderpreparing", (order) => {
     if (isDev) console.log("🔄 Preparando:", order);
     useOrderStore.getState().updateOrder(order);
+    if (callback) callback(order);
   });
 };
 
-export const onOrderReady = () => {
+export const onOrderReady = (callback) => {
   connection.off("orderready");
   connection.on("orderready", (order) => {
     if (isDev) console.log("🟢 Lista:", order);
     useOrderStore.getState().updateOrder(order);
+    if (callback) callback(order);
   });
 };
 
-export const onOrderDelivered = () => {
+export const onOrderDelivered = (callback) => {
   connection.off("orderdelivered");
   connection.on("orderdelivered", (orderId) => {
     if (isDev) console.log("🗑️ Entregada:", orderId);
     useOrderStore.getState().removeOrder(orderId);
+    if (callback) callback(orderId);
   });
 };
 
+export const onOrderCreated = (callback) => {
+  connection.off("ordercreated");
+  connection.on("ordercreated", (order) => {
+    if (isDev) console.log("🆕 Orden Creada:", order);
+    useOrderStore.getState().addOrder(order);
+    if (callback) callback(order);
+  });
+};
+
+// ... (onOrderCancelled, onProductOutOfStock y onStockUpdated se mantienen igual)
 export const onOrderCancelled = () => {
   connection.off("ordercancelled");
   connection.on("ordercancelled", (orderId) => {
@@ -172,24 +178,19 @@ export const onProductOutOfStock = (callback) => {
 export const onStockUpdated = (callback) => {
   connection.off("stockupdated");
   connection.off("StockUpdated");
-
   const handleUpdate = (data, stock) => {
     let productId = null;
     let currentStock = 0;
-
     if (data && typeof data === "object") {
-      productId    = data.productId || data.id || data.Id;
+      productId = data.productId || data.id || data.Id;
       currentStock = data.newStock ?? data.stock ?? data.Stock ?? 0;
     } else {
-      productId    = data;
+      productId = data;
       currentStock = stock;
     }
-
-    // ✅ FIX: usar las variables correctas del scope local
     if (isDev) console.log(`📦 Stock: ${productId} → ${currentStock}`);
     if (productId != null) callback?.(productId, currentStock);
   };
-
   connection.on("stockupdated", handleUpdate);
   connection.on("StockUpdated", handleUpdate);
 };

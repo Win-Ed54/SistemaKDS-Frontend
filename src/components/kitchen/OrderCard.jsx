@@ -6,7 +6,6 @@ const toStatusNumber = (status) => {
   return map[String(status).toLowerCase()] ?? -1;
 };
 
-// Detectar si el usuario logueado es admin
 const isAdmin = () => localStorage.getItem("role") === "admin";
 
 const OrderCard = ({ order, now, isConnected, onPreparing, onReady, onFinish, onCancel }) => {
@@ -25,10 +24,10 @@ const OrderCard = ({ order, now, isConnected, onPreparing, onReady, onFinish, on
 
   const timerInfo = (createdAt) => {
     const min = Math.floor((now - new Date(createdAt)) / 60000);
-    if (min < 5)  return { color: "rgb(255, 255, 255)", bg: "#0ad12b", pulse: false, label: null       };
+    if (min < 5)  return { color: "rgb(255, 255, 255)", bg: "#0ad12b", pulse: false, label: null };
     if (min < 10) return { color: "rgb(255, 255, 255)", bg: "#d4bc2b", pulse: false, label: null };
-    if (min < 15) return { color: "rgb(255, 255, 255)", bg: "#ff8801", pulse: true,  label: null   };
-    return               { color: "rgb(255, 255, 255)", bg: "#ff0404", pulse: true,  label: null  };
+    if (min < 15) return { color: "rgb(255, 255, 255)", bg: "#ff8801", pulse: true,  label: "RETRASO" };
+    return               { color: "rgb(255, 255, 255)", bg: "#ff0404", pulse: true,  label: "CRÍTICO" };
   };
 
   const groupItems = (items = []) => {
@@ -59,112 +58,104 @@ const OrderCard = ({ order, now, isConnected, onPreparing, onReady, onFinish, on
   const btn = btnConfig[status];
 
   return (
-    <div className={`rounded-2xl overflow-hidden border transition-all shrink-0
-       ${order.isNew ? "animate-bounce" : ""} ${timer.pulse ? "animate-pulse" : ""}`}
+    <div className={`rounded-[2rem] overflow-hidden border transition-all shrink-0 shadow-2xl
+       ${order.isNew ? "animate-bounce" : ""} ${timer.pulse ? "animate-pulse shadow-red-500/20" : ""}`}
       style={{
-        backgroundColor: "#1e293b",
-        borderColor: timer.color + "40",
-        boxShadow: timer.pulse ? `0 0 20px ${timer.color}25` : "none",
+        backgroundColor: "#0f172a",
+        borderColor: timer.color + "20",
       }}>
 
-      {/* ── HEADER: TIMER GRANDE ── */}
-      <div className="px-4 py-3 flex items-center justify-between"
-        style={{ backgroundColor: timer.bg, borderBottom: `1px solid ${timer.color}25` }}>
+      {/* ── HEADER: MESA + TICKET + TIMER ── */}
+      <div className="px-5 py-4 flex items-center justify-between"
+        style={{ backgroundColor: timer.bg }}>
 
-        <div className="flex items-center gap-2">
-          <span className="text-slate-500 text-[9px] font-black text-white uppercase tracking-widest">Mesa</span>
-          <span className="font-black text-2xl text-white leading-none">{order.tableNumber}</span>
+        <div className="flex flex-col">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-black text-white/70 uppercase tracking-widest leading-none">Mesa</span>
+            <span className="font-black text-3xl text-white leading-none">{order.tableNumber}</span>
+          </div>
+          {/* ✅ NUEVO: Identificador de Orden (Ticket) */}
+          <span className="text-[11px] font-black text-white bg-black/20 px-2 py-0.5 rounded-md mt-1.5 w-fit border border-white/10 uppercase tracking-tighter">
+            Orden #{id?.toString().slice(-4).toUpperCase() || "---"}
+          </span>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="text-right">
           {timer.label && (
-            <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full tracking-widest }`}
-              style={{ color: timer.color, border: `1px solid ${timer.color}50`, backgroundColor: timer.color + "15" }}>
+            <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-white/20 text-white block mb-1">
               {timer.label}
             </span>
           )}
-          {/* Timer grande y siempre visible */}
-          <span className={`font-black text-3xl tabular-nums leading-none}`}
-            style={{ color: timer.color, textShadow: "none" }}>
+          <span className="font-black text-4xl tabular-nums leading-none text-white">
             {elapsed}
           </span>
         </div>
       </div>
 
       {/* ── CLIENTE ── */}
-      <div className="px-4 pt-3 pb-2 border-b border-slate-700/30">
-        <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-500">Cliente</p>
-        <p className="font-black text-base text-white uppercase leading-tight">
+      <div className="px-5 pt-4 pb-2 border-b border-slate-800/50 bg-slate-900/30">
+        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Cliente</p>
+        <p className="font-black text-lg text-white uppercase leading-tight">
           {order.customerName || "General"}
         </p>
       </div>
 
-      {/* ── ITEMS ── */}
-      <div className="px-4 py-3 space-y-2">
+      {/* ── ITEMS AGRUPADOS ── */}
+      <div className="px-5 py-4 space-y-3 min-h-[140px]">
         {groupItems(order.items)?.map((item, i) => (
-          <div key={i}>
-            <div className="flex items-baseline gap-2">
-              <span className="font-black text-2xl leading-none" style={{ color: "#00FFFF" }}>
+          <div key={i} className="group">
+            <div className="flex items-baseline gap-3">
+              <span className="font-black text-2xl leading-none text-[#00FFFF]">
                 {item.quantity}x
               </span>
-              <span className="font-black text-base text-white uppercase leading-tight tracking-tight">
+              <span className="font-black text-base text-slate-100 uppercase tracking-tight leading-tight">
                 {item.productName}
               </span>
             </div>
             {item.notes && (
-              <div className="mt-1 px-3 py-1 rounded-lg border-l-4 text-[10px] font-black uppercase"
-                style={{ backgroundColor: "#FFFF0012", borderLeftColor: "#FFFF00", color: "#FFFF00" }}>
-                ⚠ {item.notes}
+              <div className="mt-2 px-3 py-1.5 rounded-lg border-l-4 text-[10px] font-black uppercase tracking-tight italic"
+                style={{ backgroundColor: "#FFFF0008", borderLeftColor: "#FFFF00", color: "#FFFF00" }}>
+                ⚠️ {item.notes}
               </div>
             )}
           </div>
         ))}
       </div>
 
-      {/* ── BOTÓN ACCIÓN ── */}
-      <div className="px-4 pt-2 pb-2">
+      {/* ── ACCIONES ── */}
+      <div className="px-5 pb-5 space-y-3">
         <button disabled={!isConnected || status > 2} onClick={handleAction}
-          className="w-full py-4 rounded-xl font-black text-lg uppercase tracking-wider transition-all active:scale-95 disabled:opacity-30"
+          className="w-full py-5 rounded-2xl font-black text-lg uppercase tracking-[0.15em] transition-all active:scale-95 disabled:opacity-20 shadow-lg"
           style={btn
-            ? { backgroundColor: btn.color + "25", border: `2px solid ${btn.color}`, color: btn.color, boxShadow: `0 0 16px ${btn.color}20` }
-            : { backgroundColor: "#334155", border: "2px solid #475569", color: "#64748b" }
+            ? { backgroundColor: btn.color + "15", border: `2px solid ${btn.color}`, color: btn.color }
+            : { backgroundColor: "#1e293b", border: "2px solid #334155", color: "#475569" }
           }>
           {btn?.label ?? "FINALIZADO"}
         </button>
-      </div>
 
-      {/* ── CANCELAR — SOLO ADMIN ── */}
-      <div className="px-4 pb-4">
-        {userIsAdmin && status <= 2 && (
-          !confirmCancel ? (
-            <button onClick={() => setConfirmCancel(true)} disabled={!isConnected}
-              className="w-full py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all
-                bg-transparent border border-red-500/20 text-red-500/50
-                hover:border-red-500/60 hover:text-red-400 hover:bg-red-500/10 disabled:opacity-20">
-              Cancelar orden
-            </button>
-          ) : (
-            <div className="space-y-1">
-              <p className="text-[9px] text-center text-red-400 font-black uppercase tracking-widest mb-2">
-                ¿Confirmar cancelación?
-              </p>
-              <div className="flex gap-2">
-                <button onClick={() => setConfirmCancel(false)}
-                  className="flex-1 py-2 rounded-xl font-black text-[10px] uppercase border border-slate-700 text-slate-400 hover:text-white transition-all">
-                  No
-                </button>
-                <button onClick={() => { onCancel?.(id); setConfirmCancel(false); }}
-                  className="flex-1 py-2 rounded-xl font-black text-[10px] uppercase border border-red-500 text-red-400 bg-red-500/15 hover:bg-red-500/25 transition-all">
-                  Sí, cancelar
-                </button>
-              </div>
-            </div>
-          )
-        )}
+        {/* ── PANEL ADMIN / MESERO ── */}
+        <div className="flex items-center justify-between pt-2 border-t border-slate-800/50">
+           <div className="flex flex-col">
+              <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Mesero</span>
+              <span className="text-[11px] font-black text-slate-400 uppercase italic">
+                {order.waiterName || "---"}
+              </span>
+           </div>
 
-        <p className="text-[9px] text-center mt-2 text-slate-600 font-black uppercase tracking-[0.2em]">
-          {order.waiterName || "Sin asignar"}
-        </p>
+           {userIsAdmin && status <= 2 && (
+             !confirmCancel ? (
+               <button onClick={() => setConfirmCancel(true)} 
+                 className="text-[9px] font-black uppercase text-red-500/40 hover:text-red-500 transition-colors">
+                 Cancelar
+               </button>
+             ) : (
+               <div className="flex gap-2">
+                 <button onClick={() => setConfirmCancel(false)} className="text-[9px] font-black text-slate-500 uppercase">No</button>
+                 <button onClick={() => { onCancel?.(id); setConfirmCancel(false); }} className="text-[9px] font-black text-red-500 uppercase underline">Sí</button>
+               </div>
+             )
+           )}
+        </div>
       </div>
     </div>
   );
