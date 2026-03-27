@@ -13,9 +13,9 @@ export default function Login() {
   useEffect(() => {
     const session = getSession();
     if (!session) return;
-    if (session.role === "kitchen") navigate("/kitchen");
-    if (session.role === "waiter") navigate("/waiter");
-    if (session.role === "admin") navigate("/admin");
+    if (session.role === "kitchen") navigate("/cocina");
+    if (session.role === "waiter") navigate("/terminal");
+    if (session.role === "admin") navigate("/panel");
   }, []);
 
   const handleLogin = async () => {
@@ -38,9 +38,9 @@ export default function Login() {
     localStorage.setItem(`${data.role}_token`, data.token);
 
     const routes = {
-      kitchen: "/kitchen",
-      waiter: "/waiter", 
-      admin: "/admin",
+      kitchen: "/cocina",
+      waiter: "/terminal", 
+      admin: "/panel",
     };
 
     const route = routes[data.role];

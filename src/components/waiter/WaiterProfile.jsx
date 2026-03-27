@@ -1,12 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { getWaiterOrdersToday } from '../../services/api.service';
 import { logout } from '../../services/authService';
-import { 
-  onOrderReady, 
-  onOrderPreparing, 
-  onOrderDelivered, 
-  onReceiveOrder 
-} from '../../services/signalrService';
 
 const WaiterProfile = ({ user, onClose }) => {
   const [orders, setOrders] = useState([]);
@@ -15,7 +9,6 @@ const WaiterProfile = ({ user, onClose }) => {
   const fetchOrders = useCallback(async () => {
     try {
       const data = await getWaiterOrdersToday(user.username);
-      // Mantenemos la lista ordenada: los más recientes primero
       setOrders(Array.isArray(data) ? [...data].reverse() : []);
     } catch (err) {
       console.error("Error cargando actividad:", err);
@@ -26,18 +19,6 @@ const WaiterProfile = ({ user, onClose }) => {
 
   useEffect(() => {
     fetchOrders();
-
-    const handleUpdate = () => {
-      console.log("⚡ Actualizando historial del mesero por señal de red...");
-      fetchOrders();
-    };
-    
-    // ✅ Usamos los eventos con el callback de actualización
-    onReceiveOrder(handleUpdate); 
-    onOrderReady(handleUpdate);
-    onOrderPreparing(handleUpdate);
-    onOrderDelivered(handleUpdate);
-
   }, [fetchOrders]);
 
   const stats = {
@@ -45,7 +26,6 @@ const WaiterProfile = ({ user, onClose }) => {
     delivered: orders.filter(o => [2, 3, "Ready", "Delivered"].includes(o.status)).length,
     pending: orders.filter(o => [0, 1, "Pending", "Preparing"].includes(o.status)).length
   };
-
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/80 backdrop-blur-lg animate-in fade-in duration-300">
       <div className="bg-slate-900 border border-slate-800 w-full max-w-md rounded-[3rem] p-8 shadow-2xl relative overflow-hidden">

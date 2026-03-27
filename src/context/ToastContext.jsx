@@ -4,13 +4,23 @@ const ToastContext = createContext();
 
 export const useToast = () => useContext(ToastContext);
 
+const generateId = () => {
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+};
+
 export const ToastProvider = ({ children }) => {
   const [toasts, setToasts] = useState([]);
 
   const showToast = (message, type = "success") => {
-    const id = Date.now();
+    const id = generateId(); // ✅ FIX AQUÍ
 
-    setToasts((prev) => [...prev, { id, message, type }]);
+    setToasts((prev) => {
+      // 🔥 Anti-duplicados (importante en tu caso con SignalR)
+      const exists = prev.some(t => t.message === message);
+      if (exists) return prev;
+
+      return [...prev, { id, message, type }];
+    });
 
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
@@ -21,7 +31,6 @@ export const ToastProvider = ({ children }) => {
     <ToastContext.Provider value={{ showToast }}>
       {children}
 
-      {/* UI */}
       <div style={{
         position: "fixed",
         top: 20,

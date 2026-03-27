@@ -1,25 +1,28 @@
 import { useEffect, useState } from "react";
-
 import {
   startConnection,
-  joinGroup
+  subscribeConnectionStatus
 } from "../services/signalrService";
 
-export default function useSignalRConnection(role) {
+export default function useSignalRConnection() {
   const [isConnected, setIsConnected] = useState(false);
   const [connection, setConnection] = useState(null);
-  useEffect(() => {
-    // Prevent running if role is missing
-    if (!role) return;
 
+  useEffect(() => {
     const init = async () => {
-       const conn = await startConnection([role]); 
+      const conn = await startConnection();
       setConnection(conn);
-      setIsConnected(true);
     };
 
     init();
-  }, [role]);
+
+    // 🔄 escuchar cambios de conexión (reconnect, disconnect, etc)
+    const unsubscribe = subscribeConnectionStatus(setIsConnected);
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
 
   return { connection, isConnected };
 }

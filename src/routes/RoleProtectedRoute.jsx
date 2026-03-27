@@ -1,55 +1,31 @@
 import { Navigate } from "react-router-dom";
 
-// Mapeo de rutas amigables por rol
-const ROLE_ROUTES = {
-  kitchen: "/cocina",
-  waiter:  "/terminal",
-  admin:   "/panel",
-};
-
-/**
- * Protege una ruta verificando:
- * 1. Que exista un token válido (no expirado)
- * 2. Que el rol del token coincida con el rol requerido
- *
- * Si no hay token → redirige a /login
- * Si el rol no coincide → redirige a la ruta correcta para ese rol
- */
-const RoleProtectedRoute = ({ role, children }) => {
+const RoleProtectedRoute = ({ children, role }) => {
   const token = localStorage.getItem("token");
-  const savedRole = localStorage.getItem("role");
+  const userRole = localStorage.getItem("role");
 
-  // Sin token → login
-  if (!token || !savedRole) {
+  // 1. Si no hay token, al login (Esto es seguro)
+  if (!token) {
     return <Navigate to="/login" replace />;
   }
 
-  // Verificar expiración del JWT sin librería externa
-  try {
-    const payload = JSON.parse(atob(token.split(".")[1]));
-    const isExpired = payload.exp && payload.exp * 1000 < Date.now();
-
-    if (isExpired) {
-      // Limpiar sesión expirada
-      localStorage.removeItem("token");
-      localStorage.removeItem("role");
-      localStorage.removeItem("admin_token");
-      localStorage.removeItem("waiter_token");
-      localStorage.removeItem("kitchen_token");
-      return <Navigate to="/login" replace />;
-    }
-  } catch {
-    // Token malformado
-    localStorage.removeItem("token");
-    return <Navigate to="/login" replace />;
+  // 2. 🚩 EL FIX: Si el rol es incorrecto, NO uses <Navigate />
+  // Si usas <Navigate to="/login" />, crearás el bucle infinito.
+  if (role && userRole !== role) {
+    return (
+      <div style={{ textAlign: "center", marginTop: "50px", fontFamily: "sans-serif" }}>
+        <h2>🚫 Acceso Denegado</h2>
+        <p>Tu rol es <b>{userRole}</b>, pero esta página requiere ser <b>{role}</b>.</p>
+        <button onClick={() => window.location.href = "/login"}>Volver al Inicio</button>
+        <br /><br />
+        <button onClick={() => { localStorage.clear(); window.location.href = "/login"; }}>
+          Cerrar Sesión
+        </button>
+      </div>
+    );
   }
 
-  // Rol incorrecto → redirigir a la vista correcta para ese rol
-  if (savedRole !== role) {
-    const correctRoute = ROLE_ROUTES[savedRole] ?? "/login";
-    return <Navigate to={correctRoute} replace />;
-  }
-
+  // 3. Si todo está bien, mostrar el contenido
   return children;
 };
 

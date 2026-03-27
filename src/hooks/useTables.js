@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { getTables } from "../services/api.service";
-import connection from "../services/signalrService"; // ✅ Importamos SignalR
+import { onTableUpdated } from "../services/signalrService";
 
 const useTables = () => {
   const [tables, setTables] = useState([]);
@@ -17,16 +17,15 @@ const useTables = () => {
   useEffect(() => {
     fetchTables();
 
-    // ⚡ ESCUCHA DE SIGNALR: Actualiza el mapa de mesas al instante
-    // Cuando el Admin libera una mesa o entra un pedido nuevo
-    connection.on("tablesupdated", () => {
-      console.log("🔄 Mesas actualizadas desde el servidor...");
-      fetchTables();
+    onTableUpdated((data) => {
+      setTables((prev) =>
+        prev.map((t) =>
+          t.number === data.tableNumber || t.Number === data.tableNumber
+            ? { ...t, isOccupied: data.isOccupied }
+            : t
+        )
+      );
     });
-
-    return () => {
-      connection.off("tablesupdated");
-    };
   }, [fetchTables]);
 
   return { tables, refetch: fetchTables };
