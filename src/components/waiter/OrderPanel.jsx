@@ -1,6 +1,6 @@
 import React from "react";
 import OrderBuilder from "./OrderBuilder";
-import { ReceiptText, Users, MapPin } from "lucide-react"; // ✅ Añadimos iconos para contexto
+import { ReceiptText, Users, MapPin } from "lucide-react"; 
 
 const OrderPanel = ({ pax, tableId }) => {
   return (

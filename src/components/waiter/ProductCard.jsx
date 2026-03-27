@@ -20,7 +20,7 @@ const ProductCard = ({ product, onAdd, onOpenNotes }) => {
       : "bg-slate-900 border-slate-800 hover:border-[#00FFFF]/40 shadow-2xl"
     }`}>
       
-      {/* 🚀 BADGE DE CANTIDAD NEÓN */}
+  
       {isInCart && (
         <div className="absolute -top-2 -left-2 z-30 animate-bounce-short">
           <div className="bg-[#00FFFF] text-black font-black text-sm w-12 h-12 rounded-2xl flex items-center justify-center shadow-[0_0_20px_#00FFFF] border-4 border-slate-950">

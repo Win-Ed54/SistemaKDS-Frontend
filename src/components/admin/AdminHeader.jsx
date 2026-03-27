@@ -8,32 +8,47 @@ const AdminHeader = ({ isConnected }) => {
   };
 
   return (
-    <header className="bg-slate-900 border border-slate-800 p-6 rounded-[2rem] shadow-2xl flex flex-col md:flex-row justify-between items-center gap-4">
+     <header className="bg-slate-900 border border-slate-800 p-6 rounded-[2.5rem] shadow-2xl flex flex-col md:flex-row justify-between items-center gap-4">
+      {/* Lado Izquierdo: Branding */}
       <div className="flex items-center gap-4">
-        <div className="p-3 bg-cyan-500/10 rounded-2xl border border-cyan-500/30">
+        <div className="p-3 bg-cyan-500/10 rounded-2xl border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.1)]">
           <ShieldCheck className="w-8 h-8 text-cyan-400" />
         </div>
         <div>
-          <h1 className="text-2xl font-black tracking-tighter uppercase text-white">
+          <h1 className="text-2xl font-black tracking-tighter uppercase text-white leading-none">
             KDS <span className="text-cyan-400">Control Panel</span>
           </h1>
-          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.3em]">Administración Central</p>
+          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.3em] mt-1">
+            Administración Central
+          </p>
         </div>
       </div>
 
-      <div className="flex items-center gap-6">
-        <div className={`flex items-center gap-2 px-4 py-2 rounded-full border ${isConnected ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-red-500/30 bg-red-500/5'}`}>
-          <Activity className={`w-4 h-4 ${isConnected ? 'text-emerald-400 animate-pulse' : 'text-red-400'}`} />
-          <span className={`text-[10px] font-black uppercase tracking-widest ${isConnected ? "text-emerald-400" : "text-red-400"}`}>
-            {isConnected ? "En Línea" : "Desconectado"}
-          </span>
-        </div>
-        
-        <button 
-          onClick={logout}
-          className="flex items-center gap-2 bg-red-600/10 hover:bg-red-600 border border-red-600/50 text-red-500 hover:text-white px-6 py-2.5 rounded-2xl font-black text-[10px] transition-all uppercase"
+      {/* Lado Derecho: Botones Estilo Imagen */}
+      <div className="flex items-center gap-4">
+        {/* Botón de Estado Dinámico (Texto Apilado) */}
+        <div
+          className={`flex items-center gap-4 px-7 py-2.5 rounded-full border-2 transition-all duration-700 ${
+            isConnected
+              ? "border-emerald-500/30 bg-emerald-950/20 text-emerald-400 shadow-[0_0_20px_rgba(52,211,153,0.1)]"
+              : "border-red-500/20 bg-red-950/20 text-red-400"
+          }`}
         >
-          <LogOut className="w-4 h-4" /> Cerrar Sesión
+          <div className={isConnected ? "animate-pulse" : ""}>
+            <Activity className="w-5 h-5" strokeWidth={2.5} />
+          </div>
+          <div className="flex flex-col leading-[0.8] text-left">
+            <span className="text-[10px] font-black uppercase tracking-wider"> En Línea</span>
+          </div>
+        </div>
+
+        {/* Botón Cerrar Sesión */}
+        <button
+          onClick={logout}
+          className="flex items-center gap-3 bg-red-950/20 hover:bg-red-900/40 border-2 border-red-500/30 text-red-500 px-7 py-2.5 rounded-full font-black text-[11px] uppercase tracking-widest transition-all active:scale-95 shadow-lg shadow-red-900/10"
+        >
+          <LogOut className="w-4 h-4" strokeWidth={2.5} />
+          <span>Cerrar Sesión</span>
         </button>
       </div>
     </header>

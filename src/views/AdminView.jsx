@@ -14,7 +14,7 @@ const AdminView = () => {
   const [orders,   setOrders]   = useState([]);
   const [tables,   setTables]   = useState([]);
   const [products, setProducts] = useState([]);
-  const [history,  setHistory]  = useState([]); // ✅ Nuevo: Para métricas de dinero
+  const [history,  setHistory]  = useState([]);
   const [loading,  setLoading]  = useState(false);
   const [lastUpdate, setLastUpdate] = useState(new Date().toLocaleTimeString());
 
