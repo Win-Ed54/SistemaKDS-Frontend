@@ -1,8 +1,11 @@
-import React from "react";
+import React, { useState } from "react";
 import OrderBuilder from "./OrderBuilder";
-import { ReceiptText, Users, MapPin } from "lucide-react"; 
+import { ReceiptText, Users, MapPin, User } from "lucide-react"; 
 
 const OrderPanel = ({ pax, tableId }) => {
+  // Estado para el nombre del cliente (Requisito Pendiente #8)
+  const [customerName, setCustomerName] = useState("");
+
   return (
     <div className="bg-slate-900/80 border border-slate-800 p-6 rounded-[2.5rem] shadow-2xl backdrop-blur-xl h-full flex flex-col">
       
@@ -17,7 +20,24 @@ const OrderPanel = ({ pax, tableId }) => {
         <ReceiptText className="w-5 h-5 text-slate-600" />
       </div>
 
-      {/* 2. Barra de Info Rápida (Mesa y Pax) */}
+      {/* 2. Campo Obligatorio: Nombre del Cliente */}
+      <div className="mb-6">
+        <div className="bg-slate-950 border border-slate-800 p-3 rounded-2xl flex items-center gap-3 focus-within:border-cyan-500/50 transition-colors">
+          <User className="w-4 h-4 text-cyan-400" />
+          <div className="flex-1">
+            <p className="text-[8px] font-black text-slate-600 uppercase tracking-tighter">Cliente (Obligatorio)</p>
+            <input 
+              type="text"
+              value={customerName}
+              onChange={(e) => setCustomerName(e.target.value)}
+              placeholder="NOMBRE DEL CLIENTE..."
+              className="bg-transparent border-none text-xs font-black text-white uppercase tracking-tighter w-full focus:outline-none placeholder:text-slate-800"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* 3. Barra de Info Rápida (Mesa y Pax) */}
       <div className="grid grid-cols-2 gap-3 mb-6">
         <div className="bg-slate-950 border border-slate-800 p-3 rounded-2xl flex items-center gap-3">
           <MapPin className="w-4 h-4 text-[#FFFF00]" />
@@ -40,13 +60,17 @@ const OrderPanel = ({ pax, tableId }) => {
         </div>
       </div>
 
-      {/* 3. Lógica Central (OrderBuilder) */}
+      {/* 4. Lógica Central (OrderBuilder) */}
       <div className="flex-1 overflow-hidden">
-         {/* OrderBuilder maneja su propio scroll interno para los items */}
-         <OrderBuilder />
+         {/* Pasamos customerName para que OrderBuilder pueda validar el envío */}
+         <OrderBuilder 
+            customerName={customerName} 
+            tableId={tableId} 
+            pax={pax} 
+         />
       </div>
 
-      {/* 4. Nota de pie (Opcional) */}
+      {/* 5. Nota de pie */}
       <p className="mt-4 text-[9px] text-center font-black text-slate-700 uppercase tracking-widest">
         Verifica los productos antes de enviar
       </p>

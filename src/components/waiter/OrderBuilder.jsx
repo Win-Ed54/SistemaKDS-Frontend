@@ -2,12 +2,17 @@ import React, { useState } from "react";
 import useOrderBuilder from "../../hooks/useOrderBuilder";
 import { createOrder } from "../../services/api.service";
 import { useToast } from "../../context/ToastContext";
-import { Trash2, Plus, Minus, Send, ReceiptText, X } from "lucide-react";
+import { Trash2, Plus, Minus, ReceiptText, X } from "lucide-react";
 
-const OrderBuilder = () => {
+// Recibimos los datos del panel superior por props
+const OrderBuilder = ({ customerName, tableId, pax }) => {
   const {
-    tableId, waiterName, customerName, items, addItem, // ✅ Añadido addItem aquí
-    removeItem, decreaseItem, clearOrder, resetAfterOrder
+    items, 
+    addItem, 
+    removeItem, 
+    decreaseItem, 
+    clearOrder, 
+    resetAfterOrder
   } = useOrderBuilder();
   const { showToast } = useToast();
 
@@ -15,16 +20,24 @@ const OrderBuilder = () => {
   const total = items.reduce((acc, item) => acc + item.price * item.quantity, 0);
 
   const sendOrder = async () => {
+    // VALIDACIÓN CRÍTICA (Pendiente #8)
+    if (!customerName || customerName.trim().length === 0) {
+      showToast("⚠️ El nombre del cliente es obligatorio", "error");
+      return;
+    }
+
     if (!tableId || items.length === 0) { 
       showToast("⚠️ Seleccione mesa y productos", "error"); 
       return; 
     }
+
     if (isSending) return;
 
     const order = {
-      tableNumber: tableId,
-      waiterName: waiterName || localStorage.getItem("user_name") || "Mesero",
-      customerName: customerName || "General",
+      tableNumber: parseInt(tableId),
+      waiterName: localStorage.getItem("user_name") || "Mesero",
+      customerName: customerName.trim().toUpperCase(), // Normalizado para cocina
+      pax: parseInt(pax) || 1,
       items,
       status: 0,
     };
@@ -32,14 +45,20 @@ const OrderBuilder = () => {
     try {
       setIsSending(true);
       await createOrder(order);
-      resetAfterOrder(); // Limpia el carrito y la mesa seleccionada
+      resetAfterOrder(); 
       showToast("✅ Orden enviada a cocina", "success");
     } catch (error) {
-      showToast(`❌ ${error.response?.data?.error || "Error de conexión"}`, "error");
+      // Manejo de error de concurrencia/stock (Pendiente #5)
+      const errorMsg = error.response?.data?.error || "Error de conexión";
+      showToast(`❌ ${errorMsg}`, "error");
     } finally {
       setIsSending(false);
     }
   };
+
+  // El botón se deshabilita si no hay productos, si se está enviando 
+  // o si el nombre del cliente está vacío (Requisito de Auditoría)
+  const isButtonDisabled = items.length === 0 || isSending || !customerName?.trim();
 
   return (
     <div className="bg-slate-900 border border-slate-800 p-5 rounded-[2.5rem] shadow-2xl backdrop-blur-md flex flex-col h-full">
@@ -53,7 +72,7 @@ const OrderBuilder = () => {
         )}
       </div>
 
-      {/* Lista de Items con Scroll Pro */}
+      {/* Lista de Items */}
       <div className="flex-1 space-y-3 mb-6 overflow-y-auto pr-2 custom-scrollbar min-h-[200px]">
         {items.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-10 opacity-20">
@@ -67,7 +86,6 @@ const OrderBuilder = () => {
               
               <div className="flex justify-between items-center mb-2">
                 <div className="flex items-center gap-3">
-                  {/* Controles de Cantidad */}
                   <div className="flex items-center gap-1 bg-slate-900 p-1 rounded-xl border border-slate-800">
                     <button onClick={() => decreaseItem(item.productId, item.notes)} className="w-6 h-6 rounded-lg bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition-all">
                       <Minus className="w-3 h-3" />
@@ -88,7 +106,6 @@ const OrderBuilder = () => {
                 </div>
               </div>
 
-              {/* Notas de personalización */}
               {item.notes && (
                 <div className="mt-1 px-3 py-1.5 rounded-xl bg-[#FFFF00]/5 border-l-2 border-[#FFFF00] text-[9px] font-black text-[#FFFF00] uppercase italic">
                   📝 {item.notes}
@@ -102,16 +119,21 @@ const OrderBuilder = () => {
       {/* Botón de Envío Neón */}
       <button 
         onClick={sendOrder} 
-        disabled={items.length === 0 || isSending}
+        disabled={isButtonDisabled}
         className={`w-full py-5 rounded-[1.8rem] font-black uppercase tracking-[0.2em] text-xs transition-all flex justify-between px-8 items-center shadow-xl ${
-          items.length === 0 || isSending
-            ? "bg-slate-800 text-slate-600 border border-slate-700 opacity-50"
+          isButtonDisabled
+            ? "bg-slate-800 text-slate-600 border border-slate-700 opacity-50 cursor-not-allowed"
             : "bg-[#39FF14] text-black hover:scale-[1.02] active:scale-95 shadow-[#39FF14]/20"
         }`}
       >
-        <span className="text-[10px] opacity-70">
-          {isSending ? "Enviando..." : "Confirmar Orden"}
-        </span>
+        <div className="flex flex-col items-start">
+          <span className="text-[10px] opacity-70 leading-none">
+            {isSending ? "Enviando..." : "Confirmar Orden"}
+          </span>
+          {!isSending && !customerName?.trim() && (
+            <span className="text-[7px] text-red-900 mt-1">Falta nombre del cliente</span>
+          )}
+        </div>
         <span className="text-xl">
           {isSending ? "---" : `$${total.toFixed(2)}`}
         </span>
