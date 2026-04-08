@@ -1,53 +1,61 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect } from "react";
 import useProductStore from "../store/productStore";
 import { getProducts } from "../services/api.service";
-import { onStockUpdated, onProductOutOfStock } from "../services/signalrService";
-import connection from "../services/signalrService";
-import * as signalR from "@microsoft/signalr";
+import connection, {
+  onProductOutOfStock,
+  onStockUpdated,
+  subscribeConnectionStatus,
+} from "../services/signalrService";
 
 const useProducts = () => {
   const { products, setProducts, updateStock, markOutOfStock } = useProductStore();
-  const loadedRef = useRef(false);
 
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     try {
       const data = await getProducts();
       setProducts(data ?? []);
     } catch (error) {
       console.error("Error cargando productos:", error);
     }
-  };
+  }, [setProducts]);
 
   useEffect(() => {
-    // Carga inicial
     fetchProducts();
 
-    // Stock en tiempo real — actualiza solo el número
-    onStockUpdated((productId, newStock) => {
-      console.log("⚡ Stock actualizado en mesero:", { productId, newStock });
+    const unsubscribeStock = onStockUpdated((productId, newStock) => {
       updateStock(productId, newStock);
     });
 
-    // Producto agotado
-    onProductOutOfStock((data) => {
-      const id = typeof data === "string" ? data : data?.productId || data?.ProductId;
+    const unsubscribeOutOfStock = onProductOutOfStock((data) => {
+      const id =
+        typeof data === "string" ? data : data?.productId || data?.ProductId;
+
       if (id) markOutOfStock(id);
     });
 
-    // ✅ Recarga completa cuando admin crea, edita o elimina un producto
-    // Escucha el evento "productupdated" que el backend emitirá
-    connection.off("productupdated");
-    connection.on("productupdated", () => {
-      console.log("🔄 Catálogo actualizado — recargando productos...");
+    const handleProductUpdated = () => {
       fetchProducts();
+    };
+
+    const unsubscribeConnection = subscribeConnectionStatus((connected) => {
+      if (connected) fetchProducts();
     });
 
-    // ✅ También recarga al reconectar SignalR (por si se perdió algún evento)
-    connection.onreconnected(() => {
+    const handleForceSync = () => {
       fetchProducts();
-    });
+    };
 
-  }, []);
+    window.addEventListener("kds-sync-products", handleForceSync);
+    connection.on("productupdated", handleProductUpdated);
+
+    return () => {
+      unsubscribeStock?.();
+      unsubscribeOutOfStock?.();
+      unsubscribeConnection?.();
+      window.removeEventListener("kds-sync-products", handleForceSync);
+      connection.off("productupdated", handleProductUpdated);
+    };
+  }, [fetchProducts, markOutOfStock, updateStock]);
 
   return { products, refetch: fetchProducts };
 };

@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { getTables } from "../services/api.service";
-import { onTableUpdated } from "../services/signalrService";
+import { onTableUpdated, subscribeConnectionStatus } from "../services/signalrService";
 
 const useTables = () => {
   const [tables, setTables] = useState([]);
@@ -15,9 +15,9 @@ const useTables = () => {
   }, []);
 
   useEffect(() => {
-    fetchTables();
+    queueMicrotask(fetchTables);
 
-    onTableUpdated((data) => {
+    const unsubscribe = onTableUpdated((data) => {
       setTables((prev) =>
         prev.map((t) =>
           t.number === data.tableNumber || t.Number === data.tableNumber
@@ -26,6 +26,22 @@ const useTables = () => {
         )
       );
     });
+
+    const unsubscribeConnection = subscribeConnectionStatus((connected) => {
+      if (connected) fetchTables();
+    });
+
+    const handleForceSync = () => {
+      fetchTables();
+    };
+
+    window.addEventListener("kds-sync-tables", handleForceSync);
+
+    return () => {
+      unsubscribe?.();
+      unsubscribeConnection?.();
+      window.removeEventListener("kds-sync-tables", handleForceSync);
+    };
   }, [fetchTables]);
 
   return { tables, refetch: fetchTables };

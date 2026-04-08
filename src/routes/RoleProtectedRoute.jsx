@@ -1,31 +1,37 @@
 import { Navigate } from "react-router-dom";
+import { clearAuthStorage, getAuthValue } from "../services/authStorage";
 
 const RoleProtectedRoute = ({ children, role }) => {
-  const token = localStorage.getItem("token");
-  const userRole = localStorage.getItem("role");
+  const token = getAuthValue("token");
+  const userRole = getAuthValue("role");
 
-  // 1. Si no hay token, al login (Esto es seguro)
   if (!token) {
     return <Navigate to="/login" replace />;
   }
 
-  // 2. 🚩 EL FIX: Si el rol es incorrecto, NO uses <Navigate />
-  // Si usas <Navigate to="/login" />, crearás el bucle infinito.
   if (role && userRole !== role) {
     return (
       <div style={{ textAlign: "center", marginTop: "50px", fontFamily: "sans-serif" }}>
-        <h2>🚫 Acceso Denegado</h2>
-        <p>Tu rol es <b>{userRole}</b>, pero esta página requiere ser <b>{role}</b>.</p>
-        <button onClick={() => window.location.href = "/login"}>Volver al Inicio</button>
-        <br /><br />
-        <button onClick={() => { localStorage.clear(); window.location.href = "/login"; }}>
-          Cerrar Sesión
+        <h2>Acceso Denegado</h2>
+        <p>
+          Tu rol es <b>{userRole}</b>, pero esta pagina requiere ser <b>{role}</b>.
+        </p>
+        <button onClick={() => (window.location.href = "/login")}>Volver al Inicio</button>
+        <br />
+        <br />
+        <button
+          onClick={() => {
+            clearAuthStorage();
+            localStorage.removeItem("user_name");
+            window.location.href = "/login";
+          }}
+        >
+          Cerrar Sesion
         </button>
       </div>
     );
   }
 
-  // 3. Si todo está bien, mostrar el contenido
   return children;
 };
 

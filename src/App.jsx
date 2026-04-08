@@ -1,44 +1,62 @@
 import { useEffect } from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
-import Login          from "./pages/Login";
+import Login from "./pages/Login";
+import AdminView from "./views/AdminView";
+import CashierView from "./views/CashierView";
 import KitchenDisplay from "./views/KitchenDisplay";
-import WaiterView     from "./views/WaiterView";
-import AdminView      from "./views/AdminView";
+import WaiterView from "./views/WaiterView";
 import RoleProtectedRoute from "./routes/RoleProtectedRoute";
 
 import {
-  startConnection,
-  onReceiveOrder,
+  onOrderCancelled,
+  onOrderDelivered,
   onOrderPreparing,
   onOrderReady,
-  onOrderDelivered,
-  onOrderCancelled,
+  onReceiveOrder,
+  startConnection,
 } from "./services/signalrService";
+import { getAuthValue } from "./services/authStorage";
+
+let signalRInitialized = false;
+let signalRCleanup = [];
 
 function App() {
   useEffect(() => {
     const init = async () => {
-      const token = localStorage.getItem("token");
-      if (!token) return;
+      const token = getAuthValue("token");
+      if (!token || signalRInitialized) return;
 
       try {
+        signalRInitialized = true;
         await startConnection();
 
-        // ✅ SOLO UNA VEZ
-        onReceiveOrder();
-        onOrderPreparing();
-        onOrderReady();
-        onOrderDelivered();
-        onOrderCancelled();
-
-        console.log("✅ SignalR conectado");
-      } catch (err) {
-        console.error("❌ SignalR error:", err);
+        signalRCleanup.forEach((cleanup) => cleanup?.());
+        signalRCleanup = [
+          onReceiveOrder(),
+          onOrderPreparing(),
+          onOrderReady(),
+          onOrderDelivered(),
+          onOrderCancelled(),
+        ];
+      } catch {
+        signalRInitialized = false;
       }
     };
 
-    init();
+    const handleAuthChanged = () => {
+      signalRInitialized = false;
+      signalRCleanup.forEach((cleanup) => cleanup?.());
+      signalRCleanup = [];
+      void init();
+    };
+
+    void init();
+    window.addEventListener("auth-changed", handleAuthChanged);
+
+    return () => {
+      window.removeEventListener("auth-changed", handleAuthChanged);
+    };
   }, []);
 
   return (
@@ -70,6 +88,15 @@ function App() {
           element={
             <RoleProtectedRoute role="admin">
               <AdminView />
+            </RoleProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/caja"
+          element={
+            <RoleProtectedRoute role="cashier">
+              <CashierView />
             </RoleProtectedRoute>
           }
         />

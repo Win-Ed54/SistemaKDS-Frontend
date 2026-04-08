@@ -5,8 +5,6 @@ import useSignalRConnection from "../../hooks/useSignalRConnection";
 import useOrderBuilder from "../../hooks/useOrderBuilder";
 
 // Services - Subir 2 niveles para llegar a src/services
-import { onStockUpdated, onProductOutOfStock } from "../../services/signalrService";
-
 // Componentes locales - Misma carpeta
 import ProductCard from "./ProductCard";
 import CustomNotesModal from "./CustomNotesModal";

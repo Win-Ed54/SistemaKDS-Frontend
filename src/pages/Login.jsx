@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { login, getSession } from "../services/authService";
+import { getRouteForRole, getSession, login } from "../services/authService";
 
 export default function Login() {
   const [username, setUsername] = useState("");
@@ -13,70 +13,46 @@ export default function Login() {
   useEffect(() => {
     const session = getSession();
     if (!session) return;
-    if (session.role === "kitchen") navigate("/cocina");
-    if (session.role === "waiter") navigate("/terminal");
-    if (session.role === "admin") navigate("/panel");
-  }, []);
+    navigate(getRouteForRole(session.role), { replace: true });
+  }, [navigate]);
 
   const handleLogin = async () => {
-
-  if (!username || !password) {
-    setError("Ingresa usuario y contraseña");
-    return;
-  }
-
-  setError(null);
-  setLoading(true);
-
-  try {
-    console.log("Intentando login con:", username);
-
-    const data = await login(username, password);
-
-    console.log("Respuesta del backend:", data);
-
-    localStorage.setItem(`${data.role}_token`, data.token);
-
-    const routes = {
-      kitchen: "/cocina",
-      waiter: "/terminal", 
-      admin: "/panel",
-    };
-
-    const route = routes[data.role];
-
-    if (!route) {
-      setError(`Rol desconocido: ${data.role}`);
+    if (!username || !password) {
+      setError("Ingresa usuario y contrasena");
       return;
     }
 
-    navigate(route, { replace: true });
+    setError(null);
+    setLoading(true);
 
-  } catch (error) {
+    try {
+      const data = await login(username, password);
+      const route = getRouteForRole(data.role);
 
-    console.error("Error completo:", error);
+      if (!route || route === "/login") {
+        setError(`Rol desconocido: ${data.role}`);
+        return;
+      }
 
-    if (error.response?.status === 401) {
-      setError("Usuario o contraseña incorrectos");
-    } 
-    else if (error.response?.status === 403) {
-      setError("Usuario no autorizado");
+      navigate(route, { replace: true });
+    } catch (authError) {
+      console.error("Error completo:", authError);
+
+      if (authError.response?.status === 401) {
+        setError("Usuario o contrasena incorrectos");
+      } else if (authError.response?.status === 403) {
+        setError("Usuario no autorizado");
+      } else if (authError.response?.status === 500) {
+        setError("Error del servidor, intenta mas tarde");
+      } else if (!authError.response) {
+        setError("No se pudo conectar al servidor");
+      } else {
+        setError("Error inesperado");
+      }
+    } finally {
+      setLoading(false);
     }
-    else if (error.response?.status === 500) {
-      setError("Error del servidor, intenta más tarde");
-    }
-    else if (!error.response) {
-      setError("No se pudo conectar al servidor");
-    }
-    else {
-      setError("Error inesperado");
-    }
-
-  } finally {
-    setLoading(false);
-  }
-};
-
+  };
 
   return (
     <div style={styles.container}>
@@ -84,58 +60,13 @@ export default function Login() {
 
       <div style={styles.card}>
         <div style={styles.logoWrapper}>
-          <svg
-            viewBox="0 0 120 120"
-            width="90"
-            height="90"
-            style={styles.logoSvg}
-          >
-            <path
-              d="M 60 15 A 45 45 0 0 1 105 60"
-              fill="none"
-              stroke="#1a6fff"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-            />
-            <path
-              d="M 60 22 A 38 38 0 0 1 98 60"
-              fill="none"
-              stroke="#1a6fff"
-              strokeWidth="2"
-              strokeLinecap="round"
-              opacity="0.7"
-            />
-            <path
-              d="M 60 29 A 31 31 0 0 1 91 60"
-              fill="none"
-              stroke="#1a6fff"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              opacity="0.5"
-            />
-            <path
-              d="M 60 105 A 45 45 0 0 1 15 60"
-              fill="none"
-              stroke="#1a6fff"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-            />
-            <path
-              d="M 60 98 A 38 38 0 0 1 22 60"
-              fill="none"
-              stroke="#1a6fff"
-              strokeWidth="2"
-              strokeLinecap="round"
-              opacity="0.7"
-            />
-            <path
-              d="M 60 91 A 31 31 0 0 1 29 60"
-              fill="none"
-              stroke="#1a6fff"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              opacity="0.5"
-            />
+          <svg viewBox="0 0 120 120" width="90" height="90" style={styles.logoSvg}>
+            <path d="M 60 15 A 45 45 0 0 1 105 60" fill="none" stroke="#1a6fff" strokeWidth="2.5" strokeLinecap="round" />
+            <path d="M 60 22 A 38 38 0 0 1 98 60" fill="none" stroke="#1a6fff" strokeWidth="2" strokeLinecap="round" opacity="0.7" />
+            <path d="M 60 29 A 31 31 0 0 1 91 60" fill="none" stroke="#1a6fff" strokeWidth="1.5" strokeLinecap="round" opacity="0.5" />
+            <path d="M 60 105 A 45 45 0 0 1 15 60" fill="none" stroke="#1a6fff" strokeWidth="2.5" strokeLinecap="round" />
+            <path d="M 60 98 A 38 38 0 0 1 22 60" fill="none" stroke="#1a6fff" strokeWidth="2" strokeLinecap="round" opacity="0.7" />
+            <path d="M 60 91 A 31 31 0 0 1 29 60" fill="none" stroke="#1a6fff" strokeWidth="1.5" strokeLinecap="round" opacity="0.5" />
             <circle cx="60" cy="15" r="3" fill="#1a6fff" />
             <circle cx="105" cy="60" r="3" fill="#1a6fff" />
             <circle cx="60" cy="105" r="3" fill="#1a6fff" />
@@ -156,15 +87,14 @@ export default function Login() {
         </div>
 
         <div style={styles.divider} />
-
-        <p style={styles.subtitle}>KDS — Acceso al sistema</p>
+        <p style={styles.subtitle}>KDS - Acceso al sistema</p>
 
         <input
           style={styles.input}
           placeholder="Usuario"
           value={username}
-          onChange={(e) => {
-            setUsername(e.target.value);
+          onChange={(event) => {
+            setUsername(event.target.value);
             setError(null);
           }}
         />
@@ -172,10 +102,10 @@ export default function Login() {
         <input
           style={styles.input}
           type="password"
-          placeholder="Contraseña"
+          placeholder="Contrasena"
           value={password}
-          onChange={(e) => {
-            setPassword(e.target.value);
+          onChange={(event) => {
+            setPassword(event.target.value);
             setError(null);
           }}
         />
@@ -183,12 +113,17 @@ export default function Login() {
         <button
           style={styles.button}
           onClick={handleLogin}
-          onMouseEnter={(e) => (e.target.style.background = "#e05e00")}
-          onMouseLeave={(e) => (e.target.style.background = "#ff6b00")}
-           disabled={loading}
-           >
-          {loading ? "Ingresando..." : "Iniciar sesión"}
+          onMouseEnter={(event) => {
+            event.target.style.background = "#e05e00";
+          }}
+          onMouseLeave={(event) => {
+            event.target.style.background = "#ff6b00";
+          }}
+          disabled={loading}
+        >
+          {loading ? "Ingresando..." : "Iniciar sesion"}
         </button>
+
         {error && (
           <p style={{ color: "red", marginTop: "8px", fontSize: "13px" }}>
             {error}
@@ -209,16 +144,13 @@ const styles = {
     position: "relative",
     overflow: "hidden",
   },
-
   bgGrid: {
     position: "absolute",
     inset: 0,
-    backgroundImage:
-      "radial-gradient(circle, rgba(26,111,255,0.12) 1px, transparent 1px)",
+    backgroundImage: "radial-gradient(circle, rgba(26,111,255,0.12) 1px, transparent 1px)",
     backgroundSize: "36px 36px",
     pointerEvents: "none",
   },
-
   card: {
     background: "linear-gradient(160deg, #ffffff 0%, #e8f0ff 60%, #dceeff 100%)",
     padding: "40px 36px",
@@ -233,7 +165,6 @@ const styles = {
     position: "relative",
     zIndex: 1,
   },
-
   logoWrapper: {
     display: "flex",
     flexDirection: "column",
@@ -241,18 +172,15 @@ const styles = {
     gap: "8px",
     marginBottom: "4px",
   },
-
   logoSvg: {
     filter: "drop-shadow(0 0 8px rgba(26,111,255,0.5))",
   },
-
   logoText: {
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
     gap: "2px",
   },
-
   logoMain: {
     color: "#0a1628",
     fontSize: "18px",
@@ -260,7 +188,6 @@ const styles = {
     letterSpacing: "3px",
     fontFamily: "'Courier New', monospace",
   },
-
   logoSub: {
     color: "#1a6fff",
     fontSize: "9px",
@@ -268,13 +195,11 @@ const styles = {
     fontFamily: "'Courier New', monospace",
     opacity: 0.9,
   },
-
   divider: {
     height: "1px",
     background: "linear-gradient(90deg, transparent, rgba(26,111,255,0.35), transparent)",
     margin: "2px 0",
   },
-
   subtitle: {
     color: "#3a4a6b",
     textAlign: "center",
@@ -283,7 +208,6 @@ const styles = {
     letterSpacing: "0.5px",
     fontFamily: "'Courier New', monospace",
   },
-
   input: {
     padding: "12px 14px",
     borderRadius: "8px",
@@ -295,7 +219,6 @@ const styles = {
     transition: "border-color 0.2s",
     fontFamily: "inherit",
   },
-
   button: {
     padding: "14px",
     border: "none",

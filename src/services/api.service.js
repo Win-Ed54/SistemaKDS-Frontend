@@ -1,18 +1,21 @@
+import { clearAuthStorage, getAuthValue, setAuthValue } from "./authStorage";
+
 const API_URL = "/api";
 
 const getToken = () => {
   const path = window.location.pathname;
-  if (path.includes("cocina"))   return localStorage.getItem("kitchen_token");
-  if (path.includes("terminal")) return localStorage.getItem("waiter_token");
-  if (path.includes("panel"))    return localStorage.getItem("admin_token");
-  return localStorage.getItem("token");
+  if (path.includes("cocina")) return getAuthValue("kitchen_token");
+  if (path.includes("terminal")) return getAuthValue("waiter_token");
+  if (path.includes("panel")) return getAuthValue("admin_token");
+  if (path.includes("caja")) return getAuthValue("cashier_token");
+  return getAuthValue("token");
 };
 
 let isRefreshing = false;
 let refreshQueue = [];
 
 const refreshAccessToken = async () => {
-  const refreshToken = localStorage.getItem("refresh_token");
+  const refreshToken = getAuthValue("refresh_token");
   if (!refreshToken) throw new Error("No refresh token");
 
   const res = await fetch(`${API_URL}/auth/refresh`, {
@@ -22,23 +25,24 @@ const refreshAccessToken = async () => {
   });
 
   if (!res.ok) {
-    ["token","role","refresh_token","admin_token","waiter_token","kitchen_token"]
-      .forEach((k) => localStorage.removeItem(k));
+    clearAuthStorage();
+    localStorage.removeItem("user_name");
     window.location.href = "/login";
     throw new Error("Session expired");
   }
 
   const data = await res.json();
-  localStorage.setItem("token", data.token);
-  localStorage.setItem("refresh_token", data.refreshToken);
-  localStorage.setItem(`${data.role}_token`, data.token);
+  setAuthValue("token", data.token);
+  setAuthValue("refresh_token", data.refreshToken);
+  setAuthValue(`${data.role}_token`, data.token);
+  setAuthValue("role", data.role);
   return data.token;
 };
 
 const request = async (endpoint, options = {}, retry = true) => {
   const token = getToken();
   const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
-  if (token) headers["Authorization"] = `Bearer ${token}`;
+  if (token) headers.Authorization = `Bearer ${token}`;
 
   const cleanEndpoint = endpoint.startsWith("/") ? endpoint.slice(1) : endpoint;
   const response = await fetch(`${API_URL}/${cleanEndpoint}`, { ...options, headers });
@@ -58,17 +62,16 @@ const request = async (endpoint, options = {}, retry = true) => {
         refreshQueue = [];
         throw new Error("Session expired");
       }
-    } else {
-      return new Promise((resolve) => {
-        refreshQueue.push(() => resolve(request(endpoint, options, false)));
-      });
     }
+
+    return new Promise((resolve) => {
+      refreshQueue.push(() => resolve(request(endpoint, options, false)));
+    });
   }
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    const message =
-      errorData?.message || errorData || `Error: ${response.status}`;
+    const message = errorData?.message || errorData || `Error: ${response.status}`;
 
     const error = new Error(message);
     error.response = { status: response.status, data: errorData };
@@ -81,28 +84,27 @@ const request = async (endpoint, options = {}, retry = true) => {
 
 export default request;
 
-export const createOrder        = (data)       => request("/orders",                    { method: "POST",  body: JSON.stringify(data) });
-export const getActiveOrders    = ()           => request("/orders/active");
-export const getOrderHistory    = ()           => request("/orders/history");
-export const getTopProducts     = (limit = 10)=> request(`/orders/top-products?limit=${limit}`);
-export const markOrderPreparing = (id)        => request(`/orders/${id}/preparing`,     { method: "PATCH", body: JSON.stringify({}) });
-export const markOrderReady     = (id)        => request(`/orders/${id}/ready`,         { method: "PATCH" });
-export const finishOrder        = (id)        => request(`/orders/${id}/finish`,        { method: "PATCH" });
-export const cancelOrder        = (id)        => request(`/orders/${id}/cancel`,        { method: "PATCH" });
-export const getTables          = ()           => request("/tables");
-export const getProducts        = ()           => request("/products");
-export const updateProductStock = (id, stock) => request(`/products/${id}/stock`,       { method: "PATCH", body: JSON.stringify({ newStock: stock }) });
-export const createProduct      = (data)       => request("/products",                   { method: "POST",  body: JSON.stringify(data) });
-export const updateProduct      = (id, data)  => request(`/products/${id}`,             { method: "PUT",   body: JSON.stringify(data) });
-export const deleteProduct      = (id)        => request(`/products/${id}`,             { method: "DELETE" });
-export const getWaiterOrdersToday = (waiterName) => 
-  request(`/orders/waiter/${waiterName}/today`);
-// --- NUEVAS EXPORTACIONES PARA ADMIN ---
-
-// ✅ Permite al Admin/Caja liberar una mesa manualmente
-export const closeTable = (tableNumber) => 
+export const createOrder = (data) =>
+  request("/orders", { method: "POST", body: JSON.stringify(data) });
+export const getActiveOrders = () => request("/orders/active");
+export const getOrderHistory = () => request("/orders/history");
+export const getTopProducts = (limit = 10) => request(`/orders/top-products?limit=${limit}`);
+export const markOrderPreparing = (id) =>
+  request(`/orders/${id}/preparing`, { method: "PATCH", body: JSON.stringify({}) });
+export const markOrderReady = (id) => request(`/orders/${id}/ready`, { method: "PATCH" });
+export const finishOrder = (id) => request(`/orders/${id}/finish`, { method: "PATCH" });
+export const payOrder = (id) => request(`/orders/${id}/pay`, { method: "PATCH" });
+export const cancelOrder = (id) => request(`/orders/${id}/cancel`, { method: "PATCH" });
+export const getTables = () => request("/tables");
+export const getProducts = () => request("/products");
+export const updateProductStock = (id, stock) =>
+  request(`/products/${id}/stock`, { method: "PATCH", body: JSON.stringify({ newStock: stock }) });
+export const createProduct = (data) =>
+  request("/products", { method: "POST", body: JSON.stringify(data) });
+export const updateProduct = (id, data) =>
+  request(`/products/${id}`, { method: "PUT", body: JSON.stringify(data) });
+export const deleteProduct = (id) => request(`/products/${id}`, { method: "DELETE" });
+export const getWaiterOrdersToday = (waiterName) => request(`/orders/waiter/${waiterName}/today`);
+export const closeTable = (tableNumber) =>
   request(`/orders/table/${tableNumber}/close`, { method: "PATCH" });
-
-// ✅ Permite obtener el resumen de estadísticas del mesero (usado en WaiterProfile)
-export const getWaiterSummary = (userId) => 
-  request(`/orders/waiter/${userId}/summary`);
+export const getWaiterSummary = () => request("/waiter/summary");

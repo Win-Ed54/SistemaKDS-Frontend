@@ -1,73 +1,39 @@
-import React, { useEffect, useState, useCallback } from "react";
-import { CheckCircle, MapPin, PackageCheck, BellRing } from "lucide-react";
-import { onOrderReady, offOrderReady } from "../../services/signalrService";
+import React, { useEffect, useMemo } from "react";
+import { BellRing, MapPin, PackageCheck } from "lucide-react";
+import { finishOrder } from "../../services/api.service";
 import { useToast } from "../../context/ToastContext";
-import useOrderStore from "../../store/orderStore"; // ✅ Importamos el store
+import useOrderStore from "../../store/orderStore";
 
 const ReadyOrdersView = () => {
-  const [readyOrders, setReadyOrders] = useState([]);
   const { showToast } = useToast();
-  const ordersFromStore = useOrderStore((state) => state.orders); // ✅ Sincronización con el store
-  
+  const ordersFromStore = useOrderStore((state) => state.orders);
   const waiterName = localStorage.getItem("user_name") || "";
 
-  // 1. ✅ Carga inicial desde el Store (Para que aparezcan al refrescar)
-  useEffect(() => {
-    const myReadyOrders = ordersFromStore.filter(o => {
-      const isMine = o.waiterName?.toLowerCase().trim() === waiterName.toLowerCase().trim();
-      const isReady = o.status === 2 || String(o.status).toLowerCase() === "ready";
-      return isMine && isReady;
-    });
-    setReadyOrders(myReadyOrders);
-  }, [ordersFromStore, waiterName]);
-
-  // 2. ✅ Manejador de SignalR (Para tiempo real)
-  const handleIncomingOrder = useCallback((order) => {
-    if (!order) return;
-
-    const id = order.id || order._id;
-    const isMine = order.waiterName?.toLowerCase().trim() === waiterName.toLowerCase().trim();
-    const isReady = order.status === 2 || String(order.status).toLowerCase() === "ready";
-
-    if (isMine && isReady) {
-      setReadyOrders((prev) => {
-        if (prev.some((o) => (o.id || o._id) === id)) return prev;
-        showToast(`🔔 Mesa ${order.tableNumber} LISTA`, "success");
-        return [order, ...prev];
-      });
-    }
-  }, [waiterName, showToast]);
+  const readyOrders = useMemo(
+    () =>
+      ordersFromStore.filter((order) => {
+        const isMine = order.waiterName?.toLowerCase().trim() === waiterName.toLowerCase().trim();
+        const isReady = order.status === 2 || String(order.status).toLowerCase() === "ready";
+        return isMine && isReady;
+      }),
+    [ordersFromStore, waiterName]
+  );
 
   useEffect(() => {
-    onOrderReady(handleIncomingOrder);
-    return () => offOrderReady(handleIncomingOrder);
-  }, [handleIncomingOrder]);
+    if (readyOrders.length === 0) return;
 
-  // 3. ✅ Lógica de entrega (Arreglado el error 403)
+    const latestReady = readyOrders[0];
+    showToast(`Mesa ${latestReady.tableNumber} LISTA`, "success");
+  }, [readyOrders, showToast]);
+
   const handleDeliver = async (orderId) => {
     try {
-      // Usamos el token correcto del mesero para evitar el 403
-      const token = localStorage.getItem("waiter_token") || localStorage.getItem("token");
-      
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/orders/${orderId}/finish`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) throw new Error("Error en servidor");
-
-      setReadyOrders((prev) => prev.filter((o) => (o.id || o._id) !== orderId));
-      
-      // ✅ IMPORTANTE: También quitarla del store global para que desaparezca de la cocina
+      await finishOrder(orderId);
       useOrderStore.getState().removeOrder(orderId);
-      
-      showToast("✅ Pedido entregado", "success");
+      showToast("Pedido entregado", "success");
     } catch (err) {
       console.error("Fallo al entregar:", err);
-      showToast("❌ Error al procesar entrega", "error");
+      showToast("Error al procesar entrega", "error");
     }
   };
 
@@ -101,10 +67,10 @@ const ReadyOrdersView = () => {
 
             <div className="bg-black/40 rounded-2xl p-4 border border-slate-800 mb-5">
               <ul className="space-y-2">
-                {order.items?.map((item, i) => (
-                  <li key={i} className="flex justify-between items-center text-xs">
+                {order.items?.map((item, index) => (
+                  <li key={index} className="flex justify-between items-center text-xs">
                     <span className="text-slate-300 font-bold">
-                      <span className="text-cyan-400 mr-2">{item.quantity}x</span> 
+                      <span className="text-cyan-400 mr-2">{item.quantity}x</span>
                       {item.productName}
                     </span>
                   </li>

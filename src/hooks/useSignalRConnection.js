@@ -1,23 +1,24 @@
 import { useEffect, useState } from "react";
 import {
+  getConnectionState,
   startConnection,
-  subscribeConnectionStatus
+  subscribeConnectionStatus,
 } from "../services/signalrService";
 
 export default function useSignalRConnection() {
-  const [isConnected, setIsConnected] = useState(false);
+  const [isConnected, setIsConnected] = useState(getConnectionState());
   const [connection, setConnection] = useState(null);
 
   useEffect(() => {
+    const unsubscribe = subscribeConnectionStatus(setIsConnected);
+
     const init = async () => {
       const conn = await startConnection();
       setConnection(conn);
+      setIsConnected(getConnectionState());
     };
 
     init();
-
-    // 🔄 escuchar cambios de conexión (reconnect, disconnect, etc)
-    const unsubscribe = subscribeConnectionStatus(setIsConnected);
 
     return () => {
       unsubscribe();

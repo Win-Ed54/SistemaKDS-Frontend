@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { getAuthValue } from "../../services/authStorage";
 
 const toStatusNumber = (status) => {
   if (typeof status === "number") return status;
@@ -6,7 +7,7 @@ const toStatusNumber = (status) => {
   return map[String(status).toLowerCase()] ?? -1;
 };
 
-const isAdmin = () => localStorage.getItem("role") === "admin";
+const isAdmin = () => getAuthValue("role") === "admin";
 
 const OrderCard = ({ order, now, isConnected, onPreparing, onReady, onFinish, onCancel }) => {
   const id     = order.id || order._id || order.Id;
@@ -44,7 +45,7 @@ const OrderCard = ({ order, now, isConnected, onPreparing, onReady, onFinish, on
     if (!isConnected || !id) return;
     if (status === 0) onPreparing(id);
     else if (status === 1) onReady(id);
-    else if (status === 2) onFinish(id);
+    else if (status === 2 && onFinish) onFinish(id);
   };
 
   const timer   = timerInfo(order.createdAt);
@@ -53,7 +54,7 @@ const OrderCard = ({ order, now, isConnected, onPreparing, onReady, onFinish, on
   const btnConfig = {
     0: { label: "PREPARAR", color: "#FFFF00" },
     1: { label: "LISTO",    color: "#39FF14" },
-    2: { label: "ENTREGAR", color: "#00FFFF" },
+    2: onFinish ? { label: "ENTREGAR", color: "#00FFFF" } : { label: "MESERO ENTREGA", color: "#64748b" },
   };
   const btn = btnConfig[status];
 
@@ -124,7 +125,7 @@ const OrderCard = ({ order, now, isConnected, onPreparing, onReady, onFinish, on
 
       {/* ── ACCIONES ── */}
       <div className="px-5 pb-5 space-y-3">
-        <button disabled={!isConnected || status > 2} onClick={handleAction}
+        <button disabled={!isConnected || status > 2 || (status === 2 && !onFinish)} onClick={handleAction}
           className="w-full py-5 rounded-2xl font-black text-lg uppercase tracking-[0.15em] transition-all active:scale-95 disabled:opacity-20 shadow-lg"
           style={btn
             ? { backgroundColor: btn.color + "15", border: `2px solid ${btn.color}`, color: btn.color }
