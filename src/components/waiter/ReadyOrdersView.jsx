@@ -4,7 +4,7 @@ import { finishOrder } from "../../services/api.service";
 import { useToast } from "../../context/ToastContext";
 import useOrderStore from "../../store/orderStore";
 
-const ReadyOrdersView = () => {
+const ReadyOrdersView = ({ variant = "floating" }) => {
   const { showToast } = useToast();
   const ordersFromStore = useOrderStore((state) => state.orders);
   const waiterName = localStorage.getItem("user_name") || "";
@@ -37,7 +37,74 @@ const ReadyOrdersView = () => {
     }
   };
 
-  if (readyOrders.length === 0) return null;
+  if (readyOrders.length === 0) {
+    if (variant === "inline") {
+      return (
+        <div className="rounded-[2rem] border border-dashed border-slate-800 bg-slate-900/40 p-12 text-center">
+          <p className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-400">
+            No hay pedidos listos
+          </p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-600 mt-3">
+            Cuando cocina termine una orden tuya, aparecera aqui.
+          </p>
+        </div>
+      );
+    }
+
+    return null;
+  }
+
+  if (variant === "inline") {
+    return (
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+        {readyOrders.map((order) => {
+          const orderId = order.id || order._id;
+          return (
+            <div
+              key={orderId}
+              className="bg-slate-900/70 border border-[#39FF14]/30 rounded-[2rem] p-5 shadow-[0_0_30px_rgba(57,255,20,0.12)]"
+            >
+              <div className="flex justify-between items-start mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="bg-[#39FF14] p-2.5 rounded-2xl">
+                    <MapPin size={20} className="text-black" />
+                  </div>
+                  <div>
+                    <h4 className="text-2xl font-black text-white leading-none uppercase">
+                      Mesa {order.tableNumber}
+                    </h4>
+                    <p className="text-[9px] text-[#39FF14] font-black uppercase tracking-widest mt-1">
+                      Lista para entrega
+                    </p>
+                  </div>
+                </div>
+                <BellRing className="text-[#39FF14]" size={20} />
+              </div>
+
+              <div className="bg-black/30 rounded-2xl p-4 border border-slate-800 mb-5">
+                <ul className="space-y-2">
+                  {order.items?.map((item, index) => (
+                    <li key={index} className="text-xs font-bold text-slate-300">
+                      <span className="text-cyan-400 mr-2">{item.quantity}x</span>
+                      {item.productName}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <button
+                onClick={() => handleDeliver(orderId)}
+                className="w-full bg-[#39FF14] hover:bg-[#2cff00] text-black font-black py-4 rounded-2xl flex items-center justify-center gap-3 transition-all active:scale-95 shadow-lg"
+              >
+                <PackageCheck size={20} />
+                CONFIRMAR ENTREGA
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
 
   return (
     <div className="fixed bottom-24 right-4 z-[60] flex flex-col gap-4 w-[90%] max-w-sm pointer-events-none">

@@ -57,6 +57,7 @@ const OrderCard = ({ order, now, isConnected, onPreparing, onReady, onFinish, on
     2: onFinish ? { label: "ENTREGAR", color: "#00FFFF" } : { label: "MESERO ENTREGA", color: "#64748b" },
   };
   const btn = btnConfig[status];
+  const showPrimaryAction = status < 2 || (status === 2 && Boolean(onFinish));
 
   return (
     <div className={`rounded-[2rem] overflow-hidden border transition-all shrink-0 shadow-2xl
@@ -125,14 +126,16 @@ const OrderCard = ({ order, now, isConnected, onPreparing, onReady, onFinish, on
 
       {/* ── ACCIONES ── */}
       <div className="px-5 pb-5 space-y-3">
-        <button disabled={!isConnected || status > 2 || (status === 2 && !onFinish)} onClick={handleAction}
-          className="w-full py-5 rounded-2xl font-black text-lg uppercase tracking-[0.15em] transition-all active:scale-95 disabled:opacity-20 shadow-lg"
-          style={btn
-            ? { backgroundColor: btn.color + "15", border: `2px solid ${btn.color}`, color: btn.color }
-            : { backgroundColor: "#1e293b", border: "2px solid #334155", color: "#475569" }
-          }>
-          {btn?.label ?? "FINALIZADO"}
-        </button>
+        {showPrimaryAction && (
+          <button disabled={!isConnected || status > 2 || (status === 2 && !onFinish)} onClick={handleAction}
+            className="w-full py-5 rounded-2xl font-black text-lg uppercase tracking-[0.15em] transition-all active:scale-95 disabled:opacity-20 shadow-lg"
+            style={btn
+              ? { backgroundColor: btn.color + "15", border: `2px solid ${btn.color}`, color: btn.color }
+              : { backgroundColor: "#1e293b", border: "2px solid #334155", color: "#475569" }
+            }>
+            {btn?.label ?? "FINALIZADO"}
+          </button>
+        )}
 
         {/* ── PANEL ADMIN / MESERO ── */}
         <div className="flex items-center justify-between pt-2 border-t border-slate-800/50">

@@ -8,6 +8,7 @@ import {
   getTables,
 } from "../services/api.service";
 import { useToast } from "../context/ToastContext";
+import { subscribeConnectionStatus } from "../services/signalrService";
 
 import AdminHeader from "../components/admin/AdminHeader";
 import InventoryManager from "../components/admin/InventoryManager";
@@ -111,6 +112,16 @@ const AdminView = () => {
       connection.off("stockupdated", handleStockUpdate);
     };
   }, [connection, loadData]);
+
+  useEffect(() => {
+    const unsubscribeConnection = subscribeConnectionStatus((connected) => {
+      if (connected) void loadData(true);
+    });
+
+    return () => {
+      unsubscribeConnection?.();
+    };
+  }, [loadData]);
 
   const stats = useMemo(() => {
     const finished = orders.filter((order) => order.startedAt && order.readyAt);

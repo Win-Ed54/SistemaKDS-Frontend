@@ -10,7 +10,7 @@ const normalizeCustomerName = (value) =>
     .trim()
     .toUpperCase();
 
-const OrderBuilder = ({ customerName, tableId, pax }) => {
+const OrderBuilder = ({ customerName, tableId, pax, onOrderSent }) => {
   const {
     items,
     addItem,
@@ -65,6 +65,7 @@ const OrderBuilder = ({ customerName, tableId, pax }) => {
       window.dispatchEvent(new Event("kds-sync-products"));
       window.dispatchEvent(new Event("kds-sync-tables"));
       resetAfterOrder();
+      onOrderSent?.();
       showToast("Orden enviada a cocina", "success");
     } catch (error) {
       const errorMsg = error.response?.data?.error || "Error de conexion";

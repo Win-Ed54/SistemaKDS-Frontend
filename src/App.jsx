@@ -10,6 +10,7 @@ import RoleProtectedRoute from "./routes/RoleProtectedRoute";
 
 import {
   onOrderCancelled,
+  onOrderCreated,
   onOrderDelivered,
   onOrderPreparing,
   onOrderReady,
@@ -34,6 +35,7 @@ function App() {
         signalRCleanup.forEach((cleanup) => cleanup?.());
         signalRCleanup = [
           onReceiveOrder(),
+          onOrderCreated(),
           onOrderPreparing(),
           onOrderReady(),
           onOrderDelivered(),

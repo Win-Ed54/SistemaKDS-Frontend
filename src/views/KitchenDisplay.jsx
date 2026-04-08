@@ -18,7 +18,6 @@ const toStatusNumber = (status) => {
 const COLUMNS = [
   { key: "pending", title: "Pendiente", status: 0, accent: "#FFFF00" },
   { key: "preparing", title: "Preparando", status: 1, accent: "#00FFFF" },
-  { key: "ready", title: "Listo", status: 2, accent: "#39FF14" },
 ];
 
 const HEADER_H = 73;
@@ -44,7 +43,6 @@ const KitchenDisplay = () => {
   const grouped = {
     0: normalized.filter((order) => order.status === 0).sort(byTime),
     1: normalized.filter((order) => order.status === 1).sort(byTime),
-    2: normalized.filter((order) => order.status === 2).sort(byTime),
   };
 
   const handleLogout = () => {
@@ -148,7 +146,7 @@ const KitchenDisplay = () => {
         style={{
           flex: 1,
           display: "grid",
-          gridTemplateColumns: "1fr 1fr 1fr",
+          gridTemplateColumns: `repeat(${COLUMNS.length}, minmax(0, 1fr))`,
           overflow: "hidden",
         }}
       >

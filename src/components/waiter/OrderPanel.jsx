@@ -8,7 +8,7 @@ const normalizeCustomerName = (value) =>
     .replace(/\s+/g, " ")
     .slice(0, 60);
 
-const OrderPanel = ({ pax, tableId }) => {
+const OrderPanel = ({ pax, tableId, onOrderSent }) => {
   const [customerName, setCustomerName] = useState("");
 
   return (
@@ -70,7 +70,7 @@ const OrderPanel = ({ pax, tableId }) => {
       </div>
 
       <div className="flex-1 overflow-hidden">
-        <OrderBuilder customerName={customerName} tableId={tableId} pax={pax} />
+        <OrderBuilder customerName={customerName} tableId={tableId} pax={pax} onOrderSent={onOrderSent} />
       </div>
 
       <p className="mt-4 text-[9px] text-center font-black text-slate-700 uppercase tracking-widest">

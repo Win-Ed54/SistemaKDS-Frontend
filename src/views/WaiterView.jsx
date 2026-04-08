@@ -1,11 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  ChevronRight,
+  BellRing,
+  ClipboardList,
   LogOut,
   PackageCheck,
+  ReceiptText,
   Sparkles,
   User,
+  X,
 } from "lucide-react";
 import { logout } from "../services/authService";
 import { useToast } from "../context/ToastContext";
@@ -14,31 +17,37 @@ import useOrderBuilder from "../hooks/useOrderBuilder";
 import useProducts from "../hooks/useProducts";
 import useSignalRConnection from "../hooks/useSignalRConnection";
 import useTables from "../hooks/useTables";
-import {
-  onOrderDelivered,
-  onOrderPaid,
-  onOrderReady,
-} from "../services/signalrService";
-
+import { onOrderDelivered, onOrderPaid, onOrderReady } from "../services/signalrService";
+import useOrderStore from "../store/orderStore";
 import OrderPanel from "../components/waiter/OrderPanel";
 import ProductList from "../components/waiter/ProductList";
 import ReadyOrdersView from "../components/waiter/ReadyOrdersView";
 import TableSelector from "../components/waiter/TableSelector";
 import WaiterProfile from "../components/waiter/WaiterProfile";
 
+const TABS = [
+  { id: "ordenar", label: "Nueva orden", icon: ReceiptText },
+  { id: "listas", label: "Entregar", icon: BellRing },
+  { id: "limpieza", label: "Limpiar", icon: Sparkles },
+  { id: "actividad", label: "Mis ordenes", icon: ClipboardList },
+];
+
 const WaiterView = () => {
   const navigate = useNavigate();
   const { isConnected } = useSignalRConnection("waiter", "admin");
   const { products } = useProducts();
   const { tables } = useTables();
-  const { tableId } = useOrderBuilder();
+  const { tableId, items } = useOrderBuilder();
+  const ordersFromStore = useOrderStore((state) => state.orders);
   const { showToast } = useToast();
 
   const [showProfile, setShowProfile] = useState(false);
   const [activeCategory, setActiveCategory] = useState("Todas");
+  const [activeTab, setActiveTab] = useState("ordenar");
   const [pax, setPax] = useState("");
   const [stats, setStats] = useState({ created: 0, delivered: 0 });
   const [cleanupOrders, setCleanupOrders] = useState([]);
+  const [myActiveOrders, setMyActiveOrders] = useState([]);
   const [cleaningTables, setCleaningTables] = useState({});
   const [isCartOpen, setIsCartOpen] = useState(false);
 
@@ -53,6 +62,7 @@ const WaiterView = () => {
         delivered: summary?.totalDelivered || summary?.deliveredToday || 0,
       });
       setCleanupOrders(Array.isArray(summary?.pendingCleanupOrders) ? summary.pendingCleanupOrders : []);
+      setMyActiveOrders(Array.isArray(summary?.myActiveOrders) ? summary.myActiveOrders : []);
     } catch (error) {
       console.error("Error al sincronizar datos:", error);
     }
@@ -93,6 +103,16 @@ const WaiterView = () => {
     return Array.from(latestByTable.values()).sort((a, b) => a.tableNumber - b.tableNumber);
   }, [cleanupOrders, tables]);
 
+  const readyOrders = useMemo(
+    () =>
+      ordersFromStore.filter((order) => {
+        const isMine = order.waiterName?.toLowerCase().trim() === waiterName.toLowerCase().trim();
+        const isReady = order.status === 2 || String(order.status).toLowerCase() === "ready";
+        return isMine && isReady;
+      }),
+    [ordersFromStore, waiterName]
+  );
+
   const categories = useMemo(
     () => ["Todas", ...new Set(products.map((product) => product.category).filter(Boolean))],
     [products]
@@ -104,6 +124,11 @@ const WaiterView = () => {
         ? products
         : products.filter((product) => product.category === activeCategory),
     [activeCategory, products]
+  );
+
+  const cartTotal = useMemo(
+    () => items.reduce((acc, item) => acc + item.price * item.quantity, 0),
+    [items]
   );
 
   const handlePaxChange = (event) => {
@@ -187,191 +212,425 @@ const WaiterView = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white selection:bg-[#00FFFF]">
-      <header className="sticky top-0 z-40 bg-slate-950/80 backdrop-blur-md p-2 lg:p-6">
-        <div className="max-w-[1600px] mx-auto flex justify-between items-center bg-slate-900/50 border border-slate-800/50 p-3 lg:p-4 rounded-3xl shadow-2xl">
-          <div onClick={() => setShowProfile(true)} className="flex items-center gap-3 cursor-pointer group">
-            <div className="w-10 h-10 rounded-xl bg-slate-800 border border-cyan-500/20 flex items-center justify-center group-hover:border-cyan-400 transition-all">
-              <User className="text-cyan-400 w-5 h-5" />
-            </div>
-            <div className="hidden sm:block">
-              <h1 className="text-lg font-black tracking-tighter uppercase leading-none">
-                KDS <span className="text-cyan-400">Terminal</span>
-              </h1>
-              <p className="text-[8px] text-slate-500 font-bold uppercase tracking-[0.3em] mt-1">
-                Operador: {waiterName}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <div className={`flex items-center gap-2 px-4 py-2 rounded-full border ${isConnected ? "border-emerald-500/30 bg-emerald-950/20" : "border-red-500/20 bg-red-950/20"}`}>
-              <div className={`w-2 h-2 rounded-full ${isConnected ? "bg-emerald-500 shadow-[0_0_8px_#10b981]" : "bg-red-500"}`} />
-              <span className={`text-[10px] font-black uppercase tracking-wider ${isConnected ? "text-emerald-400" : "text-red-400"}`}>
-                {isConnected ? "En linea" : "Sin conexion"}
-              </span>
-            </div>
-
-            <div className="hidden sm:flex items-center gap-6 px-6 border-r border-slate-800/50">
-              <div className="text-right">
-                <p className="text-[8px] text-slate-500 font-black uppercase tracking-widest">Hoy</p>
-                <p className="text-sm font-black mt-1">{stats.created}</p>
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(34,211,238,0.10),_transparent_28%),linear-gradient(180deg,_#020617_0%,_#0f172a_100%)] text-white selection:bg-cyan-400/30">
+      <header className="sticky top-0 z-50 px-3 pt-3 lg:px-6 lg:pt-6 backdrop-blur-md">
+        <div className="max-w-[1600px] mx-auto rounded-[2rem] border border-slate-800 bg-slate-900/85 shadow-2xl p-4 lg:p-5">
+          <div className="flex items-start justify-between gap-4">
+            <button onClick={() => setShowProfile(true)} className="flex items-center gap-3 text-left">
+              <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
+                <User className="w-5 h-5 text-cyan-300" />
               </div>
-              <div className="text-right">
-                <p className="text-[8px] text-cyan-500 font-black uppercase tracking-widest">Entregadas</p>
-                <p className="text-sm font-black text-cyan-400 mt-1">{stats.delivered}</p>
+              <div>
+                <h1 className="text-lg sm:text-2xl font-black tracking-tighter uppercase leading-none">
+                  KDS <span className="text-cyan-400">Terminal</span>
+                </h1>
+                <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.28em] mt-1">
+                  Operador: {waiterName}
+                </p>
               </div>
-            </div>
-
-            <button
-              onClick={handleLogout}
-              className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-300 text-[10px] font-black uppercase tracking-[0.2em] hover:bg-red-500 hover:text-white transition-all"
-            >
-              <LogOut className="w-4 h-4" />
-              <span className="hidden md:block">Cerrar sesion</span>
             </button>
+
+            <div className="flex items-center gap-3">
+              <div
+                className={`flex items-center gap-2 px-4 py-2 rounded-full border ${
+                  isConnected
+                    ? "border-emerald-500/30 bg-emerald-950/20 text-emerald-400"
+                    : "border-red-500/20 bg-red-950/20 text-red-400"
+                }`}
+              >
+                <div className={`w-2 h-2 rounded-full ${isConnected ? "bg-emerald-500" : "bg-red-500"}`} />
+                <span className="text-[10px] font-black uppercase tracking-wider">
+                  {isConnected ? "En linea" : "Sin conexion"}
+                </span>
+              </div>
+
+              <button
+                onClick={handleLogout}
+                className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-300 text-[10px] font-black uppercase tracking-[0.2em] hover:bg-red-500 hover:text-white transition-all"
+              >
+                <LogOut className="w-4 h-4" />
+                <span className="hidden md:block">Cerrar sesion</span>
+              </button>
+            </div>
           </div>
+
         </div>
       </header>
 
-      <main className="p-2 lg:p-6 max-w-[1600px] mx-auto pb-32 space-y-6">
-        {cleanupTasks.length > 0 && (
-          <section className="bg-slate-900/50 border border-emerald-500/20 p-5 rounded-[2rem] shadow-xl">
-            <div className="flex items-center justify-between gap-4 mb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-                  <Sparkles className="w-5 h-5 text-emerald-400" />
-                </div>
-                <div>
-                  <h2 className="text-sm font-black uppercase tracking-[0.25em] text-emerald-300">
-                    Mesas Pagadas Por Limpiar
-                  </h2>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 mt-1">
-                    Caja ya cobro, cuando termines libera la mesa
-                  </p>
-                </div>
-              </div>
-              <span className="text-[10px] font-black uppercase px-3 py-2 rounded-full border border-emerald-500/30 text-emerald-300 bg-emerald-500/10">
-                {cleanupTasks.length} pendientes
-              </span>
-            </div>
+      <main className="max-w-[1600px] mx-auto px-3 pb-32 pt-4 lg:px-6 lg:pb-10 space-y-5">
+        <section className="sticky top-[92px] lg:top-[108px] z-40 rounded-[2rem] border border-slate-800 bg-slate-900/90 backdrop-blur-md p-2 shadow-xl overflow-x-auto no-scrollbar">
+          <div className="flex gap-2 min-w-max">
+            {TABS.map((tab) => {
+              const Icon = tab.icon;
+              const count =
+                tab.id === "listas"
+                  ? readyOrders.length
+                  : tab.id === "limpieza"
+                    ? cleanupTasks.length
+                    : tab.id === "actividad"
+                      ? myActiveOrders.length
+                      : items.length;
 
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {cleanupTasks.map((order) => (
-                <div key={`${order.id}-${order.tableNumber}`} className="bg-slate-950 border border-slate-800 rounded-[1.75rem] p-5 space-y-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Mesa</p>
-                      <p className="text-3xl font-black text-white leading-none mt-1">{order.tableNumber}</p>
-                    </div>
-                    <span className="text-[9px] font-black uppercase px-3 py-1.5 rounded-full border border-emerald-500/30 text-emerald-300 bg-emerald-500/10">
-                      Pagada
-                    </span>
-                  </div>
-
-                  <div>
-                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Cliente</p>
-                    <p className="text-sm font-black uppercase text-slate-100 mt-1">
-                      {order.customerName || "General"}
-                    </p>
-                  </div>
-
-                  <button
-                    onClick={() => handleCleanupTable(order.tableNumber)}
-                    disabled={cleaningTables[order.tableNumber]}
-                    className="w-full py-3 rounded-2xl bg-emerald-400 text-slate-950 font-black uppercase text-[10px] tracking-[0.2em] hover:bg-emerald-300 active:scale-95 transition-all disabled:opacity-50"
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-[1.4rem] transition-all border ${
+                    activeTab === tab.id
+                      ? "bg-cyan-400 text-slate-950 border-cyan-300 shadow-[0_10px_30px_rgba(34,211,238,0.25)]"
+                      : "bg-slate-950/70 text-slate-300 border-slate-800 hover:border-cyan-500/30"
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span className="text-[11px] font-black uppercase tracking-[0.18em]">
+                    {tab.label}
+                  </span>
+                  <span
+                    className={`min-w-7 h-7 px-2 rounded-full inline-flex items-center justify-center text-[10px] font-black ${
+                      activeTab === tab.id ? "bg-slate-950/15 text-slate-950" : "bg-slate-800 text-cyan-300"
+                    }`}
                   >
-                    {cleaningTables[order.tableNumber] ? "Liberando..." : "Termine de limpiar"}
-                  </button>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        {activeTab === "ordenar" && (
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 items-start">
+            <div className="xl:col-span-8 2xl:col-span-9 space-y-5">
+              <section className="rounded-[2rem] border border-slate-800 bg-slate-900/60 p-5 shadow-xl">
+                <div className="flex items-center justify-between gap-3 mb-5">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.28em] text-slate-500">
+                      Nueva orden
+                    </p>
+                    <h2 className="text-xl font-black tracking-tighter uppercase text-white mt-2">
+                      
+                    </h2>
+                  </div>
+
+                  {items.length > 0 && (
+                    <button
+                      onClick={() => setIsCartOpen(true)}
+                      className="xl:hidden inline-flex items-center gap-2 px-4 py-3 rounded-2xl bg-cyan-400 text-slate-950 font-black uppercase text-[10px] tracking-[0.2em]"
+                    >
+                      <PackageCheck className="w-4 h-4" />
+                      Ver orden
+                    </button>
+                  )}
                 </div>
-              ))}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <StepCard
+                    step="1"
+                    title="Selecciona mesa"
+                    subtitle="Solo se muestran libres para evitar errores"
+                  >
+                    <TableSelector tables={tables} />
+                  </StepCard>
+
+                  <StepCard
+                    step="2"
+                    title={`Comensales${currentTable ? ` de mesa ${tableId}` : ""}`}
+                    subtitle={`Capacidad maxima: ${maxCapacity}`}
+                  >
+                    <input
+                      type="number"
+                      value={pax}
+                      onChange={handlePaxChange}
+                      onKeyDown={(event) => {
+                        if (["e", "E", "+", "-", "."].includes(event.key)) {
+                          event.preventDefault();
+                        }
+                      }}
+                      placeholder="Cantidad de clientes"
+                      inputMode="numeric"
+                      min="1"
+                      max={maxCapacity}
+                      step="1"
+                      className="w-full bg-slate-950 border-2 border-slate-800 rounded-[1.4rem] p-4 font-black text-2xl text-[#FFFF00] outline-none transition-all focus:border-[#FFFF00]"
+                    />
+                  </StepCard>
+                </div>
+              </section>
+
+              <section className="rounded-[2rem] border border-slate-800 bg-slate-900/60 p-5 shadow-xl">
+                <div className="flex items-center justify-between gap-3 mb-5">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.28em] text-slate-500">
+                      Productos
+                    </p>
+                    <h2 className="text-xl font-black tracking-tighter uppercase text-white mt-2">
+                      
+                    </h2>
+                  </div>
+                  <div className="px-3 py-2 rounded-full bg-slate-950 border border-slate-800 text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300">
+                    {filteredProducts.length} visibles
+                  </div>
+                </div>
+
+                <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar mb-5">
+                  {categories.map((category) => (
+                    <button
+                      key={category}
+                      onClick={() => setActiveCategory(category)}
+                      className={`px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.18em] transition-all whitespace-nowrap ${
+                        activeCategory === category
+                          ? "bg-cyan-400 text-slate-950"
+                          : "bg-slate-950 text-slate-400 border border-slate-800"
+                      }`}
+                    >
+                      {category}
+                    </button>
+                  ))}
+                </div>
+
+                <ProductList products={filteredProducts} />
+              </section>
             </div>
+
+            <aside className="hidden xl:block xl:col-span-4 2xl:col-span-3 sticky top-[220px]">
+              <OrderPanel pax={pax} tableId={tableId} onOrderSent={() => setIsCartOpen(false)} />
+            </aside>
+          </div>
+        )}
+
+        {activeTab === "listas" && (
+          <section className="space-y-5">
+            <SurfaceHeader
+              eyebrow="Entregas"
+              title="Pedidos listos para llevar a mesa"
+              badge={`${readyOrders.length} pendientes`}
+            />
+            <ReadyOrdersView variant="inline" />
           </section>
         )}
 
-        <div className="flex flex-col lg:grid lg:grid-cols-12 gap-6">
-          <div className="lg:col-span-7 xl:col-span-8 space-y-6">
-            <section className="bg-slate-900/50 border border-slate-800 p-6 rounded-[2.5rem] shadow-xl">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="space-y-3">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">
-                    1. Seleccionar Mesa
-                  </label>
-                  <TableSelector tables={tables} />
-                </div>
-                <div className="space-y-3">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-2">
-                    2. Personas (Max: {maxCapacity})
-                  </label>
-                  <input
-                    type="number"
-                    value={pax}
-                    onChange={handlePaxChange}
-                    onKeyDown={(event) => {
-                      if (["e", "E", "+", "-", "."].includes(event.key)) {
-                        event.preventDefault();
-                      }
-                    }}
-                    placeholder="Pax..."
-                    inputMode="numeric"
-                    min="1"
-                    max={maxCapacity}
-                    step="1"
-                    className="w-full bg-slate-950 border-2 border-slate-800 rounded-2xl p-4 font-black text-2xl text-[#FFFF00] outline-none transition-all focus:border-[#FFFF00]"
-                  />
-                </div>
-              </div>
-            </section>
+        {activeTab === "limpieza" && (
+          <section className="space-y-5">
+            <SurfaceHeader
+              eyebrow="Limpieza"
+              title="Mesas cobradas que ya puedes liberar"
+              badge={`${cleanupTasks.length} pendientes`}
+            />
 
-            <section className="bg-slate-900/50 border border-slate-800 p-6 rounded-[2.5rem] shadow-xl">
-              <div className="flex gap-2 mb-6 overflow-x-auto pb-2 no-scrollbar">
-                {categories.map((category) => (
-                  <button
-                    key={category}
-                    onClick={() => setActiveCategory(category)}
-                    className={`px-5 py-3 rounded-xl text-[10px] font-black uppercase transition-all ${
-                      activeCategory === category ? "bg-[#00FFFF] text-black" : "bg-slate-800 text-slate-500"
-                    }`}
-                  >
-                    {category}
-                  </button>
+            {cleanupTasks.length === 0 ? (
+              <EmptyState
+                title="No hay mesas pendientes"
+                subtitle="Cuando caja cobre una orden, la veras aqui para limpieza."
+              />
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {cleanupTasks.map((order) => (
+                  <div key={`${order.id}-${order.tableNumber}`} className="rounded-[2rem] border border-emerald-500/20 bg-slate-900/70 p-5 shadow-xl">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Mesa</p>
+                        <p className="text-4xl font-black text-white mt-2 leading-none">{order.tableNumber}</p>
+                      </div>
+                      <span className="text-[9px] font-black uppercase px-3 py-1.5 rounded-full border border-emerald-500/30 text-emerald-300 bg-emerald-500/10">
+                        Pagada
+                      </span>
+                    </div>
+
+                    <div className="mt-5 space-y-3">
+                      <div className="rounded-[1.4rem] border border-slate-800 bg-slate-950/70 p-4">
+                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Cliente</p>
+                        <p className="text-sm font-black uppercase text-slate-100 mt-2">
+                          {order.customerName || "General"}
+                        </p>
+                      </div>
+
+                      <button
+                        onClick={() => handleCleanupTable(order.tableNumber)}
+                        disabled={cleaningTables[order.tableNumber]}
+                        className="w-full py-4 rounded-[1.4rem] bg-emerald-400 text-slate-950 font-black uppercase text-[11px] tracking-[0.2em] hover:bg-emerald-300 active:scale-95 transition-all disabled:opacity-50"
+                      >
+                        {cleaningTables[order.tableNumber] ? "Liberando..." : "Termine de limpiar"}
+                      </button>
+                    </div>
+                  </div>
                 ))}
               </div>
-              <ProductList products={filteredProducts} />
-            </section>
-          </div>
+            )}
+          </section>
+        )}
 
-          <aside
-            className={`fixed lg:sticky top-0 lg:top-[100px] right-0 z-50 w-[90vw] sm:w-[450px] lg:w-full h-full lg:h-[calc(100vh-130px)] bg-slate-900 lg:bg-transparent transition-transform duration-500 shadow-2xl lg:shadow-none ${
-              isCartOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0"
-            } lg:col-span-5 xl:col-span-4`}
-          >
-            <button
-              onClick={() => setIsCartOpen(false)}
-              className="lg:hidden absolute top-1/2 -left-12 w-12 h-16 bg-slate-900 border border-slate-800 border-r-0 rounded-l-3xl flex items-center justify-center text-cyan-400 shadow-xl"
-            >
-              <ChevronRight className="w-8 h-8" />
-            </button>
+        {activeTab === "actividad" && (
+          <section className="space-y-5">
+            <SurfaceHeader
+              eyebrow="Seguimiento"
+              title="Tus ordenes activas y el estado de turno"
+              badge={`${myActiveOrders.length} activas`}
+            />
 
-            <div className="h-full overflow-y-auto no-scrollbar">
-              <OrderPanel pax={pax} tableId={tableId} onOrderSent={() => setIsCartOpen(false)} />
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <MetricCard label="Creadas hoy" value={stats.created} accent="text-white" />
+              <MetricCard label="Entregadas" value={stats.delivered} accent="text-emerald-300" />
+              <MetricCard label="En cocina" value={myActiveOrders.filter((o) => [0, 1].includes(Number(o.status))).length} accent="text-yellow-300" />
+              <MetricCard label="Esperando entrega" value={readyOrders.length} accent="text-cyan-300" />
             </div>
-          </aside>
 
-          <button
-            onClick={() => setIsCartOpen(true)}
-            className={`fixed bottom-6 right-6 z-40 lg:hidden w-16 h-16 rounded-full bg-[#00FFFF] text-black shadow-2xl flex items-center justify-center transition-all ${
-              isCartOpen ? "scale-0" : "scale-100"
-            }`}
-          >
-            <PackageCheck className="w-8 h-8" />
-          </button>
-        </div>
+            {myActiveOrders.length === 0 ? (
+              <EmptyState
+                title="No tienes ordenes activas"
+                subtitle="Cuando abras mesas o cocina avance tus pedidos, apareceran aqui."
+              />
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+                {myActiveOrders.map((order) => (
+                  <div key={order.id} className="rounded-[2rem] border border-slate-800 bg-slate-900/70 p-5 shadow-xl">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Mesa</p>
+                        <p className="text-3xl font-black text-white mt-2 leading-none">{order.tableNumber}</p>
+                      </div>
+                      <StatusBadge status={order.status} />
+                    </div>
+
+                    <div className="mt-5 rounded-[1.4rem] border border-slate-800 bg-slate-950/70 p-4 space-y-3">
+                      <div>
+                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Cliente</p>
+                        <p className="text-sm font-black uppercase text-slate-100 mt-2">
+                          {order.customerName || "General"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Productos</p>
+                        <div className="mt-2 space-y-1">
+                          {order.items?.slice(0, 3).map((item, index) => (
+                            <p key={`${order.id}-${index}`} className="text-xs font-bold text-slate-300">
+                              {item.quantity}x {item.productName}
+                            </p>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
       </main>
 
+      {activeTab === "ordenar" && items.length > 0 && (
+        <button
+          onClick={() => setIsCartOpen(true)}
+          className="xl:hidden fixed bottom-5 left-3 right-3 z-40 rounded-[1.6rem] bg-cyan-400 text-slate-950 shadow-[0_18px_50px_rgba(34,211,238,0.35)] px-5 py-4 flex items-center justify-between"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-slate-950/10 flex items-center justify-center">
+              <PackageCheck className="w-5 h-5" />
+            </div>
+            <div className="text-left">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em]">Orden actual</p>
+              <p className="text-xs font-black uppercase">{items.length} lineas en carrito</p>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="text-lg font-black">${cartTotal.toFixed(2)}</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.18em]">Abrir</p>
+          </div>
+        </button>
+      )}
+
+      {activeTab === "ordenar" && (
+        <aside
+          className={`xl:hidden fixed inset-y-0 right-0 z-50 w-[92vw] max-w-[460px] bg-slate-950 border-l border-slate-800 shadow-2xl transition-transform duration-500 ${
+            isCartOpen ? "translate-x-0" : "translate-x-full"
+          }`}
+        >
+          <div className="h-full overflow-y-auto p-3">
+            <div className="flex items-center justify-between mb-3 px-1">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">
+                  Orden actual
+                </p>
+                <p className="text-sm font-black uppercase text-white mt-1">
+                  Panel de confirmacion
+                </p>
+              </div>
+              <button
+                onClick={() => setIsCartOpen(false)}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-slate-900 border border-slate-800 text-slate-300 text-[10px] font-black uppercase tracking-[0.18em] hover:border-cyan-500/30 hover:text-white transition-all"
+              >
+                <X className="w-4 h-4" />
+                Cerrar
+              </button>
+            </div>
+            <OrderPanel pax={pax} tableId={tableId} onOrderSent={() => setIsCartOpen(false)} />
+          </div>
+        </aside>
+      )}
+
       {showProfile && <WaiterProfile user={currentUser} onClose={() => setShowProfile(false)} />}
-      <ReadyOrdersView />
     </div>
+  );
+};
+
+const MetricCard = ({ label, value, accent }) => (
+  <div className="rounded-[1.5rem] border border-slate-800 bg-slate-950/75 p-4">
+    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">{label}</p>
+    <p className={`text-2xl sm:text-3xl font-black mt-3 ${accent}`}>{value}</p>
+  </div>
+);
+
+const StepCard = ({ step, title, subtitle, children }) => (
+  <div className="rounded-[1.8rem] border border-slate-800 bg-slate-950/70 p-4 md:p-5">
+    <div className="flex items-start gap-4 mb-4">
+      <div className="w-10 h-10 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 text-sm font-black flex items-center justify-center shrink-0">
+        {step}
+      </div>
+      <div>
+        <h3 className="text-sm font-black uppercase tracking-[0.18em] text-white">{title}</h3>
+        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 mt-1">{subtitle}</p>
+      </div>
+    </div>
+    {children}
+  </div>
+);
+
+const SurfaceHeader = ({ eyebrow, title, badge }) => (
+  <div className="rounded-[2rem] border border-slate-800 bg-slate-900/60 p-5 shadow-xl flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div>
+      <p className="text-[10px] font-black uppercase tracking-[0.28em] text-slate-500">{eyebrow}</p>
+      <h2 className="text-xl font-black tracking-tighter uppercase text-white mt-2">{title}</h2>
+    </div>
+    <div className="px-4 py-2 rounded-full border border-cyan-500/20 bg-cyan-500/10 text-cyan-300 text-[10px] font-black uppercase tracking-[0.2em]">
+      {badge}
+    </div>
+  </div>
+);
+
+const EmptyState = ({ title, subtitle }) => (
+  <div className="rounded-[2rem] border border-dashed border-slate-800 bg-slate-900/40 p-12 text-center">
+    <p className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-400">{title}</p>
+    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-600 mt-3">{subtitle}</p>
+  </div>
+);
+
+const StatusBadge = ({ status }) => {
+  const numeric = typeof status === "string"
+    ? { pending: 0, preparing: 1, ready: 2, delivered: 3 }[status.toLowerCase()]
+    : status;
+
+  const config = {
+    0: { text: "Pendiente", className: "text-yellow-300 bg-yellow-400/10 border-yellow-400/20" },
+    1: { text: "Preparando", className: "text-cyan-300 bg-cyan-400/10 border-cyan-400/20" },
+    2: { text: "Lista", className: "text-emerald-300 bg-emerald-400/10 border-emerald-400/20" },
+    3: { text: "Entregada", className: "text-slate-300 bg-slate-700/40 border-slate-700" },
+  };
+
+  const current = config[numeric] || config[0];
+
+  return (
+    <span className={`text-[9px] font-black uppercase px-3 py-2 rounded-full border ${current.className}`}>
+      {current.text}
+    </span>
   );
 };
 

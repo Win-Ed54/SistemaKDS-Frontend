@@ -32,6 +32,14 @@ const useOrderStore = create(
       updateOrder: (order) =>
         set((state) => {
           const normalized = normalizeOrder(order);
+          const exists = state.orders.some((o) => getId(o) === normalized.id);
+
+          if (!exists) {
+            return {
+              orders: [normalized, ...state.orders],
+            };
+          }
+
           return {
             orders: state.orders.map((o) =>
               getId(o) === normalized.id ? { ...o, ...normalized } : o

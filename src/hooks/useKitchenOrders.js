@@ -1,7 +1,15 @@
 import { useCallback, useEffect } from "react";
 import useOrderStore from "../store/orderStore";
 import { getActiveOrders } from "../services/api.service";
-import { subscribeConnectionStatus } from "../services/signalrService";
+import {
+  onOrderCancelled,
+  onOrderCreated,
+  onOrderDelivered,
+  onOrderPreparing,
+  onOrderReady,
+  onReceiveOrder,
+  subscribeConnectionStatus,
+} from "../services/signalrService";
 
 const useKitchenOrders = () => {
   const { orders, setOrders, purgeInactive } = useOrderStore();
@@ -39,9 +47,39 @@ const useKitchenOrders = () => {
       }
     });
 
+    const unsubscribeReceiveOrder = onReceiveOrder(() => {
+      if (mounted) void syncActiveOrders();
+    });
+
+    const unsubscribeOrderCreated = onOrderCreated(() => {
+      if (mounted) void syncActiveOrders();
+    });
+
+    const unsubscribePreparing = onOrderPreparing(() => {
+      if (mounted) void syncActiveOrders();
+    });
+
+    const unsubscribeReady = onOrderReady(() => {
+      if (mounted) void syncActiveOrders();
+    });
+
+    const unsubscribeDelivered = onOrderDelivered(() => {
+      if (mounted) void syncActiveOrders();
+    });
+
+    const unsubscribeCancelled = onOrderCancelled(() => {
+      if (mounted) void syncActiveOrders();
+    });
+
     return () => {
       mounted = false;
       unsubscribeConnection?.();
+      unsubscribeReceiveOrder?.();
+      unsubscribeOrderCreated?.();
+      unsubscribePreparing?.();
+      unsubscribeReady?.();
+      unsubscribeDelivered?.();
+      unsubscribeCancelled?.();
     };
   }, [purgeInactive, setOrders, syncActiveOrders]);
 
