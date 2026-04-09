@@ -17,6 +17,18 @@ import StatsCard from "../components/admin/StatsCard";
 import TableStatus from "../components/admin/TableStatus";
 import TopProductsReport from "../components/admin/TopProductsReport";
 
+const isSameLocalDay = (value, referenceDate = new Date()) => {
+  if (!value) return false;
+
+  const target = new Date(value);
+
+  return (
+    target.getFullYear() === referenceDate.getFullYear() &&
+    target.getMonth() === referenceDate.getMonth() &&
+    target.getDate() === referenceDate.getDate()
+  );
+};
+
 const AdminView = () => {
   const [orders, setOrders] = useState([]);
   const [tables, setTables] = useState([]);
@@ -100,6 +112,7 @@ const AdminView = () => {
       "orderready",
       "orderpreparing",
       "orderdelivered",
+      "orderpaid",
       "ordercancelled",
       "tablesupdated",
     ];
@@ -141,7 +154,7 @@ const AdminView = () => {
       .filter((order) => {
         const status = typeof order.status === "string" ? order.status.toLowerCase() : order.status;
         const isDelivered = status === 3 || status === "delivered";
-        return isDelivered && order.isPaid;
+        return isDelivered && order.isPaid && isSameLocalDay(order.paidAt);
       })
       .reduce(
         (acc, order) =>

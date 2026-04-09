@@ -12,6 +12,9 @@ const toStatusNumber = (status) => {
   return map[String(status).toLowerCase()] ?? -1;
 };
 
+const getOrderLocationLabel = (order) =>
+  Number(order?.tableNumber) > 0 ? `Mesa ${order.tableNumber}` : "Para llevar";
+
 // ============================
 // UI STATUS
 // ============================
@@ -126,7 +129,7 @@ const OrdersSummary = ({ orders, onOrderCancelled }) => {
                 <div className="flex justify-between mb-4">
                   <div>
                     <h4 className="text-xl font-black text-white uppercase">
-                      Mesa {order.tableNumber}
+                      {getOrderLocationLabel(order)}
                     </h4>
                     <p className="text-[10px] text-slate-500 uppercase">
                       {order.waiterName} · {order.customerName}

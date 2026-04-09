@@ -32,6 +32,18 @@ const TABS = [
   { id: "actividad", label: "Mis ordenes", icon: ClipboardList },
 ];
 
+const CATEGORY_IMAGE_MAP = {
+  Hamburguesas: encodeURI("/assets/images/categoria/carne.jpg"),
+  Pollo: encodeURI("/assets/images/categoria/pollo.jpg"),
+  "Acompañamientos": encodeURI("/assets/images/categoria/acompañamientos.jpg"),
+  Postres: encodeURI("/assets/images/categoria/postres.jpg"),
+  Bebidas: encodeURI("/assets/images/categoria/bebidas.jpg"),
+  Ensaladas: encodeURI("/assets/images/categoria/ensaladas.jpg"),
+};
+
+const getOrderLocationLabel = (order) =>
+  Number(order?.tableNumber) > 0 ? `Mesa ${order.tableNumber}` : "Para llevar";
+
 const WaiterView = () => {
   const navigate = useNavigate();
   const { isConnected } = useSignalRConnection("waiter", "admin");
@@ -39,6 +51,7 @@ const WaiterView = () => {
   const { tables } = useTables();
   const { tableId, items } = useOrderBuilder();
   const ordersFromStore = useOrderStore((state) => state.orders);
+  const setOrderStore = useOrderStore((state) => state.setOrders);
   const { showToast } = useToast();
 
   const [showProfile, setShowProfile] = useState(false);
@@ -62,11 +75,13 @@ const WaiterView = () => {
         delivered: summary?.totalDelivered || summary?.deliveredToday || 0,
       });
       setCleanupOrders(Array.isArray(summary?.pendingCleanupOrders) ? summary.pendingCleanupOrders : []);
-      setMyActiveOrders(Array.isArray(summary?.myActiveOrders) ? summary.myActiveOrders : []);
+      const activeOrders = Array.isArray(summary?.myActiveOrders) ? summary.myActiveOrders : [];
+      setMyActiveOrders(activeOrders);
+      setOrderStore(activeOrders);
     } catch (error) {
       console.error("Error al sincronizar datos:", error);
     }
-  }, []);
+  }, [setOrderStore]);
 
   const currentTable = useMemo(
     () =>
@@ -116,6 +131,19 @@ const WaiterView = () => {
   const categories = useMemo(
     () => ["Todas", ...new Set(products.map((product) => product.category).filter(Boolean))],
     [products]
+  );
+
+  const visualCategories = useMemo(
+    () =>
+      categories
+        .filter((category) => category !== "Todas")
+        .map((category) => ({
+          id: category,
+          label: category,
+          image: CATEGORY_IMAGE_MAP[category] || null,
+          total: products.filter((product) => product.category === category).length,
+        })),
+    [categories, products]
   );
 
   const filteredProducts = useMemo(
@@ -180,7 +208,7 @@ const WaiterView = () => {
     });
 
     const unsubscribeReady = onOrderReady((order) => {
-      showToast(`Mesa ${order?.tableNumber ?? ""} esta LISTA`, "success");
+      showToast(`${getOrderLocationLabel(order)} esta LISTA`, "success");
       loadWaiterData();
     });
 
@@ -189,7 +217,9 @@ const WaiterView = () => {
     });
 
     const unsubscribePaid = onOrderPaid((order) => {
-      showToast(`Mesa ${order?.tableNumber ?? ""} pagada, lista para limpieza`, "success");
+      if (Number(order?.tableNumber) > 0) {
+        showToast(`${getOrderLocationLabel(order)} pagada, lista para limpieza`, "success");
+      }
       loadWaiterData();
     });
 
@@ -372,20 +402,79 @@ const WaiterView = () => {
                   </div>
                 </div>
 
-                <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar mb-5">
-                  {categories.map((category) => (
-                    <button
-                      key={category}
-                      onClick={() => setActiveCategory(category)}
-                      className={`px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.18em] transition-all whitespace-nowrap ${
-                        activeCategory === category
-                          ? "bg-cyan-400 text-slate-950"
-                          : "bg-slate-950 text-slate-400 border border-slate-800"
-                      }`}
-                    >
-                      {category}
-                    </button>
-                  ))}
+                <div className="mb-5">
+                  <div className="flex items-center justify-between gap-3 mb-3">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">
+                        Navegacion visual
+                      </p>
+                      <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-300 mt-2">
+                        Toca una imagen para filtrar por categoria
+                      </p>
+                    </div>
+
+                    {activeCategory !== "Todas" && (
+                      <button
+                        onClick={() => setActiveCategory("Todas")}
+                        className="px-4 py-2 rounded-xl bg-slate-950 text-slate-300 border border-slate-800 text-[10px] font-black uppercase tracking-[0.18em] hover:border-cyan-500/30"
+                      >
+                        Ver todas
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                    {visualCategories.map((category) => {
+                      const isActive = activeCategory === category.id;
+
+                      return (
+                        <button
+                          key={category.id}
+                          onClick={() => setActiveCategory(category.id)}
+                          className={`group relative overflow-hidden rounded-[1.8rem] border text-left transition-all ${
+                            isActive
+                              ? "border-cyan-300 shadow-[0_16px_40px_rgba(34,211,238,0.24)]"
+                              : "border-slate-800 hover:border-cyan-500/30"
+                          }`}
+                        >
+                          <div className="absolute inset-0 bg-slate-950" />
+
+                          {category.image ? (
+                            <img
+                              src={category.image}
+                              alt={category.label}
+                              className="relative h-44 w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                            />
+                          ) : (
+                            <div className="relative h-44 w-full bg-[linear-gradient(135deg,_rgba(34,211,238,0.18),_rgba(15,23,42,1))]" />
+                          )}
+
+                          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/35 to-transparent" />
+
+                          <div className="absolute left-4 right-4 bottom-4 flex items-end justify-between gap-3">
+                            <div>
+                              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-white">
+                                {category.label}
+                              </p>
+                              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-300 mt-1">
+                                {category.total} productos
+                              </p>
+                            </div>
+
+                            <span
+                              className={`inline-flex items-center rounded-full px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.18em] ${
+                                isActive
+                                  ? "bg-cyan-300 text-slate-950"
+                                  : "bg-slate-950/80 text-cyan-300 border border-slate-700"
+                              }`}
+                            >
+                              {isActive ? "Activa" : "Seleccionar"}
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 <ProductList products={filteredProducts} />
@@ -429,7 +518,7 @@ const WaiterView = () => {
                     <div className="flex items-start justify-between gap-4">
                       <div>
                         <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Mesa</p>
-                        <p className="text-4xl font-black text-white mt-2 leading-none">{order.tableNumber}</p>
+                        <p className="text-3xl font-black text-white mt-2 leading-none">{getOrderLocationLabel(order)}</p>
                       </div>
                       <span className="text-[9px] font-black uppercase px-3 py-1.5 rounded-full border border-emerald-500/30 text-emerald-300 bg-emerald-500/10">
                         Pagada
@@ -486,7 +575,7 @@ const WaiterView = () => {
                     <div className="flex items-start justify-between gap-4">
                       <div>
                         <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Mesa</p>
-                        <p className="text-3xl font-black text-white mt-2 leading-none">{order.tableNumber}</p>
+                        <p className="text-3xl font-black text-white mt-2 leading-none">{getOrderLocationLabel(order)}</p>
                       </div>
                       <StatusBadge status={order.status} />
                     </div>

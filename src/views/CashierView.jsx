@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useToast } from "../context/ToastContext";
 import useSignalRConnection from "../hooks/useSignalRConnection";
 import { logout } from "../services/authService";
-import { getOrderHistory, getTables, payOrder } from "../services/api.service";
+import { getOrderHistory, payOrder } from "../services/api.service";
 import {
   onOrderDelivered,
   onOrderPaid,
@@ -17,10 +17,12 @@ const formatCurrency = (value) =>
     currency: "USD",
   }).format(value || 0);
 
+const getOrderLocationLabel = (order) =>
+  Number(order?.tableNumber) > 0 ? `Mesa ${order.tableNumber}` : "Para llevar";
+
 const CashierView = () => {
   const navigate = useNavigate();
   const [history, setHistory] = useState([]);
-  const [tables, setTables] = useState([]);
   const [chargingOrders, setChargingOrders] = useState({});
   const [loading, setLoading] = useState(false);
 
@@ -31,9 +33,8 @@ const CashierView = () => {
     if (!silent) setLoading(true);
 
     try {
-      const [historyRes, tablesRes] = await Promise.all([getOrderHistory(), getTables()]);
+      const historyRes = await getOrderHistory();
       setHistory(Array.isArray(historyRes) ? historyRes : []);
-      setTables(Array.isArray(tablesRes) ? tablesRes : []);
     } catch (error) {
       console.error("Error cargando caja:", error);
       if (!silent) showToast("No se pudieron cargar las cuentas pendientes", "error");
@@ -70,20 +71,14 @@ const CashierView = () => {
   };
 
   const pendingPayments = useMemo(() => {
-    const occupiedTables = new Set(
-      tables
-        .filter((table) => table.isOccupied || table.IsOccupied)
-        .map((table) => table.number ?? table.Number)
-    );
-
     return history
       .filter((order) => {
         const status = typeof order.status === "string" ? order.status.toLowerCase() : order.status;
         const isDelivered = status === 3 || status === "delivered";
-        return isDelivered && !order.isPaid && occupiedTables.has(order.tableNumber);
+        return isDelivered && !order.isPaid;
       })
       .sort((a, b) => new Date(b.deliveredAt || b.createdAt) - new Date(a.deliveredAt || a.createdAt));
-  }, [history, tables]);
+  }, [history]);
 
   const totals = useMemo(() => {
     const totalOrders = pendingPayments.length;
@@ -104,11 +99,11 @@ const CashierView = () => {
     try {
       setChargingOrders((prev) => ({ ...prev, [order.id]: true }));
       await payOrder(order.id);
-      showToast(`Mesa ${order.tableNumber} cobrada correctamente`, "success");
+      showToast(`Pedido ${order.id} cobrado correctamente`, "success");
       await loadCashierData(true);
     } catch (error) {
       console.error("Error cobrando orden:", error);
-      showToast(`No se pudo cobrar la mesa ${order.tableNumber}`, "error");
+      showToast(`No se pudo cobrar el pedido ${order.id}`, "error");
     } finally {
       setChargingOrders((prev) => ({ ...prev, [order.id]: false }));
     }
@@ -194,8 +189,10 @@ const CashierView = () => {
                   <article key={order.id} className="bg-slate-950 border border-slate-800 rounded-[2rem] p-5 space-y-5">
                     <div className="flex items-start justify-between gap-4">
                       <div>
-                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Mesa</p>
-                        <p className="text-4xl font-black text-white mt-1">{order.tableNumber}</p>
+                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Pedido</p>
+                        <p className="text-sm font-black text-cyan-300 mt-1 break-all">{order.id}</p>
+                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Ubicacion</p>
+                        <p className="text-4xl font-black text-white mt-1">{getOrderLocationLabel(order)}</p>
                       </div>
                       <div className="text-right">
                         <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Total</p>

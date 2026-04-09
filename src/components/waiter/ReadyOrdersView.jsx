@@ -4,6 +4,9 @@ import { finishOrder } from "../../services/api.service";
 import { useToast } from "../../context/ToastContext";
 import useOrderStore from "../../store/orderStore";
 
+const getOrderLocationLabel = (order) =>
+  Number(order?.tableNumber) > 0 ? `Mesa ${order.tableNumber}` : "Para llevar";
+
 const ReadyOrdersView = ({ variant = "floating" }) => {
   const { showToast } = useToast();
   const ordersFromStore = useOrderStore((state) => state.orders);
@@ -23,7 +26,7 @@ const ReadyOrdersView = ({ variant = "floating" }) => {
     if (readyOrders.length === 0) return;
 
     const latestReady = readyOrders[0];
-    showToast(`Mesa ${latestReady.tableNumber} LISTA`, "success");
+    showToast(`${getOrderLocationLabel(latestReady)} LISTA`, "success");
   }, [readyOrders, showToast]);
 
   const handleDeliver = async (orderId) => {
@@ -71,7 +74,7 @@ const ReadyOrdersView = ({ variant = "floating" }) => {
                   </div>
                   <div>
                     <h4 className="text-2xl font-black text-white leading-none uppercase">
-                      Mesa {order.tableNumber}
+                      {getOrderLocationLabel(order)}
                     </h4>
                     <p className="text-[9px] text-[#39FF14] font-black uppercase tracking-widest mt-1">
                       Lista para entrega
@@ -122,7 +125,7 @@ const ReadyOrdersView = ({ variant = "floating" }) => {
                 </div>
                 <div>
                   <h4 className="text-2xl font-black text-white italic leading-none uppercase">
-                    Mesa {order.tableNumber}
+                    {getOrderLocationLabel(order)}
                   </h4>
                   <p className="text-[9px] text-[#39FF14] font-black uppercase tracking-widest mt-1">
                     Recoger en barra

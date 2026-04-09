@@ -38,8 +38,8 @@ const OrderBuilder = ({ customerName, tableId, pax, onOrderSent }) => {
       return;
     }
 
-    if (!tableId || items.length === 0) {
-      showToast("Seleccione mesa y productos", "error");
+    if (!hasSelectedLocation || items.length === 0) {
+      showToast("Seleccione ubicacion y productos", "error");
       return;
     }
 
@@ -51,7 +51,7 @@ const OrderBuilder = ({ customerName, tableId, pax, onOrderSent }) => {
     if (isSending) return;
 
     const order = {
-      tableNumber: parseInt(tableId, 10),
+      tableNumber: Number.parseInt(tableId, 10),
       waiterName: localStorage.getItem("user_name") || "Mesero",
       customerName: normalizedCustomerName,
       pax: normalizedPax,
@@ -77,14 +77,17 @@ const OrderBuilder = ({ customerName, tableId, pax, onOrderSent }) => {
     }
   };
 
+  const hasSelectedLocation = tableId !== null && tableId !== undefined && tableId !== "";
+
   const isButtonDisabled =
     items.length === 0 ||
     isSending ||
     !normalizeCustomerName(customerName || "") ||
-    !Number.isInteger(Number.parseInt(pax, 10));
+    !Number.isInteger(Number.parseInt(pax, 10)) ||
+    !hasSelectedLocation;
 
   return (
-    <div className="bg-slate-900 border border-slate-800 p-5 rounded-[2.5rem] shadow-2xl backdrop-blur-md flex flex-col h-full">
+    <div className="bg-slate-900 border border-slate-800 p-5 rounded-[2.5rem] shadow-2xl backdrop-blur-md flex flex-col min-h-0">
       <div className="flex items-center justify-between mb-4 border-b border-slate-800 pb-4">
         <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
           Carrito Actual
@@ -99,7 +102,7 @@ const OrderBuilder = ({ customerName, tableId, pax, onOrderSent }) => {
         )}
       </div>
 
-      <div className="flex-1 space-y-3 mb-6 overflow-y-auto pr-2 custom-scrollbar min-h-[200px]">
+      <div className="flex-1 space-y-3 mb-6 overflow-y-auto pr-2 custom-scrollbar min-h-[200px] max-h-[55vh]">
         {items.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-10 opacity-20">
             <ReceiptText className="w-12 h-12 mb-2" />
