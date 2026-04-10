@@ -4,28 +4,28 @@ const CategorySelection = ({ onSelectCategory }) => {
   const categories = [
   {
     id: 'Hamburguesas',
-    name: 'Hamburguesas',
-    image: '/images/categorias/hamburguesas.jpg'
+    name: 'Hamburguesas de carne',
+    image: '/images/categorias/hamburguesas.webp'
   },
   {
     id: 'Pollo',
-    name: 'Pollo',
-    image: '/images/categorias/pollo.jpg'
+    name: 'Hamburguesas de pollo',
+    image: '/images/categorias/pollo.webp'
   },
   {
     id: 'Acompañamientos',
     name: 'Acompañamientos',
-    image: '/images/categorias/acompañamientos.jpg'
+    image: '/images/categorias/acompañamientos.webp'
   },
   {
     id: 'Postres',
     name: 'Postres',
-    image: '/images/categorias/postres.jpg'
+    image: '/images/categorias/postres.webp'
   },
   {
     id: 'Bebidas',
     name: 'Bebidas',
-    image: '/images/categorias/bebidas.jpg'
+    image: '/images/categorias/bebidas.webp'
   },
   {
     id: 'Ensaladas',

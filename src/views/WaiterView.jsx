@@ -9,7 +9,9 @@ import {
   Sparkles,
   User,
   X,
+  ChevronLeft,
 } from "lucide-react";
+
 import { logout } from "../services/authService";
 import { useToast } from "../context/ToastContext";
 import { closeTable, getWaiterSummary } from "../services/api.service";
@@ -17,7 +19,11 @@ import useOrderBuilder from "../hooks/useOrderBuilder";
 import useProducts from "../hooks/useProducts";
 import useSignalRConnection from "../hooks/useSignalRConnection";
 import useTables from "../hooks/useTables";
-import { onOrderDelivered, onOrderPaid, onOrderReady } from "../services/signalrService";
+import {
+  onOrderDelivered,
+  onOrderPaid,
+  onOrderReady,
+} from "../services/signalrService";
 import useOrderStore from "../store/orderStore";
 import OrderPanel from "../components/waiter/OrderPanel";
 import ProductList from "../components/waiter/ProductList";
@@ -33,12 +39,12 @@ const TABS = [
 ];
 
 const CATEGORY_IMAGE_MAP = {
-  Hamburguesas: encodeURI("/assets/images/categoria/carne.jpg"),
-  Pollo: encodeURI("/assets/images/categoria/pollo.jpg"),
-  "Acompañamientos": encodeURI("/assets/images/categoria/acompañamientos.jpg"),
-  Postres: encodeURI("/assets/images/categoria/postres.jpg"),
-  Bebidas: encodeURI("/assets/images/categoria/bebidas.jpg"),
-  Ensaladas: encodeURI("/assets/images/categoria/ensaladas.jpg"),
+  Hamburguesas: encodeURI("/assets/images/categoria/hamburguesas.webp"),
+  Pollo: encodeURI("/assets/images/categoria/pollo.webp"),
+  Acompañamientos: encodeURI("/assets/images/categoria/acompañamientos.webp"),
+  Postres: encodeURI("/assets/images/categoria/postres.webp"),
+  Bebidas: encodeURI("/assets/images/categoria/bebidas.webp"),
+  Ensaladas: encodeURI("/assets/images/categoria/ensaladas.webp"),
 };
 
 const getOrderLocationLabel = (order) =>
@@ -74,8 +80,14 @@ const WaiterView = () => {
         created: summary?.totalCreated || summary?.totalToday || 0,
         delivered: summary?.totalDelivered || summary?.deliveredToday || 0,
       });
-      setCleanupOrders(Array.isArray(summary?.pendingCleanupOrders) ? summary.pendingCleanupOrders : []);
-      const activeOrders = Array.isArray(summary?.myActiveOrders) ? summary.myActiveOrders : [];
+      setCleanupOrders(
+        Array.isArray(summary?.pendingCleanupOrders)
+          ? summary.pendingCleanupOrders
+          : [],
+      );
+      const activeOrders = Array.isArray(summary?.myActiveOrders)
+        ? summary.myActiveOrders
+        : [];
       setMyActiveOrders(activeOrders);
       setOrderStore(activeOrders);
     } catch (error) {
@@ -86,9 +98,12 @@ const WaiterView = () => {
   const currentTable = useMemo(
     () =>
       tables.find(
-        (table) => table.number === tableId || table.id === tableId || table.Number === tableId
+        (table) =>
+          table.number === tableId ||
+          table.id === tableId ||
+          table.Number === tableId,
       ),
-    [tableId, tables]
+    [tableId, tables],
   );
 
   const maxCapacity = currentTable?.capacity ?? currentTable?.Capacity ?? 10;
@@ -97,7 +112,7 @@ const WaiterView = () => {
     const occupiedTables = new Set(
       tables
         .filter((table) => table.isOccupied || table.IsOccupied)
-        .map((table) => table.number ?? table.Number)
+        .map((table) => table.number ?? table.Number),
     );
 
     const latestByTable = new Map();
@@ -107,30 +122,42 @@ const WaiterView = () => {
       if (!occupiedTables.has(tableNumber)) return;
 
       const current = latestByTable.get(tableNumber);
-      const currentDate = current ? new Date(current.paidAt || current.deliveredAt || current.createdAt) : null;
-      const orderDate = new Date(order.paidAt || order.deliveredAt || order.createdAt);
+      const currentDate = current
+        ? new Date(current.paidAt || current.deliveredAt || current.createdAt)
+        : null;
+      const orderDate = new Date(
+        order.paidAt || order.deliveredAt || order.createdAt,
+      );
 
       if (!current || orderDate > currentDate) {
         latestByTable.set(tableNumber, order);
       }
     });
 
-    return Array.from(latestByTable.values()).sort((a, b) => a.tableNumber - b.tableNumber);
+    return Array.from(latestByTable.values()).sort(
+      (a, b) => a.tableNumber - b.tableNumber,
+    );
   }, [cleanupOrders, tables]);
 
   const readyOrders = useMemo(
     () =>
       ordersFromStore.filter((order) => {
-        const isMine = order.waiterName?.toLowerCase().trim() === waiterName.toLowerCase().trim();
-        const isReady = order.status === 2 || String(order.status).toLowerCase() === "ready";
+        const isMine =
+          order.waiterName?.toLowerCase().trim() ===
+          waiterName.toLowerCase().trim();
+        const isReady =
+          order.status === 2 || String(order.status).toLowerCase() === "ready";
         return isMine && isReady;
       }),
-    [ordersFromStore, waiterName]
+    [ordersFromStore, waiterName],
   );
 
   const categories = useMemo(
-    () => ["Todas", ...new Set(products.map((product) => product.category).filter(Boolean))],
-    [products]
+    () => [
+      "Todas",
+      ...new Set(products.map((product) => product.category).filter(Boolean)),
+    ],
+    [products],
   );
 
   const visualCategories = useMemo(
@@ -141,9 +168,10 @@ const WaiterView = () => {
           id: category,
           label: category,
           image: CATEGORY_IMAGE_MAP[category] || null,
-          total: products.filter((product) => product.category === category).length,
+          total: products.filter((product) => product.category === category)
+            .length,
         })),
-    [categories, products]
+    [categories, products],
   );
 
   const filteredProducts = useMemo(
@@ -151,16 +179,18 @@ const WaiterView = () => {
       activeCategory === "Todas"
         ? products
         : products.filter((product) => product.category === activeCategory),
-    [activeCategory, products]
+    [activeCategory, products],
   );
 
   const cartTotal = useMemo(
     () => items.reduce((acc, item) => acc + item.price * item.quantity, 0),
-    [items]
+    [items],
   );
 
   const handlePaxChange = (event) => {
-    const rawValue = String(event.target.value || "").replace(/\D/g, "").slice(0, 2);
+    const rawValue = String(event.target.value || "")
+      .replace(/\D/g, "")
+      .slice(0, 2);
 
     if (!rawValue) {
       setPax("");
@@ -218,7 +248,10 @@ const WaiterView = () => {
 
     const unsubscribePaid = onOrderPaid((order) => {
       if (Number(order?.tableNumber) > 0) {
-        showToast(`${getOrderLocationLabel(order)} pagada, lista para limpieza`, "success");
+        showToast(
+          `${getOrderLocationLabel(order)} pagada, lista para limpieza`,
+          "success",
+        );
       }
       loadWaiterData();
     });
@@ -246,7 +279,10 @@ const WaiterView = () => {
       <header className="sticky top-0 z-50 px-3 pt-3 lg:px-6 lg:pt-6 backdrop-blur-md">
         <div className="max-w-[1600px] mx-auto rounded-[2rem] border border-slate-800 bg-slate-900/85 shadow-2xl p-4 lg:p-5">
           <div className="flex items-start justify-between gap-4">
-            <button onClick={() => setShowProfile(true)} className="flex items-center gap-3 text-left">
+            <button
+              onClick={() => setShowProfile(true)}
+              className="flex items-center gap-3 text-left"
+            >
               <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
                 <User className="w-5 h-5 text-cyan-300" />
               </div>
@@ -268,7 +304,9 @@ const WaiterView = () => {
                     : "border-red-500/20 bg-red-950/20 text-red-400"
                 }`}
               >
-                <div className={`w-2 h-2 rounded-full ${isConnected ? "bg-emerald-500" : "bg-red-500"}`} />
+                <div
+                  className={`w-2 h-2 rounded-full ${isConnected ? "bg-emerald-500" : "bg-red-500"}`}
+                />
                 <span className="text-[10px] font-black uppercase tracking-wider">
                   {isConnected ? "En linea" : "Sin conexion"}
                 </span>
@@ -283,7 +321,6 @@ const WaiterView = () => {
               </button>
             </div>
           </div>
-
         </div>
       </header>
 
@@ -317,7 +354,9 @@ const WaiterView = () => {
                   </span>
                   <span
                     className={`min-w-7 h-7 px-2 rounded-full inline-flex items-center justify-center text-[10px] font-black ${
-                      activeTab === tab.id ? "bg-slate-950/15 text-slate-950" : "bg-slate-800 text-cyan-300"
+                      activeTab === tab.id
+                        ? "bg-slate-950/15 text-slate-950"
+                        : "bg-slate-800 text-cyan-300"
                     }`}
                   >
                     {count}
@@ -337,9 +376,7 @@ const WaiterView = () => {
                     <p className="text-[10px] font-black uppercase tracking-[0.28em] text-slate-500">
                       Nueva orden
                     </p>
-                    <h2 className="text-xl font-black tracking-tighter uppercase text-white mt-2">
-                      
-                    </h2>
+                    <h2 className="text-xl font-black tracking-tighter uppercase text-white mt-2"></h2>
                   </div>
 
                   {items.length > 0 && (
@@ -387,102 +424,129 @@ const WaiterView = () => {
                 </div>
               </section>
 
-              <section className="rounded-[2rem] border border-slate-800 bg-slate-900/60 p-5 shadow-xl">
-                <div className="flex items-center justify-between gap-3 mb-5">
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.28em] text-slate-500">
-                      Productos
-                    </p>
-                    <h2 className="text-xl font-black tracking-tighter uppercase text-white mt-2">
-                      
-                    </h2>
+<section className="rounded-[2.5rem] border border-slate-800/60 bg-slate-900/40 backdrop-blur-md p-6 shadow-2xl overflow-hidden">
+  {/* Cabecera de la Sección */}
+  <div className="flex items-center justify-between gap-3 mb-8">
+    <div className="space-y-1">
+      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-500/80">
+        Menú Digital
+      </p>
+      <h2 className="text-2xl font-black tracking-tighter uppercase text-white">
+        {activeCategory === "Todas" ? "" : activeCategory}
+      </h2>
+    </div>
+    <div className="px-4 py-2 rounded-2xl bg-slate-950 border border-slate-800 text-[10px] font-black uppercase tracking-widest text-cyan-300 shadow-inner">
+      {filteredProducts.length} items
+    </div>
+  </div>
+
+  <div className="mb-8">
+    <div className="flex items-center justify-between mb-4 px-1">
+      <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">
+        {activeCategory === "Todas" ? "Categorías" : "Filtro Activo"}
+      </span>
+    </div>
+
+    {/* Contenedor de Categorías */}
+    <div
+      className={`grid gap-4 transition-all duration-500 ease-in-out ${
+        activeCategory === "Todas"
+          ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4"
+          : "grid-cols-1"
+      }`}
+    >
+      {visualCategories
+        .filter(
+          (category) =>
+            activeCategory === "Todas" || activeCategory === category.id
+        )
+        .map((category) => {
+          const isActive = activeCategory === category.id;
+
+          return (
+            <button
+              key={category.id}
+              onClick={() => setActiveCategory(isActive ? "Todas" : category.id)}
+              className={`group relative overflow-hidden rounded-[1.5rem] border transition-all duration-500 animate-in fade-in zoom-in-95 ${
+                isActive
+                  ? "border-cyan-400/50 bg-slate-950 p-4 shadow-[0_20px_40px_rgba(34,211,238,0.15)] ring-1 ring-cyan-400/20"
+                  : "border-slate-800 bg-slate-950/50 hover:border-slate-600 flex flex-col w-full"
+              }`}
+            >
+              {isActive ? (
+                /* MODO REGRESAR: Botón compacto y funcional */
+                <div className="flex items-center gap-4">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-cyan-400 text-slate-950 shadow-[0_0_15px_rgba(34,211,238,0.4)]">
+                    <ChevronLeft className="w-6 h-6 stroke-[3px]" />
                   </div>
-                  <div className="px-3 py-2 rounded-full bg-slate-950 border border-slate-800 text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300">
-                    {filteredProducts.length} visibles
+                  <div className="text-left">
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-400">
+                      Volver a categorías
+                    </p>
+                    <p className="text-sm font-black uppercase text-white">
+                      Viendo: {category.label}
+                    </p>
                   </div>
                 </div>
+              ) : (
+                /* MODO NORMAL: Tarjeta de exploración con imagen */
+                <>
+                  <div className="relative w-full h-24 overflow-hidden">
+                    {category.image ? (
+                      <img
+                        src={category.image}
+                        alt={category.label}
+                        loading="lazy"
+                        className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
+                      />
+                    ) : (
+                      <div className="h-full w-full bg-slate-800" />
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent" />
+                  </div>
 
-                <div className="mb-5">
-                  <div className="flex items-center justify-between gap-3 mb-3">
-                    <div>
-                      <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">
-                        Navegacion visual
+                  <div className="p-4 flex items-center justify-between mt-auto">
+                    <div className="text-left">
+                      <p className="text-xs font-black uppercase tracking-widest text-white">
+                        {category.label}
                       </p>
-                      <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-300 mt-2">
-                        Toca una imagen para filtrar por categoria
+                      <p className="text-[9px] font-bold text-slate-500 uppercase mt-0.5">
+                        {category.total} productos
                       </p>
                     </div>
-
-                    {activeCategory !== "Todas" && (
-                      <button
-                        onClick={() => setActiveCategory("Todas")}
-                        className="px-4 py-2 rounded-xl bg-slate-950 text-slate-300 border border-slate-800 text-[10px] font-black uppercase tracking-[0.18em] hover:border-cyan-500/30"
-                      >
-                        Ver todas
-                      </button>
-                    )}
+                    <div className="h-8 w-8 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center group-hover:border-cyan-500/50 transition-all">
+                      <div className="h-1.5 w-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee]" />
+                    </div>
                   </div>
+                </>
+              )}
+            </button>
+          );
+        })}
+    </div>
+  </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                    {visualCategories.map((category) => {
-                      const isActive = activeCategory === category.id;
+  {/* SECCIÓN DE PRODUCTOS */}
+  <div
+    className={`transition-all duration-700 ease-in-out ${
+      activeCategory !== "Todas"
+        ? "animate-in fade-in slide-in-from-bottom-6"
+        : "opacity-100"
+    }`}
+  >
+    <ProductList products={filteredProducts} />
+  </div>
+</section>
 
-                      return (
-                        <button
-                          key={category.id}
-                          onClick={() => setActiveCategory(category.id)}
-                          className={`group relative overflow-hidden rounded-[1.8rem] border text-left transition-all ${
-                            isActive
-                              ? "border-cyan-300 shadow-[0_16px_40px_rgba(34,211,238,0.24)]"
-                              : "border-slate-800 hover:border-cyan-500/30"
-                          }`}
-                        >
-                          <div className="absolute inset-0 bg-slate-950" />
 
-                          {category.image ? (
-                            <img
-                              src={category.image}
-                              alt={category.label}
-                              className="relative h-44 w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                            />
-                          ) : (
-                            <div className="relative h-44 w-full bg-[linear-gradient(135deg,_rgba(34,211,238,0.18),_rgba(15,23,42,1))]" />
-                          )}
-
-                          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/35 to-transparent" />
-
-                          <div className="absolute left-4 right-4 bottom-4 flex items-end justify-between gap-3">
-                            <div>
-                              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-white">
-                                {category.label}
-                              </p>
-                              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-300 mt-1">
-                                {category.total} productos
-                              </p>
-                            </div>
-
-                            <span
-                              className={`inline-flex items-center rounded-full px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.18em] ${
-                                isActive
-                                  ? "bg-cyan-300 text-slate-950"
-                                  : "bg-slate-950/80 text-cyan-300 border border-slate-700"
-                              }`}
-                            >
-                              {isActive ? "Activa" : "Seleccionar"}
-                            </span>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <ProductList products={filteredProducts} />
-              </section>
             </div>
 
             <aside className="hidden xl:block xl:col-span-4 2xl:col-span-3 sticky top-[220px]">
-              <OrderPanel pax={pax} tableId={tableId} onOrderSent={() => setIsCartOpen(false)} />
+              <OrderPanel
+                pax={pax}
+                tableId={tableId}
+                onOrderSent={() => setIsCartOpen(false)}
+              />
             </aside>
           </div>
         )}
@@ -514,11 +578,18 @@ const WaiterView = () => {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                 {cleanupTasks.map((order) => (
-                  <div key={`${order.id}-${order.tableNumber}`} className="rounded-[2rem] border border-emerald-500/20 bg-slate-900/70 p-5 shadow-xl">
+                  <div
+                    key={`${order.id}-${order.tableNumber}`}
+                    className="rounded-[2rem] border border-emerald-500/20 bg-slate-900/70 p-5 shadow-xl"
+                  >
                     <div className="flex items-start justify-between gap-4">
                       <div>
-                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Mesa</p>
-                        <p className="text-3xl font-black text-white mt-2 leading-none">{getOrderLocationLabel(order)}</p>
+                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">
+                          Mesa
+                        </p>
+                        <p className="text-3xl font-black text-white mt-2 leading-none">
+                          {getOrderLocationLabel(order)}
+                        </p>
                       </div>
                       <span className="text-[9px] font-black uppercase px-3 py-1.5 rounded-full border border-emerald-500/30 text-emerald-300 bg-emerald-500/10">
                         Pagada
@@ -527,7 +598,9 @@ const WaiterView = () => {
 
                     <div className="mt-5 space-y-3">
                       <div className="rounded-[1.4rem] border border-slate-800 bg-slate-950/70 p-4">
-                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Cliente</p>
+                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">
+                          Cliente
+                        </p>
                         <p className="text-sm font-black uppercase text-slate-100 mt-2">
                           {order.customerName || "General"}
                         </p>
@@ -538,7 +611,9 @@ const WaiterView = () => {
                         disabled={cleaningTables[order.tableNumber]}
                         className="w-full py-4 rounded-[1.4rem] bg-emerald-400 text-slate-950 font-black uppercase text-[11px] tracking-[0.2em] hover:bg-emerald-300 active:scale-95 transition-all disabled:opacity-50"
                       >
-                        {cleaningTables[order.tableNumber] ? "Liberando..." : "Termine de limpiar"}
+                        {cleaningTables[order.tableNumber]
+                          ? "Liberando..."
+                          : "Termine de limpiar"}
                       </button>
                     </div>
                   </div>
@@ -557,10 +632,30 @@ const WaiterView = () => {
             />
 
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              <MetricCard label="Creadas hoy" value={stats.created} accent="text-white" />
-              <MetricCard label="Entregadas" value={stats.delivered} accent="text-emerald-300" />
-              <MetricCard label="En cocina" value={myActiveOrders.filter((o) => [0, 1].includes(Number(o.status))).length} accent="text-yellow-300" />
-              <MetricCard label="Esperando entrega" value={readyOrders.length} accent="text-cyan-300" />
+              <MetricCard
+                label="Creadas hoy"
+                value={stats.created}
+                accent="text-white"
+              />
+              <MetricCard
+                label="Entregadas"
+                value={stats.delivered}
+                accent="text-emerald-300"
+              />
+              <MetricCard
+                label="En cocina"
+                value={
+                  myActiveOrders.filter((o) =>
+                    [0, 1].includes(Number(o.status)),
+                  ).length
+                }
+                accent="text-yellow-300"
+              />
+              <MetricCard
+                label="Esperando entrega"
+                value={readyOrders.length}
+                accent="text-cyan-300"
+              />
             </div>
 
             {myActiveOrders.length === 0 ? (
@@ -571,27 +666,41 @@ const WaiterView = () => {
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
                 {myActiveOrders.map((order) => (
-                  <div key={order.id} className="rounded-[2rem] border border-slate-800 bg-slate-900/70 p-5 shadow-xl">
+                  <div
+                    key={order.id}
+                    className="rounded-[2rem] border border-slate-800 bg-slate-900/70 p-5 shadow-xl"
+                  >
                     <div className="flex items-start justify-between gap-4">
                       <div>
-                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Mesa</p>
-                        <p className="text-3xl font-black text-white mt-2 leading-none">{getOrderLocationLabel(order)}</p>
+                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">
+                          Mesa
+                        </p>
+                        <p className="text-3xl font-black text-white mt-2 leading-none">
+                          {getOrderLocationLabel(order)}
+                        </p>
                       </div>
                       <StatusBadge status={order.status} />
                     </div>
 
                     <div className="mt-5 rounded-[1.4rem] border border-slate-800 bg-slate-950/70 p-4 space-y-3">
                       <div>
-                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Cliente</p>
+                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">
+                          Cliente
+                        </p>
                         <p className="text-sm font-black uppercase text-slate-100 mt-2">
                           {order.customerName || "General"}
                         </p>
                       </div>
                       <div>
-                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Productos</p>
+                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">
+                          Productos
+                        </p>
                         <div className="mt-2 space-y-1">
                           {order.items?.slice(0, 3).map((item, index) => (
-                            <p key={`${order.id}-${index}`} className="text-xs font-bold text-slate-300">
+                            <p
+                              key={`${order.id}-${index}`}
+                              className="text-xs font-bold text-slate-300"
+                            >
                               {item.quantity}x {item.productName}
                             </p>
                           ))}
@@ -606,27 +715,41 @@ const WaiterView = () => {
         )}
       </main>
 
-      {activeTab === "ordenar" && items.length > 0 && (
+      {/* Botón flotante: Ahora incluye !isCartOpen para que desaparezca al abrir el panel */}
+      {activeTab === "ordenar" && items.length > 0 && !isCartOpen && (
         <button
           onClick={() => setIsCartOpen(true)}
-          className="xl:hidden fixed bottom-5 left-3 right-3 z-40 rounded-[1.6rem] bg-cyan-400 text-slate-950 shadow-[0_18px_50px_rgba(34,211,238,0.35)] px-5 py-4 flex items-center justify-between"
+          className="xl:hidden fixed bottom-5 left-3 right-3 z-40 rounded-[1.6rem] bg-cyan-400 text-slate-950 shadow-[0_18px_50px_rgba(34,211,238,0.35)] px-5 py-4 flex items-center justify-between animate-in fade-in zoom-in duration-300"
         >
           <div className="flex items-center gap-3">
             <div className="w-11 h-11 rounded-2xl bg-slate-950/10 flex items-center justify-center">
               <PackageCheck className="w-5 h-5" />
             </div>
             <div className="text-left">
-              <p className="text-[10px] font-black uppercase tracking-[0.2em]">Orden actual</p>
-              <p className="text-xs font-black uppercase">{items.length} lineas en carrito</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.2em]">
+                Orden actual
+              </p>
+              <p className="text-xs font-black uppercase">{items.length}</p>
             </div>
           </div>
           <div className="text-right">
             <p className="text-lg font-black">${cartTotal.toFixed(2)}</p>
-            <p className="text-[10px] font-black uppercase tracking-[0.18em]">Abrir</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.18em]">
+              Abrir
+            </p>
           </div>
         </button>
       )}
 
+      {/* Efecto de desenfoque (Backdrop) al abrir el carrito */}
+      {activeTab === "ordenar" && isCartOpen && (
+        <div
+          className="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-40 transition-opacity duration-500 xl:hidden"
+          onClick={() => setIsCartOpen(false)}
+        />
+      )}
+
+      {/* Panel lateral del carrito */}
       {activeTab === "ordenar" && (
         <aside
           className={`xl:hidden fixed inset-y-0 right-0 z-50 w-[92vw] max-w-[460px] bg-slate-950 border-l border-slate-800 shadow-2xl transition-transform duration-500 ${
@@ -651,19 +774,30 @@ const WaiterView = () => {
                 Cerrar
               </button>
             </div>
-            <OrderPanel pax={pax} tableId={tableId} onOrderSent={() => setIsCartOpen(false)} />
+            <OrderPanel
+              pax={pax}
+              tableId={tableId}
+              onOrderSent={() => setIsCartOpen(false)}
+            />
           </div>
         </aside>
       )}
 
-      {showProfile && <WaiterProfile user={currentUser} onClose={() => setShowProfile(false)} />}
+      {showProfile && (
+        <WaiterProfile
+          user={currentUser}
+          onClose={() => setShowProfile(false)}
+        />
+      )}
     </div>
   );
 };
 
 const MetricCard = ({ label, value, accent }) => (
   <div className="rounded-[1.5rem] border border-slate-800 bg-slate-950/75 p-4">
-    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">{label}</p>
+    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">
+      {label}
+    </p>
     <p className={`text-2xl sm:text-3xl font-black mt-3 ${accent}`}>{value}</p>
   </div>
 );
@@ -675,8 +809,12 @@ const StepCard = ({ step, title, subtitle, children }) => (
         {step}
       </div>
       <div>
-        <h3 className="text-sm font-black uppercase tracking-[0.18em] text-white">{title}</h3>
-        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 mt-1">{subtitle}</p>
+        <h3 className="text-sm font-black uppercase tracking-[0.18em] text-white">
+          {title}
+        </h3>
+        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 mt-1">
+          {subtitle}
+        </p>
       </div>
     </div>
     {children}
@@ -686,8 +824,12 @@ const StepCard = ({ step, title, subtitle, children }) => (
 const SurfaceHeader = ({ eyebrow, title, badge }) => (
   <div className="rounded-[2rem] border border-slate-800 bg-slate-900/60 p-5 shadow-xl flex flex-col md:flex-row md:items-center md:justify-between gap-4">
     <div>
-      <p className="text-[10px] font-black uppercase tracking-[0.28em] text-slate-500">{eyebrow}</p>
-      <h2 className="text-xl font-black tracking-tighter uppercase text-white mt-2">{title}</h2>
+      <p className="text-[10px] font-black uppercase tracking-[0.28em] text-slate-500">
+        {eyebrow}
+      </p>
+      <h2 className="text-xl font-black tracking-tighter uppercase text-white mt-2">
+        {title}
+      </h2>
     </div>
     <div className="px-4 py-2 rounded-full border border-cyan-500/20 bg-cyan-500/10 text-cyan-300 text-[10px] font-black uppercase tracking-[0.2em]">
       {badge}
@@ -697,27 +839,48 @@ const SurfaceHeader = ({ eyebrow, title, badge }) => (
 
 const EmptyState = ({ title, subtitle }) => (
   <div className="rounded-[2rem] border border-dashed border-slate-800 bg-slate-900/40 p-12 text-center">
-    <p className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-400">{title}</p>
-    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-600 mt-3">{subtitle}</p>
+    <p className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-400">
+      {title}
+    </p>
+    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-600 mt-3">
+      {subtitle}
+    </p>
   </div>
 );
 
 const StatusBadge = ({ status }) => {
-  const numeric = typeof status === "string"
-    ? { pending: 0, preparing: 1, ready: 2, delivered: 3 }[status.toLowerCase()]
-    : status;
+  const numeric =
+    typeof status === "string"
+      ? { pending: 0, preparing: 1, ready: 2, delivered: 3 }[
+          status.toLowerCase()
+        ]
+      : status;
 
   const config = {
-    0: { text: "Pendiente", className: "text-yellow-300 bg-yellow-400/10 border-yellow-400/20" },
-    1: { text: "Preparando", className: "text-cyan-300 bg-cyan-400/10 border-cyan-400/20" },
-    2: { text: "Lista", className: "text-emerald-300 bg-emerald-400/10 border-emerald-400/20" },
-    3: { text: "Entregada", className: "text-slate-300 bg-slate-700/40 border-slate-700" },
+    0: {
+      text: "Pendiente",
+      className: "text-yellow-300 bg-yellow-400/10 border-yellow-400/20",
+    },
+    1: {
+      text: "Preparando",
+      className: "text-cyan-300 bg-cyan-400/10 border-cyan-400/20",
+    },
+    2: {
+      text: "Lista",
+      className: "text-emerald-300 bg-emerald-400/10 border-emerald-400/20",
+    },
+    3: {
+      text: "Entregada",
+      className: "text-slate-300 bg-slate-700/40 border-slate-700",
+    },
   };
 
   const current = config[numeric] || config[0];
 
   return (
-    <span className={`text-[9px] font-black uppercase px-3 py-2 rounded-full border ${current.className}`}>
+    <span
+      className={`text-[9px] font-black uppercase px-3 py-2 rounded-full border ${current.className}`}
+    >
       {current.text}
     </span>
   );
