@@ -6,7 +6,7 @@ import {
   deleteProduct,
 } from "../../services/api.service";
 
-const CATEGORIES = ["Hamburguesas de Carne","Pollo","Acompañamientos","Postres","Bebidas","Ensaladas"];
+const CATEGORIES = ["Hamburguesas","Pollo","Acompañamientos","Postres","Bebidas","Ensaladas"];
 const EMPTY_FORM  = { name:"", description:"", price:"", stock:"", category:"", imageUrl:"" };
 
 // ---------------------------
