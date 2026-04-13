@@ -394,7 +394,6 @@ const WaiterView = () => {
                   <StepCard
                     step="1"
                     title="Selecciona mesa"
-                    subtitle="Solo se muestran libres para evitar errores"
                   >
                     <TableSelector tables={tables} />
                   </StepCard>

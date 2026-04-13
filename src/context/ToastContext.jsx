@@ -13,10 +13,10 @@ export const ToastProvider = ({ children }) => {
   const [toasts, setToasts] = useState([]);
 
   const showToast = (message, type = "success") => {
-    const id = generateId(); // ✅ FIX AQUÍ
+    const id = generateId(); // Generar un ID único para cada toast
 
     setToasts((prev) => {
-      // 🔥 Anti-duplicados (importante en tu caso con SignalR)
+      //Anti-duplicados (importante en tu caso con SignalR)
       const exists = prev.some(t => t.message === message);
       if (exists) return prev;
 

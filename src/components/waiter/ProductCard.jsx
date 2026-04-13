@@ -4,7 +4,7 @@ import useOrderBuilder from "../../hooks/useOrderBuilder";
 const ProductCard = ({ product, onAdd, onOpenNotes }) => {
   const { items } = useOrderBuilder();
   
-  // 🔍 Buscar si este producto ya está en el carrito para mostrar el badge
+  // Buscar si este producto ya está en el carrito para mostrar el badge
   const cartItem = items.find((i) => i.productId === (product.id || product._id));
   const quantityInCart = cartItem ? cartItem.quantity : 0;
 

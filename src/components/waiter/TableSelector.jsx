@@ -10,7 +10,7 @@ const TableSelector = ({ tables }) => {
     const selectedNumber = Number(e.target.value);
     const selectedTable = tableList.find(t => t.number === selectedNumber);
 
-    // ✅ BLOQUEO DE SEGURIDAD: No permitir seleccionar si ya está ocupada
+    //BLOQUEO DE SEGURIDAD: No permitir seleccionar si ya está ocupada
     if (selectedTable?.isOccupied || selectedTable?.IsOccupied) {
       return; 
     }
@@ -42,13 +42,13 @@ const TableSelector = ({ tables }) => {
 
         {tableList.map(table => {
           const isOccupied = table.isOccupied || table.IsOccupied;
-          const isReady = table.hasReadyOrder; // ✅ Asumiendo que añades esta prop desde el backend/hook
+          const isReady = table.hasReadyOrder; //Asumiendo que añades esta prop desde el backend/hook
 
           return (
             <option 
               key={table.id} 
               value={table.number} 
-              disabled={isOccupied} // ✅ No se puede elegir si está ocupada
+              disabled={isOccupied} 
               className={`font-bold bg-slate-900 ${
                 isOccupied ? "text-red-500/50" : isReady ? "text-[#00FFFF]" : "text-[#FFFF00]"
               }`}
@@ -68,7 +68,7 @@ const TableSelector = ({ tables }) => {
         </svg>
       </div>
 
-      {/* ✅ LUZ DE ESTADO (GLOW INFRA) */}
+      {/*LUZ DE ESTADO (GLOW INFRA) */}
       {hasSelectedLocation && (
         <div className="absolute -bottom-1 left-6 right-6 h-[2px] bg-[#39FF14] shadow-[0_0_10px_#39FF14] animate-pulse" />
       )}

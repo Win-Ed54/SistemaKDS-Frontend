@@ -50,7 +50,7 @@ const TableStatus = ({ tables, onReleaseTable }) => {
                 </span>
               </div>
 
-              {/* ✅ BOTÓN DE ACCIÓN: Solo aparece si está ocupada */}
+              {/*BOTÓN DE ACCIÓN: Solo aparece si está ocupada */}
               {isOccupied && (
                 <button
                   onClick={() => onReleaseTable(table.number)}

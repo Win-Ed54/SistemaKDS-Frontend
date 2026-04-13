@@ -3,7 +3,7 @@ import { persist } from "zustand/middleware";
 
 const getId = (o) => o?.id || o?._id || o?.Id;
 
-// ✅ Normaliza status a número siempre
+// Normaliza status a número siempre
 const toStatusNumber = (status) => {
   if (typeof status === "number") return status;
   const map = { pending: 0, preparing: 1, ready: 2, delivered: 3, cancelled: 4 };

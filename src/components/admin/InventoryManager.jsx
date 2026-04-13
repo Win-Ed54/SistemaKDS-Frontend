@@ -118,7 +118,7 @@ const ProductModal = ({ product, onClose, onSaved }) => {
             </select>
           </div>
 
-          {/* ✅ URL DE IMAGEN */}
+          {/*URL DE IMAGEN */}
           <div>
             <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
               URL de imagen

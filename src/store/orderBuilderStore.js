@@ -24,7 +24,7 @@ const useOrderBuilderStore = create((set, get) => ({
     const available = (current?.stock ?? 0) - inCartTotal;
     if (available <= 0) return;
 
-    // ✅ Al agregar, siempre crea un item SIN nota (nota = "")
+    // Al agregar, siempre crea un item SIN nota (nota = "")
     // Si el usuario quiere nota diferente, se aplica después via updateItemNotes
     // y eso crea una entrada separada en el carrito
     set((state) => {
@@ -63,7 +63,7 @@ const useOrderBuilderStore = create((set, get) => ({
   removeItem: (productId, notes = "") => {
     const { products, updateStock } = useProductStore.getState();
 
-    // ✅ Eliminar el item específico por productId + notes
+    //Eliminar el item específico por productId + notes
     const inCart = get().items.find(
       (i) => i.productId === productId && i.notes === notes
     );
@@ -104,7 +104,7 @@ const useOrderBuilderStore = create((set, get) => ({
     if (current) updateStock(productId, current.stock + 1);
   },
 
-  // ✅ updateItemNotes: cuando se aplica una nota a un item sin nota,
+  // updateItemNotes: cuando se aplica una nota a un item sin nota,
   // se crea una entrada SEPARADA en el carrito
   updateItemNotes: (productId, notes) => {
     set((state) => {

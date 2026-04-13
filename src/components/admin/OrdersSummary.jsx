@@ -33,9 +33,9 @@ const getStatusInfo = (status) => {
 const OrdersSummary = ({ orders, onOrderCancelled }) => {
   const { showToast } = useToast();
   const [isDeleting, setIsDeleting] = useState(null);
-  const [, forceUpdate] = useState(0); // 🔥 fuerza re-render
+  const [, forceUpdate] = useState(0); 
 
-  // 🔥 TIMER GLOBAL (actualiza cada segundo)
+  //TIMER GLOBAL (actualiza cada segundo)
   useEffect(() => {
     const interval = setInterval(() => {
       forceUpdate((v) => v + 1);
@@ -78,7 +78,7 @@ const OrdersSummary = ({ orders, onOrderCancelled }) => {
     }
   };
 
-  // 🔥 ANTI-DUPLICADOS UI
+  // ANTI-DUPLICADOS UI
   const uniqueOrders = Object.values(
     orders.reduce((acc, o) => {
       acc[o.id] = o;
@@ -150,7 +150,7 @@ const OrdersSummary = ({ orders, onOrderCancelled }) => {
                 <div className="flex flex-wrap gap-2">
                   {order.items?.map((item) => (
                     <span
-                      key={`${order.id}-${item.productId}`} // ✅ FIX
+                      key={`${order.id}-${item.productId}`} 
                       className="text-[9px] bg-slate-900 px-2 py-1 rounded-lg border border-slate-800"
                     >
                       {item.quantity}x {item.productName}

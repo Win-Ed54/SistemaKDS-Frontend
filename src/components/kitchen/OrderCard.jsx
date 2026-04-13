@@ -76,7 +76,7 @@ const OrderCard = ({ order, now, isConnected, onPreparing, onReady, onFinish, on
             <span className="text-[10px] font-black text-white/70 uppercase tracking-widest leading-none">Mesa</span>
             <span className="font-black text-3xl text-white leading-none">{order.tableNumber}</span>
           </div>
-          {/* ✅ NUEVO: Identificador de Orden (Ticket) */}
+          {/* NUEVO: Identificador de Orden (Ticket) */}
           <span className="text-[11px] font-black text-white bg-black/20 px-2 py-0.5 rounded-md mt-1.5 w-fit border border-white/10 uppercase tracking-tighter">
             Orden #{id?.toString().slice(-4).toUpperCase() || "---"}
           </span>
