@@ -1,5 +1,6 @@
 import { useCallback, useEffect } from "react";
 import useProductStore from "../store/productStore";
+import useOrderBuilderStore from "../store/orderBuilderStore";
 import { getProducts } from "../services/api.service";
 import connection, {
   onProductOutOfStock,
@@ -13,7 +14,9 @@ const useProducts = () => {
   const fetchProducts = useCallback(async () => {
     try {
       const data = await getProducts();
-      setProducts(data ?? []);
+      const safeData = data ?? [];
+      setProducts(safeData);
+      useOrderBuilderStore.getState().reconcileWithAvailableStock(safeData);
     } catch (error) {
       console.error("Error cargando productos:", error);
     }
@@ -24,6 +27,9 @@ const useProducts = () => {
 
     const unsubscribeStock = onStockUpdated((productId, newStock) => {
       updateStock(productId, newStock);
+      useOrderBuilderStore
+        .getState()
+        .reconcileWithAvailableStock(useProductStore.getState().products);
     });
 
     const unsubscribeOutOfStock = onProductOutOfStock((data) => {
@@ -31,6 +37,9 @@ const useProducts = () => {
         typeof data === "string" ? data : data?.productId || data?.ProductId;
 
       if (id) markOutOfStock(id);
+      useOrderBuilderStore
+        .getState()
+        .reconcileWithAvailableStock(useProductStore.getState().products);
     });
 
     const handleProductUpdated = () => {
@@ -47,6 +56,7 @@ const useProducts = () => {
 
     window.addEventListener("kds-sync-products", handleForceSync);
     connection.on("productupdated", handleProductUpdated);
+    connection.on("ProductUpdated", handleProductUpdated);
 
     return () => {
       unsubscribeStock?.();
@@ -54,6 +64,7 @@ const useProducts = () => {
       unsubscribeConnection?.();
       window.removeEventListener("kds-sync-products", handleForceSync);
       connection.off("productupdated", handleProductUpdated);
+      connection.off("ProductUpdated", handleProductUpdated);
     };
   }, [fetchProducts, markOutOfStock, updateStock]);
 

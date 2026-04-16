@@ -1,43 +1,40 @@
-import React, { useState, useEffect } from "react";
-
-// Hooks - Subir 2 niveles: waiter -> components -> src
-import useSignalRConnection from "../../hooks/useSignalRConnection"; 
+import React, { useEffect, useState } from "react";
+import useSignalRConnection from "../../hooks/useSignalRConnection";
 import useOrderBuilder from "../../hooks/useOrderBuilder";
-
-// Services - Subir 2 niveles para llegar a src/services
-// Componentes locales - Misma carpeta
+import { useToast } from "../../context/ToastContext";
 import ProductCard from "./ProductCard";
-import CustomNotesModal from "./CustomNotesModal";
 
 const ProductList = ({ products: initialProducts }) => {
   const [localProducts, setLocalProducts] = useState(initialProducts);
-  const { connection } = useSignalRConnection(); 
-  const { addItem, updateItemNotes, items } = useOrderBuilder();
-  const [noteProduct, setNoteProduct] = useState(null);
+  const { connection } = useSignalRConnection();
+  const { addItem, setNoteTarget } = useOrderBuilder();
+  const { showToast } = useToast();
 
-  // Sincronizar estado local si las props cambian
   useEffect(() => {
     setLocalProducts(initialProducts);
   }, [initialProducts]);
 
-  // Lógica de tiempo real (SignalR) para cumplimiento del Pendiente #5
   useEffect(() => {
     if (!connection) return;
 
     const handleStockUpdate = (productId, newStock) => {
-      setLocalProducts(prev => prev.map(p => 
-        (p.id === productId || p._id === productId) 
-          ? { ...p, stock: newStock, isAvailable: newStock > 0 } 
-          : p
-      ));
+      setLocalProducts((prev) =>
+        prev.map((p) =>
+          p.id === productId || p._id === productId
+            ? { ...p, stock: newStock, isAvailable: newStock > 0 }
+            : p,
+        ),
+      );
     };
 
     const handleOutOfStock = (productId) => {
-      setLocalProducts(prev => prev.map(p => 
-        (p.id === productId || p._id === productId) 
-          ? { ...p, stock: 0, isAvailable: false } 
-          : p
-      ));
+      setLocalProducts((prev) =>
+        prev.map((p) =>
+          p.id === productId || p._id === productId
+            ? { ...p, stock: 0, isAvailable: false }
+            : p,
+        ),
+      );
     };
 
     connection.on("stockupdated", handleStockUpdate);
@@ -49,38 +46,43 @@ const ProductList = ({ products: initialProducts }) => {
     };
   }, [connection]);
 
-  const handleConfirmNotes = (notes) => {
-    if (noteProduct) {
-      const id = noteProduct.id || noteProduct._id;
-      const inCart = items?.find((i) => i.productId === id);
-      if (!inCart) addItem(noteProduct);
-      updateItemNotes(id, notes);
+  const handleOpenNotes = (product) => {
+    setNoteTarget({
+      productId: product.id || product._id,
+      currentNotes: "",
+      source: "catalog",
+      product,
+    });
+  };
+
+  const handleEditExistingNote = (product, notes) => {
+    setNoteTarget({
+      productId: product.id || product._id || product.Id,
+      currentNotes: notes || "",
+      source: "cart",
+      product,
+    });
+  };
+
+  const handleAdd = (product) => {
+    const result = addItem(product);
+    if (result?.ok === false && result?.message) {
+      showToast(result.message, "error");
     }
-    setNoteProduct(null);
   };
 
   return (
-    <>
-      {noteProduct && (
-        <CustomNotesModal
-          product={noteProduct}
-          currentNote={items?.find((i) => i.productId === (noteProduct.id || noteProduct._id))?.notes}
-          onConfirm={handleConfirmNotes}
-          onClose={() => setNoteProduct(null)}
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-5 xl:grid-cols-3 2xl:grid-cols-4">
+      {localProducts.map((product) => (
+        <ProductCard
+          key={product.id || product._id}
+          product={product}
+          onAdd={handleAdd}
+          onOpenNotes={handleOpenNotes}
+          onEditExistingNote={handleEditExistingNote}
         />
-      )}
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 md:gap-5">
-        {localProducts.map((product) => (
-          <ProductCard 
-            key={product.id || product._id} 
-            product={product} 
-            onAdd={addItem} 
-            onOpenNotes={setNoteProduct} 
-          />
-        ))}
-      </div>
-    </>
+      ))}
+    </div>
   );
 };
 

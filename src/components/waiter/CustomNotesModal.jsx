@@ -85,13 +85,13 @@ const CustomNotesModal = ({ product, currentNote = "", onClose, onConfirm }) => 
                 </p>
               </div>
               <div className="px-3 py-2 rounded-full border border-cyan-500/20 bg-cyan-500/10 text-cyan-300 text-[10px] font-black uppercase tracking-[0.18em]">
-                {selectedQuickNotes.length} notas activas
+                {selectedQuickNotes.length} instrucciones activas
               </div>
             </div>
 
             <div className="mt-4 rounded-[1.4rem] border border-slate-800 bg-slate-950/70 p-4">
               <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">
-                Nota actual
+                Instruccion actual
               </p>
               <p className="text-sm font-bold text-slate-200 mt-2 min-h-6">
                 {note || "Sin instrucciones especiales por ahora"}
@@ -147,7 +147,7 @@ const CustomNotesModal = ({ product, currentNote = "", onClose, onConfirm }) => 
             <div className="flex items-center justify-between gap-3 mb-4">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">
-                  Nota manual
+                  Instruccion manual
                 </p>
                 <p className="text-sm font-black text-white uppercase mt-2">
                   Ajuste final para la orden actual
@@ -181,7 +181,7 @@ const CustomNotesModal = ({ product, currentNote = "", onClose, onConfirm }) => 
               className="flex-1 py-4 rounded-[1.4rem] bg-[#39FF14] text-slate-950 font-black uppercase text-[11px] tracking-[0.18em] hover:bg-[#5dff3d] transition-all flex items-center justify-center gap-3"
             >
               <Check className="w-4 h-4" />
-              Guardar notas
+              Guardar instrucciones
             </button>
           </div>
         </div>

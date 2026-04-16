@@ -12,6 +12,7 @@ const connection = new signalR.HubConnectionBuilder()
       const path = window.location.pathname;
 
       if (path.includes("cocina")) return getAuthValue("kitchen_token");
+      if (path.includes("host")) return getAuthValue("host_token");
       if (path.includes("terminal")) return getAuthValue("waiter_token");
       if (path.includes("panel")) return getAuthValue("admin_token");
       if (path.includes("caja")) return getAuthValue("cashier_token");
@@ -26,6 +27,17 @@ const connection = new signalR.HubConnectionBuilder()
 let isConnected = false;
 let listeners = [];
 let statusHandlersRegistered = false;
+let startPromise = null;
+let reconnectTimeoutId = null;
+
+const scheduleReconnect = () => {
+  if (reconnectTimeoutId) return;
+
+  reconnectTimeoutId = window.setTimeout(() => {
+    reconnectTimeoutId = null;
+    void startConnection();
+  }, 3000);
+};
 
 export const subscribeConnectionStatus = (cb) => {
   listeners.push(cb);
@@ -42,29 +54,6 @@ const notifyStatus = (status) => {
 export const getConnectionState = () => isConnected;
 
 export const startConnection = async () => {
-  if (
-    connection.state === signalR.HubConnectionState.Connected ||
-    connection.state === signalR.HubConnectionState.Connecting ||
-    connection.state === signalR.HubConnectionState.Reconnecting
-  ) {
-    notifyStatus(connection.state === signalR.HubConnectionState.Connected);
-    return connection;
-  }
-
-  try {
-    await connection.start();
-    notifyStatus(true);
-  } catch (err) {
-    notifyStatus(false);
-
-    if (err?.message?.includes("401")) {
-      clearAuthStorage();
-      localStorage.removeItem("user_name");
-      window.location.href = "/login";
-      return connection;
-    }
-  }
-
   if (!statusHandlersRegistered) {
     statusHandlersRegistered = true;
 
@@ -78,11 +67,51 @@ export const startConnection = async () => {
 
     connection.onclose(() => {
       notifyStatus(false);
-      void startConnection();
+      scheduleReconnect();
     });
   }
 
-  return connection;
+  if (
+    connection.state === signalR.HubConnectionState.Connected ||
+    connection.state === signalR.HubConnectionState.Connecting ||
+    connection.state === signalR.HubConnectionState.Reconnecting
+  ) {
+    notifyStatus(connection.state === signalR.HubConnectionState.Connected);
+    return connection;
+  }
+
+  if (startPromise) {
+    return startPromise;
+  }
+
+  startPromise = connection
+    .start()
+    .then(() => {
+      if (reconnectTimeoutId) {
+        clearTimeout(reconnectTimeoutId);
+        reconnectTimeoutId = null;
+      }
+      notifyStatus(true);
+      return connection;
+    })
+    .catch((err) => {
+      notifyStatus(false);
+
+      if (err?.message?.includes("401")) {
+        clearAuthStorage();
+        localStorage.removeItem("user_name");
+        window.location.href = "/login";
+        return connection;
+      }
+
+      scheduleReconnect();
+      return connection;
+    })
+    .finally(() => {
+      startPromise = null;
+    });
+
+  return startPromise;
 };
 
 const removeHandler = (eventName, handler) => connection.off(eventName, handler);
@@ -207,10 +236,11 @@ export const onTableUpdated = (callback) => {
   const handler = (data) => {
     if (!data) return;
 
-    const tableNumber = data.tableNumber ?? data.TableNumber;
+    const tableNumber =
+      data.tableNumber ?? data.TableNumber ?? data.number ?? data.Number;
     const isOccupied = data.isOccupied ?? data.IsOccupied;
 
-    callback?.({ tableNumber, isOccupied });
+    callback?.({ ...data, tableNumber, isOccupied });
   };
 
   return bindEvents(["tablesupdated", "TableUpdated"], handler);

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getRouteForRole, getSession, login } from "../services/authService";
+import { getRouteForRole, getSession, login, logout } from "../services/authService";
 
 export default function Login() {
   const [username, setUsername] = useState("");
@@ -30,6 +30,7 @@ export default function Login() {
       const route = getRouteForRole(data.role);
 
       if (!route || route === "/login") {
+        logout();
         setError(`Rol desconocido: ${data.role}`);
         return;
       }

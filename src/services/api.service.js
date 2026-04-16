@@ -5,6 +5,7 @@ const API_URL = "/api";
 const getToken = () => {
   const path = window.location.pathname;
   if (path.includes("cocina")) return getAuthValue("kitchen_token");
+  if (path.includes("host")) return getAuthValue("host_token");
   if (path.includes("terminal")) return getAuthValue("waiter_token");
   if (path.includes("panel")) return getAuthValue("admin_token");
   if (path.includes("caja")) return getAuthValue("cashier_token");
@@ -71,7 +72,10 @@ const request = async (endpoint, options = {}, retry = true) => {
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    const message = errorData?.message || errorData || `Error: ${response.status}`;
+    const message =
+      errorData?.error ||
+      errorData?.message ||
+      (typeof errorData === "string" ? errorData : `Error: ${response.status}`);
 
     const error = new Error(message);
     error.response = { status: response.status, data: errorData };
@@ -93,7 +97,8 @@ export const markOrderPreparing = (id) =>
   request(`/orders/${id}/preparing`, { method: "PATCH", body: JSON.stringify({}) });
 export const markOrderReady = (id) => request(`/orders/${id}/ready`, { method: "PATCH" });
 export const finishOrder = (id) => request(`/orders/${id}/finish`, { method: "PATCH" });
-export const payOrder = (id) => request(`/orders/${id}/pay`, { method: "PATCH" });
+export const payOrder = (id, data) =>
+  request(`/orders/${id}/pay`, { method: "PATCH", body: JSON.stringify(data || {}) });
 export const cancelOrder = (id) => request(`/orders/${id}/cancel`, { method: "PATCH" });
 export const getTables = () => request("/tables");
 export const getProducts = () => request("/products");
@@ -105,6 +110,22 @@ export const updateProduct = (id, data) =>
   request(`/products/${id}`, { method: "PUT", body: JSON.stringify(data) });
 export const deleteProduct = (id) => request(`/products/${id}`, { method: "DELETE" });
 export const getWaiterOrdersToday = (waiterName) => request(`/orders/waiter/${waiterName}/today`);
+export const getMyWaiterOrdersToday = () => request("/waiter/today");
 export const closeTable = (tableNumber) =>
   request(`/orders/table/${tableNumber}/close`, { method: "PATCH" });
 export const getWaiterSummary = () => request("/waiter/summary");
+export const getKdsSettings = () => request("/kdssettings");
+export const updateKdsSettings = (data) =>
+  request("/kdssettings", { method: "PUT", body: JSON.stringify(data) });
+export const seatTable = (tableNumber, data) =>
+  request(`/tables/${tableNumber}/seat`, { method: "PATCH", body: JSON.stringify(data) });
+export const unseatTable = (tableNumber) =>
+  request(`/tables/${tableNumber}/unseat`, { method: "PATCH", body: JSON.stringify({}) });
+export const transferTableAssignment = (tableNumber, targetTableNumber) =>
+  request(`/tables/${tableNumber}/transfer`, {
+    method: "PATCH",
+    body: JSON.stringify({ targetTableNumber }),
+  });
+export const startTableCleaning = (tableNumber, data) =>
+  request(`/tables/${tableNumber}/start-cleaning`, { method: "PATCH", body: JSON.stringify(data || {}) });
+export const getWaiters = () => request("/users/waiters");

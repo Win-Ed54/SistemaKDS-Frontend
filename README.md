@@ -1,16 +1,142 @@
-# React + Vite
+# Sistema KDS Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Frontend del sistema KDS para restaurantes, construido con React y Vite. Esta aplicacion consume la API .NET del proyecto y sincroniza pedidos, mesas, stock y eventos operativos en tiempo real mediante SignalR.
 
-Currently, two official plugins are available:
+## Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- React 19
+- Vite 7
+- React Router DOM 7
+- Zustand
+- Tailwind CSS 4
+- SignalR client
+- React Hot Toast
 
-## React Compiler
+## Vistas principales
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- `/login`
+- `/terminal`
+- `/cocina`
+- `/caja`
+- `/panel`
+- `/host`
 
-## Expanding the ESLint configuration
+## Roles soportados
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+- `waiter`
+- `kitchen`
+- `cashier`
+- `admin`
+- `host`
+
+## Funcionalidad implementada
+
+- Login por rol y almacenamiento de token por contexto
+- Toma de pedidos para mesa o para llevar
+- Asignacion de mesa por host
+- Permitir al mesero agregar mas productos a su mesa asignada
+- Vista de pedidos listos para entrega
+- Vista de limpieza para liberar mesas segun las ordenes del mesero
+- Control de stock en tiempo real
+- Reconciliacion del carrito cuando cambia el inventario
+- Configuracion dinamica del KDS desde admin
+- Reporte de platillos mas vendidos con actualizacion automatica
+- Reconexion automatica de SignalR y reintentos de lectura HTTP
+
+## Estructura
+
+- `src/views`: vistas principales por rol
+- `src/components`: componentes reutilizables y modulos por area
+- `src/hooks`: integraciones y sincronizacion
+- `src/store`: estado global con Zustand
+- `src/services`: API, autenticacion y SignalR
+- `src/constants`: limites y utilidades operativas
+- `src/context`: toast y soporte UI compartido
+
+## Tiempo real
+
+La aplicacion se conecta al hub:
+
+- `/ordersHub`
+
+Sincroniza:
+
+- nuevas ordenes
+- cambios de estado
+- ordenes listas
+- ordenes pagadas
+- ordenes canceladas
+- stock actualizado
+- producto agotado
+- cambios de mesa
+- configuracion KDS
+
+## Configuracion local
+
+Variables usadas por el frontend:
+
+- `VITE_HUB_URL`
+- `VITE_DEV_API_TARGET`
+
+Comportamiento actual:
+
+- Vite corre en `5173`
+- El proxy de desarrollo redirige `/api`, `/images` y `/ordersHub`
+- `VITE_DEV_API_TARGET` por defecto apunta a `http://localhost:5162`
+
+## Scripts
+
+```powershell
+npm install
+npm run dev
+npm run build
+npm run preview
+npm run lint
+```
+
+## Ejecucion local
+
+Ubicacion:
+
+- `Sistema-KDS-Kitchen-Display-System-para-restaurantes---Frontend`
+
+Pasos:
+
+```powershell
+npm install
+npm run dev
+```
+
+Acceso:
+
+- `http://localhost:5173`
+
+## Integracion con backend
+
+Este frontend espera que el backend este ejecutandose en:
+
+- `http://localhost:5162`
+
+Si deseas cambiarlo en desarrollo, puedes usar:
+
+```powershell
+$env:VITE_DEV_API_TARGET="http://TU_HOST:5162"
+npm run dev
+```
+
+## Build
+
+Build validado:
+
+```powershell
+npm run build
+```
+
+Salida:
+
+- `dist/`
+
+## Notas
+
+- En el build puede aparecer una advertencia conocida de Rollup con `@microsoft/signalr`; no bloquea la compilacion.
+- El README anterior era el template por defecto de Vite; este archivo ya documenta el proyecto real.

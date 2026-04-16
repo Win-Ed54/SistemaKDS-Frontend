@@ -10,6 +10,8 @@ const normalizeCustomerName = (value) =>
 
 const OrderPanel = ({ pax, tableId, onOrderSent }) => {
   const [customerName, setCustomerName] = useState("");
+  const isTakeout = Number(tableId) === 0;
+
   const handleOrderSent = () => {
     setCustomerName("");
     onOrderSent?.();
@@ -32,13 +34,13 @@ const OrderPanel = ({ pax, tableId, onOrderSent }) => {
           <User className="w-4 h-4 text-cyan-400" />
           <div className="flex-1">
             <p className="text-[8px] font-black text-slate-600 uppercase tracking-tighter">
-              Cliente (Obligatorio)
+              Cliente (Opcional)
             </p>
             <input
               type="text"
               value={customerName}
               onChange={(e) => setCustomerName(normalizeCustomerName(e.target.value))}
-              placeholder="NOMBRE DEL CLIENTE..."
+              placeholder={isTakeout ? "NOMBRE PARA LLEVAR (OPCIONAL)" : "NOMBRE DEL CLIENTE (OPCIONAL)"}
               maxLength={60}
               autoComplete="off"
               className="bg-transparent border-none text-xs font-black text-white uppercase tracking-tighter w-full focus:outline-none placeholder:text-slate-800"
@@ -67,7 +69,7 @@ const OrderPanel = ({ pax, tableId, onOrderSent }) => {
               Comensales
             </p>
             <p className="text-xs font-black text-white uppercase tracking-tighter">
-              {pax || "0"} Pers.
+              {isTakeout ? "No requerido" : `${pax || "0"} Pers.`}
             </p>
           </div>
         </div>

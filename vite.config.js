@@ -1,28 +1,30 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
+const devApiTarget = process.env.VITE_DEV_API_TARGET || 'http://localhost:5162'
+
 export default defineConfig({
   plugins: [react()],
   server: {
-    host: true,   // permite acceso desde celular en la misma red
+    host: true,
     port: 5173,
     proxy: {
       '/images': {
-    target: 'http://localhost:5162', 
-    changeOrigin: true,
-    secure: false,
+        target: devApiTarget,
+        changeOrigin: true,
+        secure: false,
       },
       '/api': {
-        target: 'http://localhost:5162', // ← siempre localhost (mismo PC que Vite)
+        target: devApiTarget,
         changeOrigin: true,
         secure: false,
       },
       '/ordersHub': {
-        target: 'http://localhost:5162', // ← siempre localhost
+        target: devApiTarget,
         ws: true,
         changeOrigin: true,
         secure: false,
-      }
-    }
-  }
-});
+      },
+    },
+  },
+})

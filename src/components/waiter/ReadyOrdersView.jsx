@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from "react";
+import React, { useMemo } from "react";
 import { BellRing, MapPin, PackageCheck } from "lucide-react";
 import { finishOrder } from "../../services/api.service";
 import { useToast } from "../../context/ToastContext";
@@ -7,7 +7,23 @@ import useOrderStore from "../../store/orderStore";
 const getOrderLocationLabel = (order) =>
   Number(order?.tableNumber) > 0 ? `Mesa ${order.tableNumber}` : "Para llevar";
 
-const ReadyOrdersView = ({ variant = "floating" }) => {
+const normalizeCompareValue = (value) => String(value || "").trim().toLowerCase();
+
+const belongsToWaiter = (order, waiterId, waiterName) => {
+  const orderWaiterId = order?.waiterId ?? order?.WaiterId;
+  const idMatches =
+    String(orderWaiterId || "").trim().length > 0 &&
+    String(waiterId || "").trim().length > 0 &&
+    String(orderWaiterId || "").trim() === String(waiterId || "").trim();
+
+  const nameMatches =
+    normalizeCompareValue(order?.waiterName).length > 0 &&
+    normalizeCompareValue(order?.waiterName) === normalizeCompareValue(waiterName);
+
+  return idMatches || nameMatches;
+};
+
+const ReadyOrdersView = ({ variant = "floating", waiterId = "" }) => {
   const { showToast } = useToast();
   const ordersFromStore = useOrderStore((state) => state.orders);
   const waiterName = localStorage.getItem("user_name") || "";
@@ -15,19 +31,12 @@ const ReadyOrdersView = ({ variant = "floating" }) => {
   const readyOrders = useMemo(
     () =>
       ordersFromStore.filter((order) => {
-        const isMine = order.waiterName?.toLowerCase().trim() === waiterName.toLowerCase().trim();
+        const isMine = belongsToWaiter(order, waiterId, waiterName);
         const isReady = order.status === 2 || String(order.status).toLowerCase() === "ready";
         return isMine && isReady;
       }),
-    [ordersFromStore, waiterName]
+    [ordersFromStore, waiterId, waiterName]
   );
-
-  useEffect(() => {
-    if (readyOrders.length === 0) return;
-
-    const latestReady = readyOrders[0];
-    showToast(`${getOrderLocationLabel(latestReady)} LISTA`, "success");
-  }, [readyOrders, showToast]);
 
   const handleDeliver = async (orderId) => {
     try {

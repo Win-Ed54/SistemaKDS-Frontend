@@ -18,13 +18,29 @@ const useTables = () => {
     queueMicrotask(fetchTables);
 
     const unsubscribe = onTableUpdated((data) => {
+      let foundMatch = false;
+
       setTables((prev) =>
-        prev.map((t) =>
-          t.number === data.tableNumber || t.Number === data.tableNumber
-            ? { ...t, isOccupied: data.isOccupied }
-            : t
-        )
+        prev.map((t) => {
+          if (t.number !== data.tableNumber && t.Number !== data.tableNumber) {
+            return t;
+          }
+
+          foundMatch = true;
+
+          return {
+            ...t,
+            ...data,
+            number: data.number ?? data.Number ?? t.number ?? t.Number,
+            isOccupied:
+              data.isOccupied ?? data.IsOccupied ?? t.isOccupied ?? t.IsOccupied,
+          };
+        })
       );
+
+      if (!foundMatch) {
+        fetchTables();
+      }
     });
 
     const unsubscribeConnection = subscribeConnectionStatus((connected) => {

@@ -4,6 +4,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import Login from "./pages/Login";
 import AdminView from "./views/AdminView";
 import CashierView from "./views/CashierView";
+import HostView from "./views/HostView";
 import KitchenDisplay from "./views/KitchenDisplay";
 import WaiterView from "./views/WaiterView";
 import RoleProtectedRoute from "./routes/RoleProtectedRoute";
@@ -18,6 +19,7 @@ import {
   startConnection,
 } from "./services/signalrService";
 import { getAuthValue } from "./services/authStorage";
+import { startAutoRefreshSession } from "./services/authService";
 
 let signalRInitialized = false;
 let signalRCleanup = [];
@@ -26,7 +28,8 @@ function App() {
   useEffect(() => {
     const init = async () => {
       const token = getAuthValue("token");
-      if (!token || signalRInitialized) return;
+      const isLoginRoute = window.location.pathname === "/login";
+      if (!token || signalRInitialized || isLoginRoute) return;
 
       try {
         signalRInitialized = true;
@@ -53,6 +56,7 @@ function App() {
       void init();
     };
 
+    startAutoRefreshSession();
     void init();
     window.addEventListener("auth-changed", handleAuthChanged);
 
@@ -72,6 +76,15 @@ function App() {
           element={
             <RoleProtectedRoute role="kitchen">
               <KitchenDisplay />
+            </RoleProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/host"
+          element={
+            <RoleProtectedRoute role="host">
+              <HostView />
             </RoleProtectedRoute>
           }
         />

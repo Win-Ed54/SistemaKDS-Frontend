@@ -6,15 +6,20 @@ const useOrderBuilder = () => {
     waiterName,
     customerName,
     items,
+    noteTarget,
     setTable,
     setWaiter,
     setCustomer,
+    setNoteTarget,
+    clearNoteTarget,
     addItem,
+    addCustomItem,
     removeItem,
     decreaseItem,
     clearOrder,
     resetAfterOrder,
     updateItemNotes,
+    reconcileWithAvailableStock,
   } = useOrderBuilderStore();
 
   return {
@@ -22,15 +27,20 @@ const useOrderBuilder = () => {
     waiterName,
     customerName,
     items,
+    noteTarget,
     setTable,
     setWaiter,
     setCustomer,
+    setNoteTarget,
+    clearNoteTarget,
     addItem,
+    addCustomItem,
     removeItem,
     decreaseItem,
     clearOrder,
     resetAfterOrder,
     updateItemNotes,
+    reconcileWithAvailableStock,
   };
 };
 

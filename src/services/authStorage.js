@@ -4,6 +4,7 @@ const AUTH_KEYS = [
   "refresh_token",
   "admin_token",
   "waiter_token",
+  "host_token",
   "kitchen_token",
   "cashier_token",
 ];
@@ -37,6 +38,7 @@ export const clearAuthStorage = () => {
 export const getRoleRoute = (role) => {
   const map = {
     kitchen: "/cocina",
+    host: "/host",
     waiter: "/terminal",
     admin: "/panel",
     cashier: "/caja",

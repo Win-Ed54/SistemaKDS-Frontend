@@ -9,9 +9,12 @@ import {
 } from "../services/api.service";
 import { useToast } from "../context/ToastContext";
 import { subscribeConnectionStatus } from "../services/signalrService";
+import useKdsSettings from "../hooks/useKdsSettings";
 
 import AdminHeader from "../components/admin/AdminHeader";
+import AdministrativeLog from "../components/admin/AdministrativeLog";
 import InventoryManager from "../components/admin/InventoryManager";
+import KdsSettingsPanel from "../components/admin/KdsSettingsPanel";
 import OrdersSummary from "../components/admin/OrdersSummary";
 import StatsCard from "../components/admin/StatsCard";
 import TableStatus from "../components/admin/TableStatus";
@@ -39,6 +42,7 @@ const AdminView = () => {
 
   const { connection, isConnected } = useSignalRConnection("admin");
   const { showToast } = useToast();
+  const { settings, refreshSettings } = useKdsSettings();
   const isDev = import.meta.env.DEV;
 
   const loadData = useCallback(async (silent = false) => {
@@ -166,6 +170,31 @@ const AdminView = () => {
     return { avg, totalSales };
   }, [history, orders]);
 
+  const activeTableNumbers = useMemo(
+    () =>
+      new Set(
+        orders
+          .map((order) => Number(order?.tableNumber))
+          .filter((tableNumber) => Number.isFinite(tableNumber) && tableNumber > 0),
+      ),
+    [orders],
+  );
+
+  const effectiveTables = useMemo(
+    () =>
+      tables.map((table) => {
+        const tableNumber = Number(table.number ?? table.Number);
+        if (!activeTableNumbers.has(tableNumber)) return table;
+
+        return {
+          ...table,
+          isOccupied: true,
+          IsOccupied: true,
+        };
+      }),
+    [activeTableNumbers, tables],
+  );
+
   if (loading && orders.length === 0) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
@@ -194,7 +223,7 @@ const AdminView = () => {
           <StatsCard title="Ordenes Activas" value={orders.length} color="text-yellow-400" />
           <StatsCard
             title="Mesas Libres"
-            value={tables.filter((table) => !table.isOccupied).length}
+            value={effectiveTables.filter((table) => !(table.isOccupied || table.IsOccupied)).length}
             color="text-slate-400"
           />
         </div>
@@ -205,12 +234,20 @@ const AdminView = () => {
           </div>
 
           <div className="xl:col-span-8 space-y-8">
-            <TableStatus tables={tables} onReleaseTable={handleCloseTable} />
+            <TableStatus tables={effectiveTables} onReleaseTable={handleCloseTable} />
+            <KdsSettingsPanel
+              settings={settings}
+              onSaved={() => {
+                void refreshSettings();
+                showToast("Configuracion KDS actualizada", "success");
+              }}
+            />
             <InventoryManager products={products} refresh={() => loadData(true)} />
           </div>
         </div>
 
         <TopProductsReport data={history} totalSales={stats.totalSales} />
+        <AdministrativeLog orders={orders} history={history} />
       </div>
     </div>
   );
