@@ -10,6 +10,10 @@ export const ORDER_MODE_DEFAULTS = {
     maxTotalUnits: 80,
     maxQuantityPerProduct: 20,
     largeOrderUnitsWarning: 15,
+    takeoutRequirePrepayment: false,
+    requireCustomerNameForTakeout: true,
+    defaultCleaningMinutes: 8,
+    maxPartySize: 10,
   },
   [ORDER_MODES.RESTAURANT]: {
     serviceMode: ORDER_MODES.RESTAURANT,
@@ -17,6 +21,10 @@ export const ORDER_MODE_DEFAULTS = {
     maxTotalUnits: 120,
     maxQuantityPerProduct: 30,
     largeOrderUnitsWarning: 25,
+    takeoutRequirePrepayment: false,
+    requireCustomerNameForTakeout: true,
+    defaultCleaningMinutes: 8,
+    maxPartySize: 10,
   },
 };
 
@@ -41,6 +49,17 @@ export const normalizeOrderSettings = (settings) => {
       settings?.largeOrderUnitsWarning > 0
         ? settings.largeOrderUnitsWarning
         : defaults.largeOrderUnitsWarning,
+    takeoutRequirePrepayment: Boolean(
+      settings?.takeoutRequirePrepayment ?? defaults.takeoutRequirePrepayment,
+    ),
+    requireCustomerNameForTakeout:
+      settings?.requireCustomerNameForTakeout ?? defaults.requireCustomerNameForTakeout,
+    defaultCleaningMinutes:
+      settings?.defaultCleaningMinutes > 0
+        ? settings.defaultCleaningMinutes
+        : defaults.defaultCleaningMinutes,
+    maxPartySize:
+      settings?.maxPartySize > 0 ? settings.maxPartySize : defaults.maxPartySize,
   };
 };
 

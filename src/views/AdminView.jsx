@@ -7,6 +7,7 @@ import {
   getOrderHistory,
   getProducts,
   getTables,
+  unseatTable,
 } from "../services/api.service";
 import { useToast } from "../context/ToastContext";
 import { subscribeConnectionStatus } from "../services/signalrService";
@@ -117,11 +118,45 @@ const AdminView = () => {
 
     try {
       setReleasingTable(true);
-      await closeTable(pendingTableRelease);
-      showToast(`Mesa ${pendingTableRelease} liberada correctamente`, "success");
+      const tableNumber = Number(
+        pendingTableRelease.number ?? pendingTableRelease.Number ?? pendingTableRelease,
+      );
+      const isBeingCleaned = Boolean(
+        pendingTableRelease.isBeingCleaned ?? pendingTableRelease.IsBeingCleaned,
+      );
+      const hasActiveOrders = orders.some(
+        (order) => Number(order?.tableNumber) === tableNumber && getOrderStatusNumber(order?.status) < 3,
+      );
+      const hasPendingPayment = history.some(
+        (order) =>
+          Number(order?.tableNumber) === tableNumber &&
+          getOrderStatusNumber(order?.status) === 3 &&
+          !order?.isPaid,
+      );
+      const hasPendingCleanup = history.some(
+        (order) =>
+          Number(order?.tableNumber) === tableNumber &&
+          getOrderStatusNumber(order?.status) === 3 &&
+          order?.isPaid &&
+          !order?.isCleanupCompleted,
+      );
+
+      if (isBeingCleaned || hasPendingCleanup) {
+        await closeTable(tableNumber);
+      } else if (!hasActiveOrders && !hasPendingPayment) {
+        await unseatTable(tableNumber);
+      } else {
+        throw new Error(
+          hasActiveOrders
+            ? `La mesa ${tableNumber} todavia tiene ordenes activas.`
+            : `La mesa ${tableNumber} tiene cobros pendientes.`,
+        );
+      }
+
+      showToast(`Mesa ${tableNumber} liberada correctamente`, "success");
       setPendingTableRelease(null);
-    } catch {
-      showToast("Error al liberar la mesa", "error");
+    } catch (error) {
+      showToast(error?.message || "Error al liberar la mesa", "error");
     } finally {
       setReleasingTable(false);
     }
@@ -229,6 +264,50 @@ const AdminView = () => {
     [activeTableNumbers, tables],
   );
 
+  const adminTableStates = useMemo(
+    () =>
+      effectiveTables.map((table) => {
+        const tableNumber = Number(table.number ?? table.Number);
+        const isBeingCleaned = Boolean(table.isBeingCleaned ?? table.IsBeingCleaned);
+        const hasActiveOrders = orders.some(
+          (order) => Number(order?.tableNumber) === tableNumber && getOrderStatusNumber(order?.status) < 3,
+        );
+        const hasPendingPayment = history.some(
+          (order) =>
+            Number(order?.tableNumber) === tableNumber &&
+            getOrderStatusNumber(order?.status) === 3 &&
+            !order?.isPaid,
+        );
+        const hasPendingCleanup = history.some(
+          (order) =>
+            Number(order?.tableNumber) === tableNumber &&
+            getOrderStatusNumber(order?.status) === 3 &&
+            order?.isPaid &&
+            !order?.isCleanupCompleted,
+        );
+
+        let releaseAction = null;
+        let releaseBlockedReason = "";
+
+        if (isBeingCleaned || hasPendingCleanup) {
+          releaseAction = "close";
+        } else if (!hasActiveOrders && !hasPendingPayment) {
+          releaseAction = "unseat";
+        } else if (hasActiveOrders) {
+          releaseBlockedReason = "Tiene ordenes activas";
+        } else if (hasPendingPayment) {
+          releaseBlockedReason = "Tiene cobros pendientes";
+        }
+
+        return {
+          ...table,
+          releaseAction,
+          releaseBlockedReason,
+        };
+      }),
+    [effectiveTables, history, orders],
+  );
+
   const quickStats = useMemo(() => {
     const availableTables = effectiveTables.filter((table) => !(table.isOccupied || table.IsOccupied)).length;
     const lowStockProducts = products.filter((product) => Number(product.stock ?? product.Stock ?? 0) > 0 && Number(product.stock ?? product.Stock ?? 0) <= 10).length;
@@ -331,7 +410,7 @@ const AdminView = () => {
           title="Liberar mesa ocupada"
           description={
             pendingTableRelease !== null
-              ? `Se intentara cerrar la mesa ${pendingTableRelease}. Si tiene flujo pendiente, el sistema la bloqueara automaticamente.`
+              ? `Se intentara liberar la mesa ${pendingTableRelease.number ?? pendingTableRelease.Number ?? pendingTableRelease}. Admin cancelara la asignacion si no tuvo ordenes o finalizara la limpieza si ya paso por pago.`
               : ""
           }
           confirmLabel="Liberar mesa"
@@ -499,7 +578,7 @@ const AdminView = () => {
             </div>
 
             <div className="xl:col-span-8">
-              <TableStatus tables={effectiveTables} onReleaseTable={setPendingTableRelease} />
+              <TableStatus tables={adminTableStates} onReleaseTable={setPendingTableRelease} />
             </div>
           </div>
         )}

@@ -273,7 +273,7 @@ const formatOrderTime = (value) => {
 export default function WaiterView() {
   const navigate = useNavigate();
   const { isConnected } = useSignalRConnection();
-  useKdsSettings();
+  const { settings } = useKdsSettings();
   const { products } = useProducts();
   const { tables } = useTables();
   const { tableId, items, setTable } = useOrderBuilder();
@@ -299,6 +299,10 @@ export default function WaiterView() {
   const waiterName = localStorage.getItem("user_name") || "Mesero de Turno";
   const waiterId = getCurrentUserId();
   const currentUser = { username: waiterName, role: "waiter" };
+  const defaultCleaningMinutes =
+    Number(settings?.defaultCleaningMinutes) > 0
+      ? Number(settings.defaultCleaningMinutes)
+      : DEFAULT_CLEANING_MINUTES;
 
   const normalizedTables = useMemo(
     () =>
@@ -737,7 +741,7 @@ export default function WaiterView() {
 
   const handleStartCleaning = async (tableNumber) => {
     try {
-      await startTableCleaning(tableNumber, { estimatedCleaningMinutes: DEFAULT_CLEANING_MINUTES });
+      await startTableCleaning(tableNumber, { estimatedCleaningMinutes: defaultCleaningMinutes });
       showToast(`Limpieza iniciada en mesa ${tableNumber}`, "success");
     } catch (error) {
       console.error("Error al iniciar limpieza:", error);
@@ -987,7 +991,7 @@ export default function WaiterView() {
                       </div>
                       <div className="mt-5 space-y-3">
                         <div className="rounded-[1.4rem] border border-slate-800 bg-slate-950/70 p-4"><p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Cliente</p><p className="text-sm font-black uppercase text-slate-100 mt-2">{order.customerName || "General"}</p></div>
-                        <div className="rounded-[1.4rem] border border-slate-800 bg-slate-950/70 p-4"><p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Estimado</p><p className="text-sm font-black uppercase text-slate-100 mt-2">{cleaning ? `Mesa libre en ${formatCountdown(cleaningEndsAt, now)}` : `Si inicias ahora: ${formatMinutes(DEFAULT_CLEANING_MINUTES)}`}</p></div>
+                        <div className="rounded-[1.4rem] border border-slate-800 bg-slate-950/70 p-4"><p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Estimado</p><p className="text-sm font-black uppercase text-slate-100 mt-2">{cleaning ? `Mesa libre en ${formatCountdown(cleaningEndsAt, now)}` : `Si inicias ahora: ${formatMinutes(defaultCleaningMinutes)}`}</p></div>
                         {cleaning ? (
                           <button onClick={() => handleCloseTable(order.tableNumber)} disabled={cleaningTables[order.tableNumber]} className="w-full py-4 rounded-[1.4rem] bg-emerald-400 text-slate-950 font-black uppercase text-[11px] tracking-[0.2em] disabled:opacity-50">{cleaningTables[order.tableNumber] ? "Liberando..." : "Termine de limpiar"}</button>
                         ) : (

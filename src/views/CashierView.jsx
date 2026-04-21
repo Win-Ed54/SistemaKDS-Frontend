@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "../context/ToastContext";
+import useKdsSettings from "../hooks/useKdsSettings";
 import useSignalRConnection from "../hooks/useSignalRConnection";
 import { logout } from "../services/authService";
 import { getOrderHistory, payOrder } from "../services/api.service";
@@ -33,6 +34,11 @@ const formatTime = (value = Date.now()) =>
 
 const getOrderLocationLabel = (order) =>
   Number(order?.tableNumber) > 0 ? `Mesa ${order.tableNumber}` : "Para llevar";
+
+const isTakeoutPrepaymentOrder = (order, settings) =>
+  Boolean(settings?.takeoutRequirePrepayment) &&
+  Number(order?.tableNumber) === 0 &&
+  !order?.isPaid;
 
 const getRemainingItemQuantity = (item) => {
   const fallbackRemaining =
@@ -107,6 +113,7 @@ const CashierView = () => {
   const [recentCharges, setRecentCharges] = useState([]);
 
   const { isConnected } = useSignalRConnection("cashier");
+  const { settings } = useKdsSettings();
   const { showToast } = useToast();
 
   const loadCashierData = useCallback(async (silent = false) => {
@@ -155,10 +162,14 @@ const CashierView = () => {
       .filter((order) => {
         const status = typeof order.status === "string" ? order.status.toLowerCase() : order.status;
         const isDelivered = status === 3 || status === "delivered";
-        return isDelivered && !order.isPaid;
+        const isTakeoutPendingPrepayment =
+          Boolean(settings?.takeoutRequirePrepayment) &&
+          Number(order?.tableNumber) === 0 &&
+          !order.isPaid;
+        return (isDelivered && !order.isPaid) || isTakeoutPendingPrepayment;
       })
       .sort((a, b) => new Date(b.deliveredAt || b.createdAt) - new Date(a.deliveredAt || a.createdAt));
-  }, [history]);
+  }, [history, settings?.takeoutRequirePrepayment]);
 
   const filteredPendingPayments = useMemo(() => {
     const normalizedQuery = tableSearch.trim().toLowerCase();
@@ -454,7 +465,9 @@ const CashierView = () => {
                 KDS <span className="text-emerald-400">Caja</span>
               </h1>
               <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.3em] mt-1">
-                Cobro de productos entregados
+                {settings?.takeoutRequirePrepayment
+                  ? "Cobro de mesa y prepago para llevar"
+                  : "Cobro de productos entregados"}
               </p>
             </div>
           </div>
@@ -529,7 +542,9 @@ const CashierView = () => {
             <div className="flex items-center gap-3">
               <Receipt className="w-5 h-5 text-emerald-400" />
               <h2 className="text-sm font-black uppercase tracking-[0.3em] text-slate-400">
-                Ordenes Pendientes De Cobro
+                {settings?.takeoutRequirePrepayment
+                  ? "Cobros Pendientes Y Prepagos Para Llevar"
+                  : "Ordenes Pendientes De Cobro"}
               </h2>
             </div>
 
@@ -541,7 +556,7 @@ const CashierView = () => {
                 type="text"
                 value={tableSearch}
                 onChange={(event) => setTableSearch(event.target.value.slice(0, 40))}
-                placeholder="Buscar mesa, cliente o codigo"
+                placeholder="Buscar mesa, para llevar, cliente o codigo"
                 className="w-full rounded-[1.2rem] border border-slate-800 bg-slate-950 pl-11 pr-4 py-3 text-sm font-bold text-white outline-none placeholder:text-slate-600 focus:border-emerald-400"
               />
             </label>
@@ -577,16 +592,18 @@ const CashierView = () => {
           {pendingPayments.length === 0 ? (
             <div className="border border-dashed border-slate-800 rounded-[2rem] p-12 text-center">
               <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">
-                No hay cuentas pendientes en este momento
+                {settings?.takeoutRequirePrepayment
+                  ? "No hay cobros pendientes ni pedidos para llevar por prepagar"
+                  : "No hay cuentas pendientes en este momento"}
               </p>
             </div>
           ) : filteredPendingPayments.length === 0 ? (
             <div className="border border-dashed border-slate-800 rounded-[2rem] p-12 text-center space-y-3">
               <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">
-                No se encontraron mesas con ese criterio
+                No se encontraron pedidos con ese criterio
               </p>
               <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-600">
-                Prueba con numero de mesa, cliente o codigo de pedido
+                Prueba con numero de mesa, para llevar, cliente o codigo de pedido
               </p>
             </div>
           ) : (
@@ -610,6 +627,7 @@ const CashierView = () => {
                   selectedItemPayments={selectedItemPayments}
                   updateSelectedItemQuantity={updateSelectedItemQuantity}
                   getSelectedOrderTotal={getSelectedOrderTotal}
+                  settings={settings}
                 />
               ) : (
                 <SeparatePaymentsView
@@ -622,6 +640,7 @@ const CashierView = () => {
                   selectedItemPayments={selectedItemPayments}
                   updateSelectedItemQuantity={updateSelectedItemQuantity}
                   getSelectedOrderTotal={getSelectedOrderTotal}
+                  settings={settings}
                 />
               )}
             </div>
@@ -711,6 +730,7 @@ const GroupedPaymentsView = ({
   selectedItemPayments,
   updateSelectedItemQuantity,
   getSelectedOrderTotal,
+  settings,
 }) => (
   <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
     {groupedPendingPayments.map((group) => {
@@ -797,7 +817,10 @@ const GroupedPaymentsView = ({
           </div>
 
           <div className="space-y-3">
-            {group.orders.map((order) => (
+            {group.orders.map((order) => {
+              const isTakeoutPrepayment = isTakeoutPrepaymentOrder(order, settings);
+
+              return (
               <div key={order.id} className="rounded-[1.4rem] border border-slate-800 bg-slate-900/60 p-4 space-y-3">
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -805,9 +828,16 @@ const GroupedPaymentsView = ({
                     <p className="text-sm font-black text-cyan-300 mt-1 break-all">
                       {order.correlativeCode || order.id}
                     </p>
+                    {isTakeoutPrepayment && (
+                      <span className="mt-2 inline-flex rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.16em] text-cyan-300">
+                        Prepago para llevar
+                      </span>
+                    )}
                   </div>
                   <div className="text-right">
-                    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Subtotal</p>
+                    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">
+                      {isTakeoutPrepayment ? "Monto a prepagar" : "Subtotal"}
+                    </p>
                     <p className="text-sm font-black text-slate-100 mt-1">
                       {formatCurrency(getRemainingOrderTotal(order))}
                     </p>
@@ -895,7 +925,7 @@ const GroupedPaymentsView = ({
                   <CreditCard className="w-4 h-4" />
                   {chargingOrders[order.id]
                     ? "Cobrando seleccion..."
-                    : `Cobrar seleccionado ${formatCurrency(getSelectedOrderTotal(order))}`}
+                    : `${isTakeoutPrepayment ? "Prepago parcial" : "Cobrar seleccionado"} ${formatCurrency(getSelectedOrderTotal(order))}`}
                 </button>
 
                 <button
@@ -904,10 +934,14 @@ const GroupedPaymentsView = ({
                   className="w-full py-3 rounded-[1.2rem] border border-emerald-400/30 bg-emerald-400/10 text-emerald-300 font-black uppercase tracking-[0.2em] text-[10px] hover:bg-emerald-400 hover:text-slate-950 transition-all disabled:opacity-50 inline-flex items-center justify-center gap-3"
                 >
                   <CreditCard className="w-4 h-4" />
-                  {chargingOrders[order.id] ? "Cobrando..." : "Cobrar solo este pedido"}
+                  {chargingOrders[order.id]
+                    ? "Cobrando..."
+                    : isTakeoutPrepayment
+                      ? "Cobrar prepago completo"
+                      : "Cobrar solo este pedido"}
                 </button>
               </div>
-            ))}
+            )})}
           </div>
 
           <PaymentFormFields
@@ -941,9 +975,13 @@ const SeparatePaymentsView = ({
   selectedItemPayments,
   updateSelectedItemQuantity,
   getSelectedOrderTotal,
+  settings,
 }) => (
   <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
-    {filteredPendingPayments.map((order) => (
+    {filteredPendingPayments.map((order) => {
+      const isTakeoutPrepayment = isTakeoutPrepaymentOrder(order, settings);
+
+      return (
       <article key={order.id} className="bg-slate-950 border border-slate-800 rounded-[2rem] p-5 space-y-5">
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -951,11 +989,18 @@ const SeparatePaymentsView = ({
             <p className="text-sm font-black text-cyan-300 mt-1 break-all">
               {order.correlativeCode || order.id}
             </p>
+            {isTakeoutPrepayment && (
+              <span className="mt-2 inline-flex rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.16em] text-cyan-300">
+                Prepago para llevar
+              </span>
+            )}
             <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Ubicacion</p>
             <p className="text-4xl font-black text-white mt-1">{getOrderLocationLabel(order)}</p>
           </div>
           <div className="text-right">
-            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Total</p>
+            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">
+              {isTakeoutPrepayment ? "Monto a prepagar" : "Total"}
+            </p>
             <p className="text-2xl font-black text-emerald-400 mt-1">
               {formatCurrency(getRemainingOrderTotal(order))}
             </p>
@@ -1050,7 +1095,7 @@ const SeparatePaymentsView = ({
           <CreditCard className="w-4 h-4" />
           {chargingOrders[order.id]
             ? "Cobrando seleccion..."
-            : `Cobrar seleccionado ${formatCurrency(getSelectedOrderTotal(order))}`}
+            : `${isTakeoutPrepayment ? "Prepago parcial" : "Cobrar seleccionado"} ${formatCurrency(getSelectedOrderTotal(order))}`}
         </button>
 
         <button
@@ -1059,10 +1104,14 @@ const SeparatePaymentsView = ({
           className="w-full py-4 rounded-[1.4rem] bg-emerald-400 text-slate-950 font-black uppercase tracking-[0.2em] text-[11px] hover:bg-emerald-300 active:scale-95 transition-all disabled:opacity-50 inline-flex items-center justify-center gap-3"
         >
           <CreditCard className="w-4 h-4" />
-          {chargingOrders[order.id] ? "Cobrando..." : "Cobrar orden"}
+          {chargingOrders[order.id]
+            ? "Cobrando..."
+            : isTakeoutPrepayment
+              ? "Cobrar prepago completo"
+              : "Cobrar orden"}
         </button>
       </article>
-    ))}
+    )})}
   </div>
 );
 

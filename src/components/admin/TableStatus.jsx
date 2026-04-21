@@ -22,6 +22,9 @@ const TableStatus = ({ tables, onReleaseTable }) => {
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
         {tables.map((table) => {
           const isOccupied = table.isOccupied || table.IsOccupied;
+          const isBeingCleaned = table.isBeingCleaned || table.IsBeingCleaned;
+          const releaseBlockedReason = table.releaseBlockedReason || "";
+          const canRelease = Boolean(table.releaseAction);
           
           return (
             <div 
@@ -52,12 +55,28 @@ const TableStatus = ({ tables, onReleaseTable }) => {
 
               {/*BOTÓN DE ACCIÓN: Solo aparece si está ocupada */}
               {isOccupied && (
-                <button
-                  onClick={() => onReleaseTable(table.number)}
-                  className="absolute bottom-4 left-4 right-4 py-2.5 rounded-xl bg-red-500 text-white text-[9px] font-black uppercase tracking-widest hover:bg-red-400 active:scale-95 transition-all shadow-lg shadow-red-500/20 animate-in fade-in slide-in-from-bottom-2"
-                >
-                  Liberar
-                </button>
+                <>
+                  <button
+                    onClick={() => (canRelease ? onReleaseTable(table) : undefined)}
+                    disabled={!canRelease}
+                    className={`absolute bottom-4 left-4 right-4 py-2.5 rounded-xl text-white text-[9px] font-black uppercase tracking-widest transition-all shadow-lg animate-in fade-in slide-in-from-bottom-2 ${
+                      canRelease
+                        ? "bg-red-500 hover:bg-red-400 active:scale-95 shadow-red-500/20"
+                        : "bg-slate-800 text-slate-400 cursor-not-allowed shadow-slate-950/20"
+                    }`}
+                  >
+                    {canRelease
+                      ? isBeingCleaned
+                        ? "Terminar limpieza"
+                        : "Liberar"
+                      : "Bloqueada"}
+                  </button>
+                  {!canRelease && (
+                    <p className="absolute bottom-16 left-4 right-4 text-center text-[8px] font-black uppercase tracking-[0.14em] text-amber-300">
+                      {releaseBlockedReason}
+                    </p>
+                  )}
+                </>
               )}
             </div>
           );

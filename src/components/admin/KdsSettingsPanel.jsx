@@ -28,6 +28,24 @@ const SettingInput = ({ name, label, value, onChange }) => (
   </div>
 );
 
+const ToggleInput = ({ name, label, checked, onChange, description }) => (
+  <label className="rounded-xl border border-slate-800 bg-slate-950/70 p-4 flex items-start justify-between gap-4 cursor-pointer">
+    <div>
+      <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.16em]">{label}</p>
+      {description ? (
+        <p className="mt-2 text-[10px] font-bold text-slate-500">{description}</p>
+      ) : null}
+    </div>
+    <input
+      name={name}
+      type="checkbox"
+      checked={checked}
+      onChange={onChange}
+      className="mt-1 h-4 w-4 accent-fuchsia-500"
+    />
+  </label>
+);
+
 const KdsSettingsPanel = ({ settings, onSaved }) => {
   const [form, setForm] = useState(() => normalizeOrderSettings(settings));
   const [saving, setSaving] = useState(false);
@@ -48,6 +66,10 @@ const KdsSettingsPanel = ({ settings, onSaved }) => {
     setForm((prev) => ({ ...prev, [event.target.name]: Number.isNaN(value) ? 0 : value }));
   };
 
+  const handleToggleChange = (event) => {
+    setForm((prev) => ({ ...prev, [event.target.name]: event.target.checked }));
+  };
+
   const handleSubmit = async () => {
     if (form.maxDistinctItems < 1 || form.maxTotalUnits < 1 || form.maxQuantityPerProduct < 1) {
       const message = "Todos los limites deben ser mayores a cero.";
@@ -58,6 +80,20 @@ const KdsSettingsPanel = ({ settings, onSaved }) => {
 
     if (form.largeOrderUnitsWarning > form.maxTotalUnits) {
       const message = "La alerta de orden grande no puede superar el maximo de unidades.";
+      setError(message);
+      showToast(message, "error");
+      return;
+    }
+
+    if (form.defaultCleaningMinutes < 1) {
+      const message = "El tiempo de limpieza debe ser mayor a cero.";
+      setError(message);
+      showToast(message, "error");
+      return;
+    }
+
+    if (form.maxPartySize < 1) {
+      const message = "El maximo de personas por mesa debe ser mayor a cero.";
       setError(message);
       showToast(message, "error");
       return;
@@ -121,7 +157,26 @@ const KdsSettingsPanel = ({ settings, onSaved }) => {
           <SettingInput name="maxTotalUnits" label="Unidades totales" value={form.maxTotalUnits} onChange={handleNumberChange} />
           <SettingInput name="maxQuantityPerProduct" label="Max por producto" value={form.maxQuantityPerProduct} onChange={handleNumberChange} />
           <SettingInput name="largeOrderUnitsWarning" label="Alerta orden grande" value={form.largeOrderUnitsWarning} onChange={handleNumberChange} />
+          <SettingInput name="defaultCleaningMinutes" label="Limpieza por defecto" value={form.defaultCleaningMinutes} onChange={handleNumberChange} />
+          <SettingInput name="maxPartySize" label="Max personas por mesa" value={form.maxPartySize} onChange={handleNumberChange} />
         </div>
+      </div>
+
+      <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <ToggleInput
+          name="takeoutRequirePrepayment"
+          label="Prepago para llevar"
+          checked={Boolean(form.takeoutRequirePrepayment)}
+          onChange={handleToggleChange}
+          description="Si esta activo, un pedido para llevar debe cobrarse antes de entrar a cocina."
+        />
+        <ToggleInput
+          name="requireCustomerNameForTakeout"
+          label="Nombre obligatorio para llevar"
+          checked={Boolean(form.requireCustomerNameForTakeout)}
+          onChange={handleToggleChange}
+          description="Solicita nombre del cliente en pedidos para llevar."
+        />
       </div>
 
       {error && (

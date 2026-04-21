@@ -18,11 +18,11 @@ import {
   unseatTable,
 } from "../services/api.service";
 import ConfirmDialog from "../components/common/ConfirmDialog";
+import useKdsSettings from "../hooks/useKdsSettings";
 import useSignalRConnection from "../hooks/useSignalRConnection";
 import useTables from "../hooks/useTables";
 
 const DEFAULT_CLEANING_MINUTES = 8;
-const MAX_HOST_PARTY_SIZE = 10;
 
 const estimateStayMinutes = (partySize) => {
   const size = Number(partySize) || 0;
@@ -140,6 +140,7 @@ const HostView = () => {
   const navigate = useNavigate();
   const { isConnected } = useSignalRConnection();
   const { tables } = useTables();
+  const { settings } = useKdsSettings();
   const { showToast } = useToast();
 
   const [seatingPartySize, setSeatingPartySize] = useState("2");
@@ -156,6 +157,11 @@ const HostView = () => {
   const [now, setNow] = useState(() => Date.now());
 
   const hostName = localStorage.getItem("user_name") || "Host de Turno";
+  const maxHostPartySize = Number(settings?.maxPartySize) > 0 ? Number(settings.maxPartySize) : 10;
+  const defaultCleaningMinutes =
+    Number(settings?.defaultCleaningMinutes) > 0
+      ? Number(settings.defaultCleaningMinutes)
+      : DEFAULT_CLEANING_MINUTES;
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
@@ -209,7 +215,7 @@ const HostView = () => {
         if (cleaning) {
           const availableAt =
             Number(cleaning.startedAt) +
-            Number(cleaning.estimatedMinutes || DEFAULT_CLEANING_MINUTES) *
+            Number(cleaning.estimatedMinutes || defaultCleaningMinutes) *
               60 *
               1000;
 
@@ -233,12 +239,15 @@ const HostView = () => {
             seatedAt + estimatedDurationMinutes * 60 * 1000;
           const availableAt =
             diningEndsAt + DEFAULT_CLEANING_MINUTES * 60 * 1000;
+          
+          const calculatedAvailableAt =
+            diningEndsAt + defaultCleaningMinutes * 60 * 1000;
 
           return {
             ...table,
             status: "occupied",
             partySize,
-            availableAt,
+            availableAt: calculatedAvailableAt,
             countdown: formatCountdown(diningEndsAt, now),
             remainingMinutes: Math.max(0, (diningEndsAt - now) / 60000),
           };
@@ -268,7 +277,7 @@ const HostView = () => {
 
         return a.number - b.number;
       }),
-    [normalizedTables, now],
+    [defaultCleaningMinutes, normalizedTables, now],
   );
 
   const availableTables = useMemo(
@@ -366,7 +375,7 @@ const HostView = () => {
       return;
     }
 
-    setSeatingPartySize(String(Math.min(MAX_HOST_PARTY_SIZE, Math.max(1, normalized))));
+    setSeatingPartySize(String(Math.min(maxHostPartySize, Math.max(1, normalized))));
   };
 
   const getWaiterForSeating = (preferredWaiterId = "") =>
@@ -384,8 +393,8 @@ const HostView = () => {
       return false;
     }
 
-    if (partySize > MAX_HOST_PARTY_SIZE) {
-      showToast(`Solo se permiten de 1 a ${MAX_HOST_PARTY_SIZE} comensales por asignacion`, "error");
+    if (partySize > maxHostPartySize) {
+      showToast(`Solo se permiten de 1 a ${maxHostPartySize} comensales por asignacion`, "error");
       return false;
     }
 
@@ -704,7 +713,7 @@ const HostView = () => {
                   }
                 }}
                 min="1"
-                max={MAX_HOST_PARTY_SIZE}
+                max={maxHostPartySize}
                 inputMode="numeric"
                 className="w-full border-2 rounded-[1.4rem] p-4 font-black text-2xl bg-slate-950 border-slate-800 text-[#FFFF00] focus:border-[#FFFF00] outline-none"
               />

@@ -74,6 +74,7 @@ const OrderBuilder = ({
   const total = items.reduce((acc, item) => acc + item.price * item.quantity, 0);
   const isTakeout = Number(tableId) === 0 || serviceMode === "takeout";
   const hasSelectedLocation = tableId !== null && tableId !== undefined && tableId !== "";
+  const settings = getCurrentKdsSettings();
 
   const noteProduct = useMemo(() => {
     if (!noteTarget?.productId) return null;
@@ -128,12 +129,12 @@ const OrderBuilder = ({
       return;
     }
 
-    if (isTakeout && !normalizedCustomerName) {
+    if (isTakeout && settings.requireCustomerNameForTakeout && !normalizedCustomerName) {
       showToast("El nombre del cliente es obligatorio para pedidos para llevar", "error");
       return;
     }
 
-    const limitValidation = validateOrderLimits(items, getCurrentKdsSettings());
+    const limitValidation = validateOrderLimits(items, settings);
     if (!limitValidation.ok) {
       showToast(limitValidation.message, "error");
       return;
@@ -182,7 +183,7 @@ const OrderBuilder = ({
     isSending ||
     !hasSelectedLocation ||
     (!isTakeout && !Number.isInteger(Number.parseInt(pax, 10))) ||
-    (isTakeout && !normalizeCustomerName(customerName || ""));
+    (isTakeout && settings.requireCustomerNameForTakeout && !normalizeCustomerName(customerName || ""));
 
   const handleSaveNotes = () => {
     if (!noteTarget?.productId) return;
