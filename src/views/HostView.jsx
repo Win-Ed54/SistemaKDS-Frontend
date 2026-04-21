@@ -305,6 +305,44 @@ const HostView = () => {
     [activeStatusFilter, hostTableStates],
   );
 
+  const waiterTableAssignments = useMemo(() => {
+    const assignmentsByWaiter = waiters.map((waiter) => ({
+      id: waiter.id,
+      username: waiter.username,
+      activeTables: 0,
+      occupiedTables: 0,
+      cleaningTables: 0,
+    }));
+
+    const waiterMap = new Map(
+      assignmentsByWaiter.map((waiter) => [String(waiter.id || "").trim(), waiter]),
+    );
+
+    hostTableStates.forEach((table) => {
+      const assignedWaiterId = String(table.assignedWaiterId || "").trim();
+      const assignedWaiterName = String(table.assignedWaiterName || "").trim().toLowerCase();
+
+      const waiter =
+        waiterMap.get(assignedWaiterId) ||
+        assignmentsByWaiter.find(
+          (item) => String(item.username || "").trim().toLowerCase() === assignedWaiterName,
+        );
+
+      if (!waiter) return;
+      if (table.status !== "occupied" && table.status !== "cleaning") return;
+
+      waiter.activeTables += 1;
+
+      if (table.status === "occupied") waiter.occupiedTables += 1;
+      if (table.status === "cleaning") waiter.cleaningTables += 1;
+    });
+
+    return assignmentsByWaiter.sort((a, b) => {
+      if (b.activeTables !== a.activeTables) return b.activeTables - a.activeTables;
+      return a.username.localeCompare(b.username);
+    });
+  }, [hostTableStates, waiters]);
+
   useEffect(() => {
     if (!transferSourceTableNumber) return;
 
@@ -549,6 +587,73 @@ const HostView = () => {
             accent="text-white"
           />
         </div>
+
+        <section className="rounded-[2rem] border border-slate-800 bg-slate-900/60 p-5 shadow-xl space-y-4">
+          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.28em] text-slate-500">
+                Carga de meseros
+              </p>
+              <h2 className="mt-2 text-xl font-black tracking-tighter uppercase text-white">
+                Mesas asignadas por mesero
+              </h2>
+            </div>
+            <div className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300">
+              {waiterTableAssignments.reduce((total, waiter) => total + waiter.activeTables, 0)} mesas activas
+            </div>
+          </div>
+
+          {waiterTableAssignments.length === 0 ? (
+            <div className="rounded-[1.6rem] border border-dashed border-slate-800 bg-slate-950/40 p-6 text-center">
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
+                No hay meseros cargados
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+              {waiterTableAssignments.map((waiter) => (
+                <article
+                  key={waiter.id}
+                  className="rounded-[1.6rem] border border-slate-800 bg-slate-950/70 p-4"
+                >
+                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
+                    Mesero
+                  </p>
+                  <h3 className="mt-2 text-lg font-black uppercase tracking-[0.12em] text-white">
+                    {waiter.username}
+                  </h3>
+
+                  <div className="mt-4 grid grid-cols-3 gap-2">
+                    <div className="rounded-[1rem] border border-cyan-500/20 bg-cyan-500/10 p-3">
+                      <p className="text-[8px] font-black uppercase tracking-[0.16em] text-cyan-300">
+                        Total
+                      </p>
+                      <p className="mt-2 text-xl font-black text-cyan-200">
+                        {waiter.activeTables}
+                      </p>
+                    </div>
+                    <div className="rounded-[1rem] border border-amber-500/20 bg-amber-500/10 p-3">
+                      <p className="text-[8px] font-black uppercase tracking-[0.16em] text-amber-300">
+                        Ocupadas
+                      </p>
+                      <p className="mt-2 text-xl font-black text-amber-200">
+                        {waiter.occupiedTables}
+                      </p>
+                    </div>
+                    <div className="rounded-[1rem] border border-emerald-500/20 bg-emerald-500/10 p-3">
+                      <p className="text-[8px] font-black uppercase tracking-[0.16em] text-emerald-300">
+                        Limpieza
+                      </p>
+                      <p className="mt-2 text-xl font-black text-emerald-200">
+                        {waiter.cleaningTables}
+                      </p>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
 
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
           <section className="xl:col-span-4 rounded-[2rem] border border-slate-800 bg-slate-900/60 p-5 shadow-xl space-y-4">

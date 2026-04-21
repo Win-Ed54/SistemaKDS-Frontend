@@ -7,6 +7,7 @@ import CashierView from "./views/CashierView";
 import HostView from "./views/HostView";
 import KitchenDisplay from "./views/KitchenDisplay";
 import WaiterView from "./views/WaiterView";
+import ViewErrorBoundary from "./components/common/ViewErrorBoundary";
 import RoleProtectedRoute from "./routes/RoleProtectedRoute";
 
 import {
@@ -93,7 +94,9 @@ function App() {
           path="/terminal"
           element={
             <RoleProtectedRoute role="waiter">
-              <WaiterView />
+              <ViewErrorBoundary>
+                <WaiterView />
+              </ViewErrorBoundary>
             </RoleProtectedRoute>
           }
         />

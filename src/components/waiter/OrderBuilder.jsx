@@ -42,7 +42,14 @@ const finalizeNote = (value) =>
     .replace(/\r?\n/g, " ")
     .trim();
 
-const OrderBuilder = ({ customerName, tableId, pax, onOrderSent }) => {
+const OrderBuilder = ({
+  customerName,
+  tableId,
+  pax,
+  onOrderSent,
+  serviceMode = "dine-in",
+  sourceTableId = null,
+}) => {
   const {
     items,
     noteTarget,
@@ -63,7 +70,7 @@ const OrderBuilder = ({ customerName, tableId, pax, onOrderSent }) => {
   const [noteDraft, setNoteDraft] = useState("");
 
   const total = items.reduce((acc, item) => acc + item.price * item.quantity, 0);
-  const isTakeout = Number(tableId) === 0;
+  const isTakeout = Number(tableId) === 0 || serviceMode === "takeout";
   const hasSelectedLocation = tableId !== null && tableId !== undefined && tableId !== "";
 
   const noteProduct = useMemo(() => {
@@ -148,7 +155,12 @@ const OrderBuilder = ({ customerName, tableId, pax, onOrderSent }) => {
       window.dispatchEvent(new Event("kds-sync-tables"));
       resetAfterOrder();
       onOrderSent?.();
-      showToast("Orden enviada a cocina", "success");
+      showToast(
+        isTakeout && Number(sourceTableId) > 0
+          ? `Orden para llevar enviada desde mesa ${sourceTableId}`
+          : "Orden enviada a cocina",
+        "success",
+      );
     } catch (error) {
       const errorMsg =
         error.response?.data?.error ||

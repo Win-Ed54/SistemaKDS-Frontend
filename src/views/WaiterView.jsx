@@ -568,8 +568,8 @@ export default function WaiterView() {
         return;
       }
 
-      if (tableId !== null && tableId !== undefined && tableId !== "") {
-        setTable(null);
+      if (Number(tableId) !== 0) {
+        setTable(0);
       }
       return;
     }
@@ -703,8 +703,13 @@ export default function WaiterView() {
     }));
 
     return [...assignmentItems, ...readyItems, ...cleanupItems].sort((a, b) => {
-      if (a.priority !== b.priority) return a.priority - b.priority;
-      return (b.createdAt || 0) - (a.createdAt || 0);
+      const createdAtDiff = (a.createdAt || 0) - (b.createdAt || 0);
+      if (createdAtDiff !== 0) return createdAtDiff;
+
+      const tableDiff = Number(a.tableNumber || 0) - Number(b.tableNumber || 0);
+      if (tableDiff !== 0) return tableDiff;
+
+      return String(a.id || "").localeCompare(String(b.id || ""));
     });
   }, [assignmentAlerts, cleanupTasks, dismissAssignmentAlert, readyOrders, setTable]);
 
@@ -715,6 +720,11 @@ export default function WaiterView() {
       cleanup: cleanupTasks.length,
     }),
     [assignmentAlerts.length, cleanupTasks.length, readyOrders.length],
+  );
+
+  const compactAlertCenterItems = useMemo(
+    () => alertCenterItems.slice(0, 4),
+    [alertCenterItems],
   );
 
   const handleStartCleaning = async (tableNumber) => {
@@ -821,14 +831,14 @@ export default function WaiterView() {
         </section>
 
         {alertCenterItems.length > 0 && (
-          <section className="rounded-[1.6rem] border border-cyan-500/20 bg-[linear-gradient(135deg,_rgba(34,211,238,0.12)_0%,_rgba(15,23,42,0.95)_42%,_rgba(2,6,23,0.98)_100%)] p-3.5 sm:p-4 shadow-xl">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <section className="rounded-[1.4rem] border border-cyan-500/20 bg-[linear-gradient(135deg,_rgba(34,211,238,0.10)_0%,_rgba(15,23,42,0.95)_42%,_rgba(2,6,23,0.98)_100%)] p-3 shadow-xl">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div>
                 <p className="text-[9px] font-black uppercase tracking-[0.24em] text-cyan-200/80">
                   Centro de alertas
                 </p>
-                <h2 className="mt-1.5 text-sm sm:text-lg font-black tracking-tighter uppercase text-white">
-                  Pendientes del turno
+                <h2 className="mt-1 text-xs sm:text-sm font-black uppercase tracking-[0.18em] text-white">
+                  Resumen rapido del turno
                 </h2>
               </div>
 
@@ -839,14 +849,20 @@ export default function WaiterView() {
               </div>
             </div>
 
-            <div className="mt-3 grid grid-cols-1 gap-2.5 md:grid-cols-2 xl:grid-cols-3">
-              {alertCenterItems.map((alert) => (
+            <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-4">
+              {compactAlertCenterItems.map((alert) => (
                 <AlertCenterCard
                   key={alert.id}
                   alert={alert}
                 />
               ))}
             </div>
+
+            {alertCenterItems.length > compactAlertCenterItems.length && (
+              <p className="mt-3 text-[9px] font-black uppercase tracking-[0.16em] text-slate-500">
+                Hay {alertCenterItems.length - compactAlertCenterItems.length} alertas adicionales. Revisa las pestanas para ver el detalle completo.
+              </p>
+            )}
           </section>
         )}
 
@@ -893,7 +909,15 @@ export default function WaiterView() {
                       allowOccupiedAssigned
                     />
                     {currentTable?.number > 0 && (
-                      <div className="mt-4 grid grid-cols-3 gap-3">
+                      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                        <div className="rounded-[1.2rem] border border-fuchsia-500/20 bg-fuchsia-500/10 p-3">
+                          <p className="text-[8px] font-black uppercase tracking-[0.16em] text-fuchsia-300">
+                            Clientes
+                          </p>
+                          <p className="mt-2 text-lg font-black text-fuchsia-100">
+                            {currentTable.currentPartySize || 0}
+                          </p>
+                        </div>
                         <div className="rounded-[1.2rem] border border-slate-800 bg-slate-950/80 p-3">
                           <p className="text-[8px] font-black uppercase tracking-[0.16em] text-slate-500">
                             Ordenes hoy
@@ -960,7 +984,12 @@ export default function WaiterView() {
             </div>
 
             <aside className="hidden xl:block xl:col-span-4 2xl:col-span-3 sticky top-[220px]">
-              <OrderPanel pax={pax} tableId={tableId} onOrderSent={() => setIsCartOpen(false)} />
+              <OrderPanel
+                key={`desktop-order-panel-${tableId ?? "none"}`}
+                pax={pax}
+                tableId={tableId}
+                onOrderSent={() => setIsCartOpen(false)}
+              />
             </aside>
           </div>
         )}
@@ -1078,7 +1107,7 @@ export default function WaiterView() {
 
       {activeTab === "ordenar" && items.length > 0 && !isCartOpen && <button onClick={() => setIsCartOpen(true)} className="xl:hidden fixed bottom-5 left-3 right-3 z-40 rounded-[1.6rem] bg-cyan-400 text-slate-950 px-5 py-4 flex items-center justify-between"><div className="flex items-center gap-3"><PackageCheck className="w-5 h-5" /><div className="text-left"><p className="text-[10px] font-black uppercase">Orden actual</p><p className="text-xs font-black uppercase">{items.length}</p></div></div><div className="text-right"><p className="text-lg font-black">${cartTotal.toFixed(2)}</p><p className="text-[10px] font-black uppercase">Abrir</p></div></button>}
       {activeTab === "ordenar" && isCartOpen && <div className="fixed inset-0 bg-slate-950/40 z-40 xl:hidden" onClick={() => setIsCartOpen(false)} />}
-      {activeTab === "ordenar" && <aside className={`xl:hidden fixed inset-y-0 right-0 z-50 w-[84vw] max-w-[380px] bg-slate-950 border-l border-slate-800 transition-transform ${isCartOpen ? "translate-x-0" : "translate-x-full"}`}><div className="h-full overflow-y-auto p-2.5 sm:p-3"><div className="flex items-center justify-between mb-2 sm:mb-3 px-1"><div><p className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Orden actual</p><p className="text-xs sm:text-sm font-black uppercase text-white mt-1">Panel de confirmacion</p></div><button onClick={() => setIsCartOpen(false)} className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-2xl bg-slate-900 border border-slate-800 text-slate-300 text-[9px] sm:text-[10px] font-black uppercase tracking-[0.18em]"><X className="w-4 h-4" />Cerrar</button></div><OrderPanel pax={pax} tableId={tableId} onOrderSent={() => setIsCartOpen(false)} /></div></aside>}
+      {activeTab === "ordenar" && <aside className={`xl:hidden fixed inset-y-0 right-0 z-50 w-[84vw] max-w-[380px] bg-slate-950 border-l border-slate-800 transition-transform ${isCartOpen ? "translate-x-0" : "translate-x-full"}`}><div className="h-full overflow-y-auto p-2.5 sm:p-3"><div className="flex items-center justify-between mb-2 sm:mb-3 px-1"><div><p className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Orden actual</p><p className="text-xs sm:text-sm font-black uppercase text-white mt-1">Panel de confirmacion</p></div><button onClick={() => setIsCartOpen(false)} className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-2xl bg-slate-900 border border-slate-800 text-slate-300 text-[9px] sm:text-[10px] font-black uppercase tracking-[0.18em]"><X className="w-4 h-4" />Cerrar</button></div><OrderPanel key={`mobile-order-panel-${tableId ?? "none"}`} pax={pax} tableId={tableId} onOrderSent={() => setIsCartOpen(false)} /></div></aside>}
       {showProfile && <WaiterProfile user={currentUser} onClose={() => setShowProfile(false)} />}
     </div>
   );
@@ -1243,16 +1272,16 @@ const AlertCenterCard = ({ alert }) => {
   const tone = toneMap[alert.type] || toneMap.ready;
 
   return (
-    <article className="rounded-[1.2rem] border border-slate-800 bg-slate-950/75 p-3">
+    <article className="rounded-[1rem] border border-slate-800 bg-slate-950/75 p-3">
       <div className="flex items-start justify-between gap-2.5">
         <div className="min-w-0">
           <span className={`inline-flex rounded-full border px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.14em] ${tone.badge}`}>
             {tone.label}
           </span>
-          <p className="mt-2 text-sm font-black uppercase tracking-[0.14em] text-white">
+          <p className="mt-2 text-xs font-black uppercase tracking-[0.14em] text-white">
             {alert.title}
           </p>
-          <p className="mt-1.5 text-[9px] font-black uppercase tracking-[0.14em] text-slate-400">
+          <p className="mt-1 text-[8px] font-black uppercase tracking-[0.12em] text-slate-400">
             {alert.subtitle}
           </p>
         </div>
@@ -1272,7 +1301,7 @@ const AlertCenterCard = ({ alert }) => {
       <button
         type="button"
         onClick={alert.onAction}
-        className={`mt-3 w-full rounded-[1rem] px-3 py-2.5 text-[9px] font-black uppercase tracking-[0.16em] transition-all ${tone.button}`}
+        className={`mt-3 w-full rounded-[1rem] px-3 py-2 text-[8px] font-black uppercase tracking-[0.14em] transition-all ${tone.button}`}
       >
         {alert.actionLabel}
       </button>
