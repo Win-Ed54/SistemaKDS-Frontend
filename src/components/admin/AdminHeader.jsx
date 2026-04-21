@@ -33,6 +33,9 @@ const AdminHeader = ({ isConnected, lastUpdate, loading = false }) => {
             <span className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.18em] text-cyan-300">
               Control operativo central
             </span>
+            <span className="rounded-full border border-slate-700 bg-slate-950/70 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">
+              5 areas activas
+            </span>
           </div>
         </div>
 

@@ -544,23 +544,37 @@ const HostView = () => {
       />
 
       <header className="sticky top-0 z-50 px-3 pt-3 lg:px-6 lg:pt-6 backdrop-blur-md">
-        <div className="max-w-[1600px] mx-auto rounded-[2rem] border border-slate-800 bg-slate-900/85 shadow-2xl p-4 lg:p-5">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex items-center gap-3 text-left">
-              <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
-                <Armchair className="w-5 h-5 text-cyan-300" />
+        <div className="max-w-[1600px] mx-auto rounded-[2rem] border border-slate-800 bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.14),_transparent_28%),linear-gradient(135deg,_rgba(15,23,42,0.98)_0%,_rgba(2,6,23,0.98)_100%)] shadow-2xl p-4 lg:p-5">
+          <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+            <div className="min-w-0">
+              <div className="flex items-center gap-3 text-left">
+                <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
+                  <Armchair className="w-5 h-5 text-cyan-300" />
+                </div>
+                <div>
+                  <h1 className="text-lg sm:text-2xl font-black tracking-tighter uppercase leading-none">
+                    KDS <span className="text-cyan-400">Host</span>
+                  </h1>
+                  <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.28em] mt-1">
+                    Recepcion: {hostName}
+                  </p>
+                </div>
               </div>
-              <div>
-                <h1 className="text-lg sm:text-2xl font-black tracking-tighter uppercase leading-none">
-                  KDS <span className="text-cyan-400">Host</span>
-                </h1>
-                <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.28em] mt-1">
-                  Recepcion: {hostName}
-                </p>
+
+              <div className="mt-3 flex flex-wrap gap-2">
+                <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.18em] text-emerald-300">
+                  {availableTables.length} libres
+                </span>
+                <span className="rounded-full border border-amber-400/20 bg-amber-400/10 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.18em] text-amber-300">
+                  {diningTablesCount} ocupadas
+                </span>
+                <span className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.18em] text-cyan-300">
+                  {cleaningTablesCount} en limpieza
+                </span>
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <div
                 className={`flex items-center gap-2 px-4 py-2 rounded-full border ${
                   isConnected

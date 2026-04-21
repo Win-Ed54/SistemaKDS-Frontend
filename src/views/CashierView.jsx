@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  Clock3,
   CreditCard,
   Layers3,
   LogOut,
@@ -100,6 +101,11 @@ const createChargeSummaryEntry = ({ type, label, amount, detail, paymentMethod }
   paymentMethod,
   createdAt: Date.now(),
 });
+
+const getLatestChargeTime = (recentCharges) => {
+  if (!Array.isArray(recentCharges) || recentCharges.length === 0) return "Sin cobros aun";
+  return formatTime(recentCharges[0]?.createdAt || Date.now());
+};
 
 const CashierView = () => {
   const navigate = useNavigate();
@@ -251,9 +257,12 @@ const CashierView = () => {
   const totals = useMemo(() => {
     const totalOrders = pendingPayments.length;
     const totalAmount = pendingPayments.reduce((acc, order) => acc + getRemainingOrderTotal(order), 0);
+    const takeoutPrepayments = pendingPayments.filter((order) =>
+      isTakeoutPrepaymentOrder(order, settings),
+    ).length;
 
-    return { totalOrders, totalAmount };
-  }, [pendingPayments]);
+    return { totalOrders, totalAmount, takeoutPrepayments };
+  }, [pendingPayments, settings]);
 
   const getSelectedPaymentsForOrder = useCallback((order) => {
     const selectedByLine = selectedItemPayments[order.id] || {};
@@ -455,57 +464,78 @@ const CashierView = () => {
   return (
     <div className="min-h-screen bg-slate-950 text-white p-4 lg:p-8 selection:bg-emerald-400/30">
       <div className="max-w-[1500px] mx-auto space-y-8">
-        <header className="bg-slate-900 border border-slate-800 p-6 rounded-[2.5rem] shadow-2xl flex flex-col lg:flex-row justify-between items-start lg:items-center gap-5">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-emerald-500/10 rounded-2xl border border-emerald-500/30">
-              <Wallet className="w-8 h-8 text-emerald-400" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-black tracking-tighter uppercase">
-                KDS <span className="text-emerald-400">Caja</span>
-              </h1>
-              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.3em] mt-1">
-                {settings?.takeoutRequirePrepayment
-                  ? "Cobro de mesa y prepago para llevar"
-                  : "Cobro de productos entregados"}
-              </p>
-            </div>
-          </div>
+        <header className="border border-slate-800 p-6 rounded-[2.5rem] shadow-2xl flex flex-col lg:flex-row justify-between items-start lg:items-center gap-5 bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.14),_transparent_28%),linear-gradient(135deg,_rgba(15,23,42,0.98)_0%,_rgba(2,6,23,0.98)_100%)]">
+          <div className="flex flex-col gap-5 w-full">
+            <div className="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-5">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-emerald-500/10 rounded-2xl border border-emerald-500/30">
+                  <Wallet className="w-8 h-8 text-emerald-400" />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-black tracking-tighter uppercase">
+                    KDS <span className="text-emerald-400">Caja</span>
+                  </h1>
+                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.3em] mt-1">
+                    {settings?.takeoutRequirePrepayment
+                      ? "Cobros, prepagos y cierre operativo"
+                      : "Cobro y cierre operativo"}
+                  </p>
+                </div>
+              </div>
 
-          <div className="flex items-center gap-3">
-            <div className={`flex items-center gap-2 px-4 py-2 rounded-full border ${isConnected ? "border-emerald-500/30 bg-emerald-950/20 text-emerald-400" : "border-red-500/20 bg-red-950/20 text-red-400"}`}>
-              <div className={`w-2 h-2 rounded-full ${isConnected ? "bg-emerald-500" : "bg-red-500"}`} />
-              <span className="text-[10px] font-black uppercase tracking-wider">
-                {isConnected ? "En linea" : "Sin conexion"}
-              </span>
+              <div className="flex flex-wrap items-center gap-3">
+                <div className={`flex items-center gap-2 px-4 py-2 rounded-full border ${isConnected ? "border-emerald-500/30 bg-emerald-950/20 text-emerald-400" : "border-red-500/20 bg-red-950/20 text-red-400"}`}>
+                  <div className={`w-2 h-2 rounded-full ${isConnected ? "bg-emerald-500" : "bg-red-500"}`} />
+                  <span className="text-[10px] font-black uppercase tracking-wider">
+                    {isConnected ? "En linea" : "Sin conexion"}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2 px-4 py-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 text-emerald-300">
+                  <Clock3 className="w-4 h-4" />
+                  <span className="text-[10px] font-black uppercase tracking-[0.18em]">
+                    Ultimo cobro {getLatestChargeTime(recentCharges)}
+                  </span>
+                </div>
+
+                <button
+                  onClick={handleLogout}
+                  className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-300 text-[10px] font-black uppercase tracking-[0.2em] hover:bg-red-500 hover:text-white transition-all"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Cerrar sesion
+                </button>
+              </div>
             </div>
 
-            <button
-              onClick={handleLogout}
-              className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-300 text-[10px] font-black uppercase tracking-[0.2em] hover:bg-red-500 hover:text-white transition-all"
-            >
-              <LogOut className="w-4 h-4" />
-              Cerrar sesion
-            </button>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <CashierTopMetric
+                label="Pendientes"
+                value={totals.totalOrders}
+                accent="text-white"
+                tone="border-slate-800 bg-slate-950/70"
+              />
+              <CashierTopMetric
+                label="Total a cobrar"
+                value={formatCurrency(totals.totalAmount)}
+                accent="text-emerald-300"
+                tone="border-emerald-500/20 bg-emerald-500/10"
+              />
+              <CashierTopMetric
+                label="Prepagos"
+                value={totals.takeoutPrepayments}
+                accent="text-cyan-300"
+                tone="border-cyan-500/20 bg-cyan-500/10"
+              />
+              <CashierTopMetric
+                label="Sesion"
+                value={loading ? "Actualizando" : "Activa"}
+                accent="text-slate-200"
+                tone="border-slate-700 bg-slate-900/80"
+              />
+            </div>
           </div>
         </header>
-
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-slate-900 border border-slate-800 rounded-[2rem] p-6">
-            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">Cuentas pendientes</p>
-            <p className="text-4xl font-black text-white mt-3">{totals.totalOrders}</p>
-          </div>
-          <div className="bg-slate-900 border border-slate-800 rounded-[2rem] p-6">
-            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">Total por cobrar</p>
-            <p className="text-4xl font-black text-emerald-400 mt-3">{formatCurrency(totals.totalAmount)}</p>
-          </div>
-          <div className="bg-slate-900 border border-slate-800 rounded-[2rem] p-6">
-            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">Estado</p>
-            <p className="text-xl font-black text-slate-200 mt-4">
-              {loading ? "Actualizando..." : "Caja sincronizada"}
-            </p>
-          </div>
-        </section>
 
         <section className="rounded-[2rem] border border-slate-800 bg-slate-900/70 p-5 shadow-xl">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -1169,3 +1199,12 @@ const ChargeSummaryCard = ({ entry }) => {
 };
 
 export default CashierView;
+
+const CashierTopMetric = ({ label, value, accent, tone }) => (
+  <div className={`rounded-[1.4rem] border p-4 ${tone}`}>
+    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">
+      {label}
+    </p>
+    <p className={`mt-3 text-2xl font-black tracking-tighter ${accent}`}>{value}</p>
+  </div>
+);
