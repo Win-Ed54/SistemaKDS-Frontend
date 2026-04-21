@@ -7,7 +7,8 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [isServerReachable, setIsServerReachable] = useState(true);
+  const [healthState, setHealthState] = useState("checking");
+  const [healthMessage, setHealthMessage] = useState("Verificando conexion con el servidor...");
 
   const navigate = useNavigate();
 
@@ -19,39 +20,112 @@ export default function Login() {
 
   useEffect(() => {
     let cancelled = false;
+    let timerId = null;
 
-    const checkServerHealth = async () => {
+    const checkServerHealth = async ({ silent = false } = {}) => {
       if (!navigator.onLine) {
-        if (!cancelled) setIsServerReachable(false);
+        if (!cancelled) {
+          setHealthState("error");
+          setHealthMessage("No hay conexion a internet en este dispositivo.");
+        }
         return;
+      }
+
+      if (!silent && !cancelled) {
+        setHealthState("checking");
+        setHealthMessage("Verificando conexion con el servidor...");
       }
 
       try {
         const response = await fetch("/api/auth/health", { cache: "no-store" });
-        if (!cancelled) setIsServerReachable(response.ok);
+        if (cancelled) return;
+
+        if (response.ok) {
+          setHealthState("ok");
+          setHealthMessage("Servidor activo");
+          return;
+        }
+
+        if (response.status === 404) {
+          setHealthState("error");
+          setHealthMessage("El endpoint de verificacion no existe en el backend actual. Reinicia o actualiza la API.");
+          if (timerId) {
+            window.clearInterval(timerId);
+            timerId = null;
+          }
+          return;
+        }
+
+        setHealthState("error");
+        setHealthMessage(`El servidor respondio con error ${response.status}.`);
       } catch {
-        if (!cancelled) setIsServerReachable(false);
+        if (!cancelled) {
+          setHealthState("error");
+          setHealthMessage("No se pudo establecer conexion con el servidor.");
+        }
       }
     };
 
     void checkServerHealth();
-    const timer = window.setInterval(() => void checkServerHealth(), 10000);
+    timerId = window.setInterval(() => void checkServerHealth({ silent: true }), 10000);
 
     const handleOnline = () => void checkServerHealth();
-    const handleOffline = () => setIsServerReachable(false);
+    const handleOffline = () => {
+      setHealthState("error");
+      setHealthMessage("No hay conexion a internet en este dispositivo.");
+    };
 
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
 
     return () => {
       cancelled = true;
-      window.clearInterval(timer);
+      if (timerId) window.clearInterval(timerId);
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
     };
   }, []);
 
+  const isServerReachable = healthState === "ok";
+
+  const retryHealthCheck = async () => {
+    if (!navigator.onLine) {
+      setHealthState("error");
+      setHealthMessage("No hay conexion a internet en este dispositivo.");
+      return;
+    }
+
+    setHealthState("checking");
+    setHealthMessage("Verificando conexion con el servidor...");
+
+    try {
+      const response = await fetch("/api/auth/health", { cache: "no-store" });
+      if (response.ok) {
+        setHealthState("ok");
+        setHealthMessage("Servidor activo");
+        return;
+      }
+
+      if (response.status === 404) {
+        setHealthState("error");
+        setHealthMessage("El endpoint de verificacion no existe en el backend actual. Reinicia o actualiza la API.");
+        return;
+      }
+
+      setHealthState("error");
+      setHealthMessage(`El servidor respondio con error ${response.status}.`);
+    } catch {
+      setHealthState("error");
+      setHealthMessage("No se pudo establecer conexion con el servidor.");
+    }
+  };
+
   const handleLogin = async () => {
+    if (!isServerReachable) {
+      setError("El servidor no esta disponible en este momento.");
+      return;
+    }
+
     if (!username || !password) {
       setError("Ingresa usuario y contrasena");
       return;
@@ -93,6 +167,29 @@ export default function Login() {
   return (
     <div style={styles.container}>
       <div style={styles.bgGrid} />
+
+      {healthState === "checking" && (
+        <div style={styles.statusScreen}>
+          <div style={styles.statusCard}>
+            <div style={styles.loader} />
+            <h2 style={styles.statusTitle}>Cargando sistema</h2>
+            <p style={styles.statusText}>{healthMessage}</p>
+          </div>
+        </div>
+      )}
+
+      {healthState === "error" && (
+        <div style={styles.statusScreen}>
+          <div style={styles.statusCard}>
+            <div style={styles.errorIcon}>!</div>
+            <h2 style={styles.statusTitle}>No se pudo iniciar el login</h2>
+            <p style={styles.statusText}>{healthMessage}</p>
+            <button style={styles.retryButton} onClick={retryHealthCheck}>
+              Reintentar conexion
+            </button>
+          </div>
+        </div>
+      )}
 
       <div style={styles.card}>
         <div style={styles.logoWrapper}>
@@ -205,6 +302,75 @@ const styles = {
     backgroundImage: "radial-gradient(circle, rgba(26,111,255,0.12) 1px, transparent 1px)",
     backgroundSize: "36px 36px",
     pointerEvents: "none",
+  },
+  statusScreen: {
+    position: "absolute",
+    inset: 0,
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    background: "rgba(10,15,26,0.82)",
+    backdropFilter: "blur(8px)",
+    zIndex: 3,
+    padding: "16px",
+  },
+  statusCard: {
+    width: "360px",
+    maxWidth: "calc(100vw - 32px)",
+    borderRadius: "24px",
+    background: "linear-gradient(160deg, #ffffff 0%, #e8f0ff 60%, #dceeff 100%)",
+    padding: "32px 28px",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: "14px",
+    boxShadow: "0 8px 40px rgba(0,0,0,0.35)",
+    textAlign: "center",
+  },
+  loader: {
+    width: "48px",
+    height: "48px",
+    borderRadius: "999px",
+    border: "4px solid rgba(26,111,255,0.18)",
+    borderTopColor: "#1a6fff",
+    animation: "spin 1s linear infinite",
+  },
+  errorIcon: {
+    width: "52px",
+    height: "52px",
+    borderRadius: "999px",
+    background: "rgba(239,68,68,0.14)",
+    border: "1px solid rgba(239,68,68,0.25)",
+    color: "#b91c1c",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: "24px",
+    fontWeight: 800,
+  },
+  statusTitle: {
+    margin: 0,
+    color: "#0a1628",
+    fontSize: "22px",
+    fontWeight: 800,
+    letterSpacing: "0.5px",
+  },
+  statusText: {
+    margin: 0,
+    color: "#475569",
+    fontSize: "14px",
+    lineHeight: 1.5,
+  },
+  retryButton: {
+    marginTop: "6px",
+    padding: "12px 18px",
+    border: "none",
+    borderRadius: "10px",
+    background: "#1a6fff",
+    color: "#fff",
+    fontWeight: 700,
+    fontSize: "14px",
+    cursor: "pointer",
   },
   card: {
     background: "linear-gradient(160deg, #ffffff 0%, #e8f0ff 60%, #dceeff 100%)",
