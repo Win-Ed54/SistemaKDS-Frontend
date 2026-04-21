@@ -9,7 +9,7 @@ import {
 import { useToast } from "../../context/ToastContext";
 import ConfirmDialog from "../common/ConfirmDialog";
 
-const CATEGORIES = ["Hamburguesas", "Pollo", "Acompanamientos", "Postres", "Bebidas", "Ensaladas"];
+const CATEGORIES = ["Hamburguesas", "Pollo", "Acompanamientos", "Postres", "Bebidas", "Ensaladas", "Desayunos", "Combos de Wendy"];
 const EMPTY_FORM = { name: "", description: "", price: "", stock: "", category: "", imageUrl: "" };
 
 const ProductModal = ({ product, onClose, onSaved }) => {
@@ -74,7 +74,15 @@ const ProductModal = ({ product, onClose, onSaved }) => {
 
   return (
     <div className="fixed inset-0 z-[130] flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm">
-      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-[2rem] border border-slate-700 bg-slate-900 p-8 shadow-2xl">
+      <div
+        className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-[2rem] border border-slate-700 bg-slate-900 p-8 shadow-2xl"
+        onKeyDown={(event) => {
+          if (event.key === "Enter" && !event.shiftKey) {
+            event.preventDefault();
+            void handleSubmit();
+          }
+        }}
+      >
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <span className={`h-6 w-1.5 rounded-full ${isEdit ? "bg-yellow-400 shadow-[0_0_10px_#FACC15]" : "bg-[#39FF14] shadow-[0_0_10px_#39FF14]"}`} />

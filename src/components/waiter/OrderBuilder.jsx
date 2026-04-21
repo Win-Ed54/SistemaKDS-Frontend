@@ -21,10 +21,12 @@ const QUICK_NOTES = {
   Pollo: ["Sin salsa", "Extra crujiente", "Sin picante", "Con limon"],
   Acompanamientos: ["Sin sal", "Extra salsa", "Bien dorado"],
   Postres: ["Sin hielo", "Para llevar"],
+  Desayunos: ["Sin queso", "Sin tocino", "Con extra huevo", "Sin mantequilla"],
+  "Combos de Wendy": ["Cambiar bebida", "Sin hielo", "Cambiar acompanamiento", "Para llevar"],
   Bebidas: ["Sin hielo", "Con limon", "Extra fria", "Sin azucar"],
   Ensaladas: ["Sin aderezo", "Aderezo aparte", "Sin nueces"],
-  Desayunos: ["Sin tocino", "Huevo tierno", "Sin mantequilla"],
 };
+const GENERIC_QUICK_NOTES = ["Sin cebolla", "Sin salsa", "Para llevar", "Sin hielo"];
 
 const normalizeCustomerName = (value) =>
   value
@@ -85,7 +87,7 @@ const OrderBuilder = ({
 
   const quickNotes = useMemo(() => {
     const category = noteProduct?.category || noteProduct?.Category;
-    return QUICK_NOTES[category] || [];
+    return QUICK_NOTES[category] || GENERIC_QUICK_NOTES;
   }, [noteProduct]);
 
   useEffect(() => {

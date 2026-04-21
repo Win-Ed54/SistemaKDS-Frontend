@@ -22,6 +22,7 @@ import useSignalRConnection from "../hooks/useSignalRConnection";
 import useTables from "../hooks/useTables";
 
 const DEFAULT_CLEANING_MINUTES = 8;
+const MAX_HOST_PARTY_SIZE = 10;
 
 const estimateStayMinutes = (partySize) => {
   const size = Number(partySize) || 0;
@@ -358,7 +359,14 @@ const HostView = () => {
 
   const handleSeatPartySizeChange = (event) => {
     const value = String(event.target.value || "").replace(/\D/g, "").slice(0, 2);
-    setSeatingPartySize(value || "");
+    const normalized = Number(value || 0);
+
+    if (!value) {
+      setSeatingPartySize("");
+      return;
+    }
+
+    setSeatingPartySize(String(Math.min(MAX_HOST_PARTY_SIZE, Math.max(1, normalized))));
   };
 
   const getWaiterForSeating = (preferredWaiterId = "") =>
@@ -373,6 +381,11 @@ const HostView = () => {
 
     if (!partySize || partySize < 1) {
       showToast("Ingresa la cantidad de comensales", "error");
+      return false;
+    }
+
+    if (partySize > MAX_HOST_PARTY_SIZE) {
+      showToast(`Solo se permiten de 1 a ${MAX_HOST_PARTY_SIZE} comensales por asignacion`, "error");
       return false;
     }
 
@@ -678,10 +691,20 @@ const HostView = () => {
                 onKeyDown={(event) => {
                   if (["e", "E", "+", "-", "."].includes(event.key)) {
                     event.preventDefault();
+                    return;
+                  }
+
+                  if (event.key === "Enter" && suggestedTables[0] && selectedWaiter) {
+                    event.preventDefault();
+                    if (transferSourceTableNumber) {
+                      handleRequestTransferConfirmation(suggestedTables[0]);
+                      return;
+                    }
+                    void handleSeatGuests(suggestedTables[0]);
                   }
                 }}
                 min="1"
-                max="20"
+                max={MAX_HOST_PARTY_SIZE}
                 inputMode="numeric"
                 className="w-full border-2 rounded-[1.4rem] p-4 font-black text-2xl bg-slate-950 border-slate-800 text-[#FFFF00] focus:border-[#FFFF00] outline-none"
               />

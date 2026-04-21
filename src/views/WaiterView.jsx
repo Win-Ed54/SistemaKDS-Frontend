@@ -64,6 +64,14 @@ const CATEGORY_IMAGE_MAP = {
     label: "Postres",
     image: encodeURI("/assets/images/categoria/postres.webp"),
   },
+  Desayunos: {
+    label: "Desayunos",
+    image: encodeURI("/assets/images/categoria/postres.webp"),
+  },
+  "Combos de Wendy": {
+    label: "Combos de Wendy",
+    image: encodeURI("/assets/images/categoria/hamburguesas.webp"),
+  },
   Bebidas: {
     label: "Bebidas",
     image: encodeURI("/assets/images/categoria/bebidas.webp"),
@@ -829,42 +837,6 @@ export default function WaiterView() {
             })}
           </div>
         </section>
-
-        {alertCenterItems.length > 0 && (
-          <section className="rounded-[1.4rem] border border-cyan-500/20 bg-[linear-gradient(135deg,_rgba(34,211,238,0.10)_0%,_rgba(15,23,42,0.95)_42%,_rgba(2,6,23,0.98)_100%)] p-3 shadow-xl">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <p className="text-[9px] font-black uppercase tracking-[0.24em] text-cyan-200/80">
-                  Centro de alertas
-                </p>
-                <h2 className="mt-1 text-xs sm:text-sm font-black uppercase tracking-[0.18em] text-white">
-                  Resumen rapido del turno
-                </h2>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                <AlertPill label="Nuevas mesas" value={alertCenterSummary.assignment} tone="amber" />
-                <AlertPill label="Listas" value={alertCenterSummary.ready} tone="cyan" />
-                <AlertPill label="Limpieza" value={alertCenterSummary.cleanup} tone="emerald" />
-              </div>
-            </div>
-
-            <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-4">
-              {compactAlertCenterItems.map((alert) => (
-                <AlertCenterCard
-                  key={alert.id}
-                  alert={alert}
-                />
-              ))}
-            </div>
-
-            {alertCenterItems.length > compactAlertCenterItems.length && (
-              <p className="mt-3 text-[9px] font-black uppercase tracking-[0.16em] text-slate-500">
-                Hay {alertCenterItems.length - compactAlertCenterItems.length} alertas adicionales. Revisa las pestanas para ver el detalle completo.
-              </p>
-            )}
-          </section>
-        )}
 
         {activeTab === "ordenar" && (
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 items-start">

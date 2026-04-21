@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { AlertTriangle, Loader2, X } from "lucide-react";
 
 const ConfirmDialog = ({
@@ -13,6 +13,17 @@ const ConfirmDialog = ({
   onCancel,
 }) => {
   if (!open) return null;
+
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (!open || loading) return;
+      if (event.key === "Escape") onCancel?.();
+      if (event.key === "Enter") onConfirm?.();
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [loading, onCancel, onConfirm, open]);
 
   const toneStyles =
     tone === "warning"
