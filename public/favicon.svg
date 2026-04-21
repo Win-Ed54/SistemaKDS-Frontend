@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+  <rect width="120" height="120" rx="24" fill="#f3f7ff"/>
+  <path d="M60 15A45 45 0 0 1 105 60" fill="none" stroke="#1a6fff" stroke-width="4" stroke-linecap="round"/>
+  <path d="M60 24A36 36 0 0 1 96 60" fill="none" stroke="#1a6fff" stroke-width="3" stroke-linecap="round" opacity="0.72"/>
+  <path d="M60 33A27 27 0 0 1 87 60" fill="none" stroke="#1a6fff" stroke-width="2.4" stroke-linecap="round" opacity="0.48"/>
+  <path d="M60 105A45 45 0 0 1 15 60" fill="none" stroke="#1a6fff" stroke-width="4" stroke-linecap="round"/>
+  <path d="M60 96A36 36 0 0 1 24 60" fill="none" stroke="#1a6fff" stroke-width="3" stroke-linecap="round" opacity="0.72"/>
+  <path d="M60 87A27 27 0 0 1 33 60" fill="none" stroke="#1a6fff" stroke-width="2.4" stroke-linecap="round" opacity="0.48"/>
+  <circle cx="60" cy="15" r="4" fill="#1a6fff"/>
+  <circle cx="105" cy="60" r="4" fill="#1a6fff"/>
+  <circle cx="60" cy="105" r="4" fill="#1a6fff"/>
+  <circle cx="15" cy="60" r="4" fill="#1a6fff"/>
+  <circle cx="60" cy="24" r="2.8" fill="#1a6fff" opacity="0.72"/>
+  <circle cx="96" cy="60" r="2.8" fill="#1a6fff" opacity="0.72"/>
+  <circle cx="60" cy="96" r="2.8" fill="#1a6fff" opacity="0.72"/>
+  <circle cx="24" cy="60" r="2.8" fill="#1a6fff" opacity="0.72"/>
+</svg>
