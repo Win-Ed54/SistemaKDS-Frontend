@@ -5,7 +5,6 @@ import {
   Clock3,
   LogOut,
   RefreshCcw,
-  Sparkles,
   Users,
   XCircle,
 } from "lucide-react";
@@ -18,6 +17,7 @@ import {
   transferTableAssignment,
   unseatTable,
 } from "../services/api.service";
+import ConfirmDialog from "../components/common/ConfirmDialog";
 import useSignalRConnection from "../hooks/useSignalRConnection";
 import useTables from "../hooks/useTables";
 
@@ -116,6 +116,25 @@ const compareTablesByArrival = (a, b) => {
   return a.number - b.number;
 };
 
+const sortTablesByBestFit = (tables, partySize) =>
+  [...tables].sort((a, b) => {
+    const normalizedPartySize = Number(partySize) || 0;
+    const aFit = Math.max(0, (a.capacity || 0) - normalizedPartySize);
+    const bFit = Math.max(0, (b.capacity || 0) - normalizedPartySize);
+
+    if (a.capacity >= normalizedPartySize && b.capacity < normalizedPartySize) return -1;
+    if (b.capacity >= normalizedPartySize && a.capacity < normalizedPartySize) return 1;
+    if (aFit !== bFit) return aFit - bFit;
+    return a.number - b.number;
+  });
+
+const HOST_STATUS_FILTERS = [
+  { id: "all", label: "Todas" },
+  { id: "occupied", label: "Ocupadas" },
+  { id: "cleaning", label: "Limpieza" },
+  { id: "free", label: "Libres" },
+];
+
 const HostView = () => {
   const navigate = useNavigate();
   const { isConnected } = useSignalRConnection();
@@ -128,9 +147,11 @@ const HostView = () => {
   const [selectedWaiterId, setSelectedWaiterId] = useState("");
   const [assigningTable, setAssigningTable] = useState(null);
   const [cancellingTable, setCancellingTable] = useState(null);
+  const [pendingCancelTable, setPendingCancelTable] = useState(null);
   const [reassigningTable, setReassigningTable] = useState(null);
   const [transferSourceTableNumber, setTransferSourceTableNumber] = useState(null);
   const [pendingTransferTarget, setPendingTransferTarget] = useState(null);
+  const [activeStatusFilter, setActiveStatusFilter] = useState("all");
   const [now, setNow] = useState(() => Date.now());
 
   const hostName = localStorage.getItem("user_name") || "Host de Turno";
@@ -149,11 +170,12 @@ const HostView = () => {
         setSelectedWaiterId((current) => current || waiterList[0]?.id || "");
       } catch (error) {
         console.error("Error al cargar meseros:", error);
+        showToast("No se pudo cargar la lista de meseros", "error");
       }
     };
 
     loadWaiters();
-  }, []);
+  }, [showToast]);
 
   const normalizedTables = useMemo(
     () =>
@@ -254,17 +276,7 @@ const HostView = () => {
   );
 
   const suggestedTables = useMemo(() => {
-    const partySize = Number(seatingPartySize) || 0;
-
-    return [...availableTables].sort((a, b) => {
-      const aFit = Math.max(0, (a.capacity || 0) - partySize);
-      const bFit = Math.max(0, (b.capacity || 0) - partySize);
-
-      if (a.capacity >= partySize && b.capacity < partySize) return -1;
-      if (b.capacity >= partySize && a.capacity < partySize) return 1;
-      if (aFit !== bFit) return aFit - bFit;
-      return a.number - b.number;
-    });
+    return sortTablesByBestFit(availableTables, seatingPartySize);
   }, [availableTables, seatingPartySize]);
 
   const nextTableToFree = useMemo(
@@ -285,6 +297,14 @@ const HostView = () => {
     [hostTableStates],
   );
 
+  const filteredHostTableStates = useMemo(
+    () =>
+      activeStatusFilter === "all"
+        ? hostTableStates
+        : hostTableStates.filter((table) => table.status === activeStatusFilter),
+    [activeStatusFilter, hostTableStates],
+  );
+
   useEffect(() => {
     if (!transferSourceTableNumber) return;
 
@@ -303,23 +323,29 @@ const HostView = () => {
     setSeatingPartySize(value || "");
   };
 
-  const handleSeatGuests = async (table) => {
-    const partySize = Number(seatingPartySize);
-    const assignedWaiter = waiters.find((waiter) => waiter.id === selectedWaiterId);
+  const getWaiterForSeating = (preferredWaiterId = "") =>
+    waiters.find((waiter) => waiter.id === preferredWaiterId) ||
+    waiters.find((waiter) => waiter.id === selectedWaiterId) ||
+    null;
+
+  const seatGuestsAtTable = async (table, options = {}) => {
+    const partySize = Number(options.partySize ?? seatingPartySize);
+    const notes = String(options.notes ?? seatingNotes).trim();
+    const assignedWaiter = getWaiterForSeating(options.assignedWaiterId);
 
     if (!partySize || partySize < 1) {
       showToast("Ingresa la cantidad de comensales", "error");
-      return;
+      return false;
     }
 
     if (!assignedWaiter) {
       showToast("Selecciona el mesero que atendera la mesa", "error");
-      return;
+      return false;
     }
 
     if (table.capacity && partySize > table.capacity) {
       showToast(`Mesa ${table.number} admite maximo ${table.capacity}`, "error");
-      return;
+      return false;
     }
 
     try {
@@ -327,7 +353,7 @@ const HostView = () => {
       await seatTable(table.number, {
         partySize,
         estimatedDiningMinutes: estimateStayMinutes(partySize),
-        notes: seatingNotes.trim(),
+        notes,
         assignedWaiterId: assignedWaiter.id,
         assignedWaiterName: assignedWaiter.username,
       });
@@ -336,15 +362,21 @@ const HostView = () => {
         "success",
       );
       setSeatingNotes("");
+      return true;
     } catch (error) {
       console.error("Error al asignar mesa:", error);
       showToast(
         error?.message || `No se pudo asignar la mesa ${table.number}`,
         "error",
       );
+      return false;
     } finally {
       setAssigningTable(null);
     }
+  };
+
+  const handleSeatGuests = async (table) => {
+    await seatGuestsAtTable(table);
   };
 
   const handleCancelAssignment = async (table) => {
@@ -354,6 +386,7 @@ const HostView = () => {
       if (transferSourceTableNumber === table.number) {
         setTransferSourceTableNumber(null);
       }
+      setPendingCancelTable(null);
       showToast(`Mesa ${table.number} cancelada correctamente.`, "success");
     } catch (error) {
       console.error("Error al cancelar asignacion:", error);
@@ -365,6 +398,11 @@ const HostView = () => {
       setCancellingTable(null);
     }
   };
+
+  const selectedWaiter = useMemo(
+    () => waiters.find((waiter) => waiter.id === selectedWaiterId) || null,
+    [selectedWaiterId, waiters],
+  );
 
   const handlePrepareTransfer = (table) => {
     setTransferSourceTableNumber(table.number);
@@ -426,6 +464,25 @@ const HostView = () => {
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(14,165,233,0.10),_transparent_28%),linear-gradient(180deg,_#020617_0%,_#0f172a_100%)] text-white selection:bg-cyan-400/30">
+      <ConfirmDialog
+        open={pendingCancelTable !== null}
+        title="Cancelar asignacion de mesa"
+        description={
+          pendingCancelTable !== null
+            ? `Se liberara la mesa ${pendingCancelTable.number} si todavia no tiene ordenes activas.`
+            : ""
+        }
+        confirmLabel="Cancelar mesa"
+        cancelLabel="Volver"
+        tone="warning"
+        loading={cancellingTable !== null}
+        onConfirm={() => (pendingCancelTable ? handleCancelAssignment(pendingCancelTable) : undefined)}
+        onCancel={() => {
+          if (cancellingTable !== null) return;
+          setPendingCancelTable(null);
+        }}
+      />
+
       <header className="sticky top-0 z-50 px-3 pt-3 lg:px-6 lg:pt-6 backdrop-blur-md">
         <div className="max-w-[1600px] mx-auto rounded-[2rem] border border-slate-800 bg-slate-900/85 shadow-2xl p-4 lg:p-5">
           <div className="flex items-start justify-between gap-4">
@@ -529,6 +586,11 @@ const HostView = () => {
               <p className="text-sm font-black uppercase tracking-[0.18em] text-white">
                 Mesero asignado
               </p>
+              <p className="mt-2 text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">
+                {waiters.length > 0
+                  ? `${waiters.length} meseros disponibles`
+                  : "Sin meseros cargados"}
+              </p>
               <select
                 value={selectedWaiterId}
                 onChange={(event) => setSelectedWaiterId(event.target.value)}
@@ -543,6 +605,15 @@ const HostView = () => {
                   </option>
                 ))}
               </select>
+              {selectedWaiter ? (
+                <p className="mt-3 text-[10px] font-black uppercase tracking-[0.16em] text-cyan-300">
+                  Atendera: {selectedWaiter.username}
+                </p>
+              ) : (
+                <p className="mt-3 text-[10px] font-black uppercase tracking-[0.16em] text-amber-300">
+                  Selecciona un mesero antes de asignar
+                </p>
+              )}
             </div>
 
             <div className="rounded-[1.8rem] border border-slate-800 bg-slate-950/70 p-4">
@@ -579,6 +650,7 @@ const HostView = () => {
                       : handleSeatGuests(suggestedTables[0])
                   }
                   disabled={
+                    !selectedWaiter ||
                     assigningTable === suggestedTables[0].number ||
                     reassigningTable === suggestedTables[0].number
                   }
@@ -587,6 +659,8 @@ const HostView = () => {
                   {assigningTable === suggestedTables[0].number ||
                   reassigningTable === suggestedTables[0].number
                     ? "Asignando..."
+                    : !selectedWaiter
+                      ? "Selecciona mesero"
                     : transferSourceTableNumber
                       ? `Mover a mesa ${suggestedTables[0].number}`
                       : `Elegir mesa ${suggestedTables[0].number}`}
@@ -631,36 +705,67 @@ const HostView = () => {
           </section>
 
           <section className="xl:col-span-8 rounded-[2rem] border border-slate-800 bg-slate-900/50 p-5 shadow-xl">
-            <div className="flex items-center justify-between gap-3 mb-5">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.28em] text-slate-500">
-                  Salon
-                </p>
-                <h2 className="text-xl font-black tracking-tighter uppercase text-white mt-2">
-                  Estado actual de las mesas
-                </h2>
+            <div className="flex flex-col gap-4 mb-5">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.28em] text-slate-500">
+                    Salon
+                  </p>
+                  <h2 className="text-xl font-black tracking-tighter uppercase text-white mt-2">
+                    Estado actual de las mesas
+                  </h2>
+                </div>
+                <div className="px-4 py-2 rounded-full border border-slate-800 bg-slate-950 text-[10px] font-black uppercase tracking-[0.2em] text-slate-300">
+                  {filteredHostTableStates.length} visibles
+                </div>
               </div>
-              <div className="px-4 py-2 rounded-full border border-slate-800 bg-slate-950 text-[10px] font-black uppercase tracking-[0.2em] text-slate-300">
-                {hostTableStates.length} mesas
+
+              <div className="flex flex-wrap gap-2">
+                {HOST_STATUS_FILTERS.map((filter) => (
+                  <button
+                    key={filter.id}
+                    type="button"
+                    onClick={() => setActiveStatusFilter(filter.id)}
+                    className={`rounded-2xl border px-4 py-3 text-[10px] font-black uppercase tracking-[0.18em] transition-all ${
+                      activeStatusFilter === filter.id
+                        ? "border-cyan-300 bg-cyan-400 text-slate-950"
+                        : "border-slate-800 bg-slate-950 text-slate-300"
+                    }`}
+                  >
+                    {filter.label}
+                  </button>
+                ))}
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-4">
-              {hostTableStates.map((table) => (
-                <HostTableCard
-                  key={table.number}
-                  table={table}
-                  loading={assigningTable === table.number}
-                  cancelling={cancellingTable === table.number}
-                  reassigning={reassigningTable === table.number}
-                  transferSourceTableNumber={transferSourceTableNumber}
-                  onSeatGuests={handleSeatGuests}
-                  onCancelAssignment={handleCancelAssignment}
-                  onPrepareTransfer={handlePrepareTransfer}
-                  onTransferAssignment={handleRequestTransferConfirmation}
-                />
-              ))}
-            </div>
+            {filteredHostTableStates.length === 0 ? (
+              <div className="rounded-[1.8rem] border border-dashed border-slate-800 bg-slate-950/50 p-12 text-center">
+                <p className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-400">
+                  No hay mesas para este filtro
+                </p>
+                <p className="mt-3 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-600">
+                  Cambia el estado seleccionado para ver otra parte del salon.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-4">
+                {filteredHostTableStates.map((table) => (
+                  <HostTableCard
+                    key={table.number}
+                    table={table}
+                    loading={assigningTable === table.number}
+                    cancelling={cancellingTable === table.number}
+                    reassigning={reassigningTable === table.number}
+                    transferSourceTableNumber={transferSourceTableNumber}
+                    canSeat={!selectedWaiter}
+                    onSeatGuests={handleSeatGuests}
+                    onCancelAssignment={setPendingCancelTable}
+                    onPrepareTransfer={handlePrepareTransfer}
+                    onTransferAssignment={handleRequestTransferConfirmation}
+                  />
+                ))}
+              </div>
+            )}
           </section>
         </div>
       </main>
@@ -795,6 +900,7 @@ const HostTableCard = ({
   cancelling,
   reassigning,
   transferSourceTableNumber,
+  canSeat,
   onSeatGuests,
   onCancelAssignment,
   onPrepareTransfer,
@@ -868,10 +974,12 @@ const HostTableCard = ({
             onClick={() =>
               isTransferMode ? onTransferAssignment(table) : onSeatGuests(table)
             }
-            disabled={loading || reassigning}
+            disabled={canSeat || loading || reassigning}
             className="w-full py-4 rounded-[1.4rem] bg-emerald-400 text-slate-950 font-black uppercase text-[11px] tracking-[0.2em] hover:bg-emerald-300 active:scale-95 transition-all disabled:opacity-50"
           >
-            {loading || reassigning
+            {canSeat
+              ? "Selecciona mesero"
+              : loading || reassigning
               ? "Asignando..."
               : isTransferMode
                 ? "Mover asignacion aqui"
@@ -916,3 +1024,4 @@ const HostTableCard = ({
 };
 
 export default HostView;
+

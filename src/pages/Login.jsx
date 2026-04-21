@@ -94,6 +94,11 @@ export default function Login() {
           style={styles.input}
           placeholder="Usuario"
           value={username}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && !loading) {
+              handleLogin();
+            }
+          }}
           onChange={(event) => {
             setUsername(event.target.value);
             setError(null);
@@ -105,6 +110,11 @@ export default function Login() {
           type="password"
           placeholder="Contrasena"
           value={password}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && !loading) {
+              handleLogin();
+            }
+          }}
           onChange={(event) => {
             setPassword(event.target.value);
             setError(null);
@@ -112,12 +122,17 @@ export default function Login() {
         />
 
         <button
-          style={styles.button}
+          style={{
+            ...styles.button,
+            ...(loading ? styles.buttonDisabled : null),
+          }}
           onClick={handleLogin}
           onMouseEnter={(event) => {
+            if (loading) return;
             event.target.style.background = "#e05e00";
           }}
           onMouseLeave={(event) => {
+            if (loading) return;
             event.target.style.background = "#ff6b00";
           }}
           disabled={loading}
@@ -126,7 +141,7 @@ export default function Login() {
         </button>
 
         {error && (
-          <p style={{ color: "red", marginTop: "8px", fontSize: "13px" }}>
+          <p style={styles.errorBox}>
             {error}
           </p>
         )}
@@ -155,8 +170,9 @@ const styles = {
   card: {
     background: "linear-gradient(160deg, #ffffff 0%, #e8f0ff 60%, #dceeff 100%)",
     padding: "40px 36px",
-    borderRadius: "16px",
-    width: "340px",
+    borderRadius: "24px",
+    width: "360px",
+    maxWidth: "calc(100vw - 32px)",
     display: "flex",
     flexDirection: "column",
     gap: "14px",
@@ -232,5 +248,20 @@ const styles = {
     letterSpacing: "0.5px",
     transition: "background 0.2s",
     marginTop: "4px",
+  },
+  buttonDisabled: {
+    cursor: "not-allowed",
+    opacity: 0.75,
+  },
+  errorBox: {
+    color: "#991b1b",
+    marginTop: "8px",
+    fontSize: "13px",
+    fontWeight: 700,
+    textAlign: "center",
+    background: "rgba(239, 68, 68, 0.12)",
+    border: "1px solid rgba(239, 68, 68, 0.2)",
+    borderRadius: "10px",
+    padding: "10px 12px",
   },
 };

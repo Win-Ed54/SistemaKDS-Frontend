@@ -32,12 +32,15 @@ const normalizeCustomerName = (value) =>
     .trim()
     .toUpperCase();
 
-const sanitizeNote = (value) =>
+const sanitizeNoteInput = (value) =>
   String(value || "")
     .replace(/[<>]/g, "")
-    .replace(/\s+/g, " ")
-    .trim()
     .slice(0, MAX_NOTE_LENGTH);
+
+const finalizeNote = (value) =>
+  sanitizeNoteInput(value)
+    .replace(/\r?\n/g, " ")
+    .trim();
 
 const OrderBuilder = ({ customerName, tableId, pax, onOrderSent }) => {
   const {
@@ -79,7 +82,7 @@ const OrderBuilder = ({ customerName, tableId, pax, onOrderSent }) => {
   }, [noteProduct]);
 
   useEffect(() => {
-    setNoteDraft(sanitizeNote(noteTarget?.currentNotes || ""));
+    setNoteDraft(sanitizeNoteInput(noteTarget?.currentNotes || ""));
   }, [noteTarget]);
 
   const toggleQuickNote = (quickNote) => {
@@ -93,7 +96,7 @@ const OrderBuilder = ({ customerName, tableId, pax, onOrderSent }) => {
         return parts.filter((item) => item !== quickNote).join(", ");
       }
 
-      return sanitizeNote(parts.length ? `${prev}, ${quickNote}` : quickNote);
+      return sanitizeNoteInput(parts.length ? `${prev}, ${quickNote}` : quickNote);
     });
   };
 
@@ -113,6 +116,11 @@ const OrderBuilder = ({ customerName, tableId, pax, onOrderSent }) => {
 
     if (!isTakeout && (!Number.isInteger(normalizedPax) || normalizedPax < 1)) {
       showToast("Ingrese un numero valido de comensales", "error");
+      return;
+    }
+
+    if (isTakeout && !normalizedCustomerName) {
+      showToast("El nombre del cliente es obligatorio para pedidos para llevar", "error");
       return;
     }
 
@@ -159,12 +167,13 @@ const OrderBuilder = ({ customerName, tableId, pax, onOrderSent }) => {
     items.length === 0 ||
     isSending ||
     !hasSelectedLocation ||
-    (!isTakeout && !Number.isInteger(Number.parseInt(pax, 10)));
+    (!isTakeout && !Number.isInteger(Number.parseInt(pax, 10))) ||
+    (isTakeout && !normalizeCustomerName(customerName || ""));
 
   const handleSaveNotes = () => {
     if (!noteTarget?.productId) return;
 
-    const cleaned = sanitizeNote(noteDraft);
+    const cleaned = finalizeNote(noteDraft);
 
     if (noteTarget.source === "catalog" && noteTarget.product) {
       if (cleaned) {
@@ -188,8 +197,8 @@ const OrderBuilder = ({ customerName, tableId, pax, onOrderSent }) => {
   };
 
   return (
-    <div className="flex min-h-0 flex-col rounded-[2.5rem] border border-slate-800 bg-slate-900 p-5 shadow-2xl backdrop-blur-md">
-      <div className="mb-4 flex items-center justify-between border-b border-slate-800 pb-4">
+    <div className="flex min-h-0 flex-col rounded-[1.8rem] sm:rounded-[2.5rem] border border-slate-800 bg-slate-900 p-4 sm:p-5 shadow-2xl backdrop-blur-md">
+      <div className="mb-3 sm:mb-4 flex items-center justify-between border-b border-slate-800 pb-3 sm:pb-4">
         <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
           Carrito actual
         </h2>
@@ -203,7 +212,7 @@ const OrderBuilder = ({ customerName, tableId, pax, onOrderSent }) => {
         )}
       </div>
 
-      <div className="mb-6 min-h-[200px] max-h-[55vh] flex-1 space-y-3 overflow-y-auto pr-2 custom-scrollbar">
+      <div className="mb-4 sm:mb-6 min-h-[150px] max-h-[42vh] sm:min-h-[200px] sm:max-h-[55vh] flex-1 space-y-2.5 sm:space-y-3 overflow-y-auto pr-1 sm:pr-2 custom-scrollbar">
         {items.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-10 opacity-20">
             <ReceiptText className="mb-2 h-12 w-12" />
@@ -221,7 +230,7 @@ const OrderBuilder = ({ customerName, tableId, pax, onOrderSent }) => {
             return (
               <div
                 key={`${item.productId}_${item.notes}_${index}`}
-                className="rounded-2xl border border-slate-800/50 bg-slate-950 p-3 transition-all hover:border-slate-700"
+                className="rounded-[1.2rem] sm:rounded-2xl border border-slate-800/50 bg-slate-950 p-2.5 sm:p-3 transition-all hover:border-slate-700"
               >
                 <div className="mb-2 flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -262,7 +271,7 @@ const OrderBuilder = ({ customerName, tableId, pax, onOrderSent }) => {
                       </button>
                     </div>
                     <div>
-                      <span className="text-xs font-bold text-slate-200">
+                      <span className="text-[11px] sm:text-xs font-bold text-slate-200">
                         {item.productName}
                       </span>
                       {item.notes && (
@@ -353,7 +362,7 @@ const OrderBuilder = ({ customerName, tableId, pax, onOrderSent }) => {
 
                     <textarea
                       value={noteDraft}
-                      onChange={(event) => setNoteDraft(sanitizeNote(event.target.value))}
+                      onChange={(event) => setNoteDraft(sanitizeNoteInput(event.target.value))}
                       maxLength={MAX_NOTE_LENGTH}
                       placeholder="Escribe instrucciones especiales para cocina o barra..."
                       className="min-h-[110px] w-full resize-none rounded-[1.2rem] border-2 border-slate-800 bg-slate-950 p-3 text-sm font-bold text-white outline-none transition-all focus:border-cyan-500"
@@ -432,7 +441,7 @@ const OrderBuilder = ({ customerName, tableId, pax, onOrderSent }) => {
 
             <textarea
               value={noteDraft}
-              onChange={(event) => setNoteDraft(sanitizeNote(event.target.value))}
+              onChange={(event) => setNoteDraft(sanitizeNoteInput(event.target.value))}
               maxLength={MAX_NOTE_LENGTH}
               placeholder="Opcional: agrega instrucciones para este producto..."
               className="min-h-[110px] w-full resize-none rounded-[1.2rem] border-2 border-slate-800 bg-slate-900 p-3 text-sm font-bold text-white outline-none transition-all focus:border-cyan-500"
@@ -471,23 +480,23 @@ const OrderBuilder = ({ customerName, tableId, pax, onOrderSent }) => {
       <button
         onClick={sendOrder}
         disabled={isButtonDisabled}
-        className={`flex w-full items-center justify-between rounded-[1.8rem] px-8 py-5 text-xs font-black uppercase tracking-[0.2em] shadow-xl transition-all ${
+        className={`flex w-full items-center justify-between rounded-[1.4rem] sm:rounded-[1.8rem] px-5 sm:px-8 py-4 sm:py-5 text-[11px] sm:text-xs font-black uppercase tracking-[0.16em] sm:tracking-[0.2em] shadow-xl transition-all ${
           isButtonDisabled
             ? "cursor-not-allowed border border-slate-700 bg-slate-800 text-slate-600 opacity-50"
             : "bg-emerald-400 text-black shadow-emerald-400/20 active:scale-95 hover:scale-[1.01]"
         }`}
       >
         <div className="flex flex-col items-start">
-          <span className="text-[10px] leading-none opacity-70">
-            {isSending ? "Enviando..." : "Confirmar orden"}
-          </span>
+            <span className="text-[10px] leading-none opacity-70">
+              {isSending ? "Enviando..." : "Confirmar orden"}
+            </span>
           {!isSending && isTakeout && !normalizeCustomerName(customerName || "") && (
-            <span className="mt-1 text-[7px] text-slate-700">
-              Nombre opcional para llevar
+            <span className="mt-1 text-[7px] text-red-700">
+              Nombre obligatorio para llevar
             </span>
           )}
         </div>
-        <span className="text-xl">{isSending ? "---" : `$${total.toFixed(2)}`}</span>
+        <span className="text-lg sm:text-xl">{isSending ? "---" : `$${total.toFixed(2)}`}</span>
       </button>
     </div>
   );

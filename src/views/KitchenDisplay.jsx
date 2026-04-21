@@ -142,6 +142,30 @@ const KitchenDisplay = () => {
         </div>
       </header>
 
+      <section className="border-b border-slate-800 bg-slate-950/85 px-4 py-3 md:hidden">
+        <div className="grid grid-cols-3 gap-3">
+          {COLUMNS.map((col) => (
+            <div
+              key={`mobile-${col.key}`}
+              className="rounded-[1.2rem] border border-slate-800 bg-slate-900/70 px-3 py-3 text-center"
+            >
+              <p className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-500">
+                {col.title}
+              </p>
+              <p className="mt-2 text-2xl font-black" style={{ color: col.accent }}>
+                {grouped[col.status].length}
+              </p>
+            </div>
+          ))}
+          <div className="rounded-[1.2rem] border border-slate-800 bg-slate-900/70 px-3 py-3 text-center">
+            <p className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-500">
+              Total
+            </p>
+            <p className="mt-2 text-2xl font-black text-white">{normalized.length}</p>
+          </div>
+        </div>
+      </section>
+
       <div
         style={{
           flex: 1,
@@ -212,26 +236,17 @@ const KitchenDisplay = () => {
                 }}
               >
                 {colOrders.length === 0 ? (
-                  <div
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      height: "100%",
-                      gap: 12,
-                      opacity: 0.4,
-                    }}
-                  >
+                  <div className="flex h-full flex-col items-center justify-center gap-4 rounded-[2rem] border border-dashed border-slate-800 bg-slate-900/35 p-8">
                     <div
                       style={{
-                        width: 40,
-                        height: 40,
-                        borderRadius: "50%",
+                        width: 44,
+                        height: 44,
+                        borderRadius: "999px",
                         border: `2px solid ${col.accent}`,
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
+                        boxShadow: `0 0 18px ${col.accent}22`,
                       }}
                     >
                       <div
@@ -244,7 +259,7 @@ const KitchenDisplay = () => {
                       />
                     </div>
                     <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
-                      Sin Ordenes
+                      Sin ordenes
                     </p>
                   </div>
                 ) : (

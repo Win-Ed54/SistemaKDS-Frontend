@@ -7,7 +7,7 @@ import ProductCard from "./ProductCard";
 const ProductList = ({ products: initialProducts }) => {
   const [localProducts, setLocalProducts] = useState(initialProducts);
   const { connection } = useSignalRConnection();
-  const { addItem, setNoteTarget } = useOrderBuilder();
+  const { addItem } = useOrderBuilder();
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -46,24 +46,6 @@ const ProductList = ({ products: initialProducts }) => {
     };
   }, [connection]);
 
-  const handleOpenNotes = (product) => {
-    setNoteTarget({
-      productId: product.id || product._id,
-      currentNotes: "",
-      source: "catalog",
-      product,
-    });
-  };
-
-  const handleEditExistingNote = (product, notes) => {
-    setNoteTarget({
-      productId: product.id || product._id || product.Id,
-      currentNotes: notes || "",
-      source: "cart",
-      product,
-    });
-  };
-
   const handleAdd = (product) => {
     const result = addItem(product);
     if (result?.ok === false && result?.message) {
@@ -72,14 +54,12 @@ const ProductList = ({ products: initialProducts }) => {
   };
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-5 xl:grid-cols-3 2xl:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 md:gap-4 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
       {localProducts.map((product) => (
         <ProductCard
           key={product.id || product._id}
           product={product}
           onAdd={handleAdd}
-          onOpenNotes={handleOpenNotes}
-          onEditExistingNote={handleEditExistingNote}
         />
       ))}
     </div>

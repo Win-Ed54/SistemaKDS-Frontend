@@ -1,68 +1,81 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from "react";
 
 const TableMap = ({ hubConnection }) => {
-  // Estado inicial de las mesas (esto vendría de tu DB normalmente)
   const [tables, setTables] = useState([
     { id: 1, number: "101", status: "available", currentOrder: null },
     { id: 2, number: "102", status: "available", currentOrder: null },
     { id: 3, number: "103", status: "available", currentOrder: null },
-    // ... más mesas
   ]);
+  const [statusMessage, setStatusMessage] = useState("");
 
   useEffect(() => {
     if (!hubConnection) return;
 
-    // Escuchar cuando una orden está lista (Punto 5 de tu flujo)
-    hubConnection.on("OrderReadyForPickup", (data) => {
-      setTables(prev => prev.map(t => 
-        t.number === data.tableNumber.toString() 
-          ? { ...t, status: "ready", orderId: data.orderId } 
-          : t
-      ));
-    });
+    const handleOrderReadyForPickup = (data) => {
+      setTables((prev) =>
+        prev.map((table) =>
+          table.number === data.tableNumber.toString()
+            ? { ...table, status: "ready", orderId: data.orderId }
+            : table,
+        ),
+      );
+    };
 
-    // Escuchar cuando el estado cambia a "Preparando"
-    hubConnection.on("UpdateOrderStatus", (data) => {
+    const handleUpdateOrderStatus = (data) => {
       if (data.status === "Preparing") {
-        setTables(prev => prev.map(t => 
-          t.orderId === data.orderId ? { ...t, status: "busy" } : t
-        ));
+        setTables((prev) =>
+          prev.map((table) =>
+            table.orderId === data.orderId ? { ...table, status: "busy" } : table,
+          ),
+        );
       }
-    });
+    };
 
+    hubConnection.on("OrderReadyForPickup", handleOrderReadyForPickup);
+    hubConnection.on("UpdateOrderStatus", handleUpdateOrderStatus);
+
+    return () => {
+      hubConnection.off("OrderReadyForPickup", handleOrderReadyForPickup);
+      hubConnection.off("UpdateOrderStatus", handleUpdateOrderStatus);
+    };
   }, [hubConnection]);
 
   const handleTableClick = (table) => {
     if (table.status === "ready") {
-      alert(`Entregando orden ${table.orderId} en mesa ${table.number}`);
-      // Aquí dispararías la lógica para limpiar la mesa tras la entrega
+      setStatusMessage(`Entregando orden ${table.orderId} en mesa ${table.number}`);
     } else if (table.status === "available") {
-      // Lógica para abrir modal de nueva orden
-      console.log("Abriendo toma de pedido para mesa", table.number);
+      setStatusMessage(`Abriendo toma de pedido para mesa ${table.number}`);
     }
   };
 
   return (
-    <div className="p-6 bg-gray-900 rounded-xl">
-      <h2 className="text-xl font-bold text-white mb-4">Mapa de Salón</h2>
+    <div className="rounded-xl bg-gray-900 p-6">
+      <h2 className="mb-4 text-xl font-bold text-white">Mapa de salon</h2>
+      {statusMessage ? (
+        <div className="mb-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm font-bold text-emerald-200">
+          {statusMessage}
+        </div>
+      ) : null}
       <div className="grid grid-cols-3 gap-6">
-        {tables.map(table => (
+        {tables.map((table) => (
           <button
             key={table.id}
             onClick={() => handleTableClick(table)}
-            className={`h-32 rounded-2xl flex flex-col items-center justify-center transition-all transform active:scale-95 shadow-xl
-              ${table.status === 'available' ? 'bg-slate-700 text-slate-300' : ''}
-              ${table.status === 'busy' ? 'bg-yellow-500 text-black animate-pulse' : ''}
-              ${table.status === 'ready' ? 'bg-green-500 text-white shadow-[0_0_20px_rgba(34,197,94,0.6)]' : ''}
-            `}
+            className={`flex h-32 flex-col items-center justify-center rounded-2xl shadow-xl transition-all active:scale-95 ${
+              table.status === "available" ? "bg-slate-700 text-slate-300" : ""
+            } ${table.status === "busy" ? "animate-pulse bg-yellow-500 text-black" : ""} ${
+              table.status === "ready"
+                ? "bg-green-500 text-white shadow-[0_0_20px_rgba(34,197,94,0.6)]"
+                : ""
+            }`}
           >
             <span className="text-sm font-medium uppercase">Mesa</span>
             <span className="text-4xl font-black">{table.number}</span>
-            {table.status === 'ready' && (
-              <span className="mt-2 text-[10px] bg-white text-green-700 px-2 py-0.5 rounded-full font-bold">
-                ¡LISTA!
+            {table.status === "ready" ? (
+              <span className="mt-2 rounded-full bg-white px-2 py-0.5 text-[10px] font-bold text-green-700">
+                Lista
               </span>
-            )}
+            ) : null}
           </button>
         ))}
       </div>

@@ -1,110 +1,97 @@
 import React from "react";
 import useOrderBuilder from "../../hooks/useOrderBuilder";
 
+const getTableTone = (table, isSelected) => {
+  if (isSelected) {
+    return "border-emerald-300 bg-emerald-400 text-slate-950 shadow-[0_0_20px_rgba(74,222,128,0.28)]";
+  }
+
+  if ((table?.orderSummary?.readyOrders || 0) > 0) {
+    return "border-cyan-400/30 bg-cyan-400/10 text-cyan-200";
+  }
+
+  if ((table?.orderSummary?.activeOrders || 0) > 0) {
+    return "border-amber-400/25 bg-amber-400/10 text-amber-200";
+  }
+
+  return "border-slate-800 bg-slate-950 text-slate-200 hover:border-cyan-400/30 hover:bg-slate-900";
+};
+
 const TableSelector = ({
   tables,
   allowOccupiedAssigned = false,
-  placeholder = "-- SELECCIONAR UBICACION --",
 }) => {
   const { setTable, tableId } = useOrderBuilder();
   const tableList = Array.isArray(tables) ? tables : [];
-  const hasSelectedLocation =
-    tableId !== null && tableId !== undefined && tableId !== "";
+  const diningTables = tableList.filter((table) => Number(table?.number) > 0);
+  const isTakeoutSelected = Number(tableId) === 0;
 
-  const handleChange = (event) => {
-    const selectedNumber = Number(event.target.value);
-    const selectedTable = tableList.find((table) => table.number === selectedNumber);
+  const handleSelect = (selectedNumber) => {
+    const selectedTable = diningTables.find(
+      (table) => Number(table.number) === Number(selectedNumber),
+    );
     const isOccupied = selectedTable?.isOccupied || selectedTable?.IsOccupied;
 
-    if (isOccupied && !allowOccupiedAssigned) return;
+    if (selectedTable && isOccupied && !allowOccupiedAssigned) return;
     setTable(selectedNumber);
   };
 
   return (
-    <div className="relative w-full group">
-      <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none z-10">
-        <svg
-          className={`h-5 w-5 transition-colors duration-300 ${hasSelectedLocation ? "text-[#39FF14]" : "text-[#FFFF00]"}`}
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
+    <div className="space-y-3">
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={() => setTable(0)}
+          className={`rounded-[1rem] border px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.18em] transition-all ${
+            isTakeoutSelected
+              ? "border-cyan-300 bg-cyan-400 text-slate-950 shadow-[0_0_20px_rgba(34,211,238,0.28)]"
+              : "border-cyan-400/20 bg-cyan-400/10 text-cyan-200 hover:border-cyan-300/40"
+          }`}
         >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={3}
-            d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1"
-          />
-        </svg>
+          Para llevar
+        </button>
       </div>
 
-      <select
-        className={`w-full bg-slate-950 font-black uppercase text-xs p-5 pl-12 rounded-[1.5rem] outline-none appearance-none cursor-pointer transition-all border-2 ${
-          hasSelectedLocation
-            ? "text-[#39FF14] border-[#39FF14]/30 shadow-[0_0_15px_rgba(57,255,20,0.1)]"
-            : "text-[#FFFF00] border-slate-800 hover:border-[#FFFF00]/50"
-        }`}
-        onChange={handleChange}
-        value={tableId ?? ""}
-      >
-        <option value="" className="text-slate-600 bg-slate-900">
-          {placeholder}
-        </option>
+      {diningTables.length === 0 ? (
+        <div className="rounded-[1.4rem] border border-dashed border-slate-800 bg-slate-900/35 p-5 text-center">
+          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
+            Sin mesas asignadas por ahora
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-4 gap-2 sm:grid-cols-5 lg:grid-cols-6 xl:grid-cols-6 2xl:grid-cols-7">
+          {diningTables.map((table, index) => {
+            const isSelected = Number(tableId) === Number(table.number);
 
-        <option value="0" className="font-bold bg-slate-900 text-cyan-400">
-          PARA LLEVAR
-        </option>
+            return (
+              <button
+                key={table.id ?? table.number}
+                type="button"
+                onClick={() => handleSelect(table.number)}
+                className={`group relative aspect-square rounded-[1rem] border p-2 text-left transition-all ${getTableTone(table, isSelected)}`}
+                aria-pressed={isSelected}
+                aria-label={`Mesa ${table.number}`}
+              >
+                <span className="absolute left-2 top-2 text-[8px] font-black uppercase tracking-[0.16em] opacity-60">
+                  {index + 1}
+                </span>
 
-        {tableList.map((table) => {
-          const isOccupied = table.isOccupied || table.IsOccupied;
-          const isReady = table.hasReadyOrder;
-          const isSelectable = !isOccupied || allowOccupiedAssigned;
-          const totalOrdersToday = Number(table?.orderSummary?.totalOrdersToday || 0);
-          const activeOrders = Number(table?.orderSummary?.activeOrders || 0);
+                {(table?.orderSummary?.readyOrders || 0) > 0 && !isSelected && (
+                  <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-cyan-300 shadow-[0_0_10px_rgba(103,232,249,0.9)]" />
+                )}
 
-          return (
-            <option
-              key={table.id}
-              value={table.number}
-              disabled={!isSelectable}
-              className={`font-bold bg-slate-900 ${
-                isOccupied
-                  ? allowOccupiedAssigned
-                    ? "text-cyan-300"
-                    : "text-red-500/50"
-                  : isReady
-                    ? "text-[#00FFFF]"
-                    : "text-[#FFFF00]"
-              }`}
-            >
-              {table.name}
-              {isOccupied ? " (ASIGNADA)" : ` (Cap: ${table.capacity} Pax)`}
-              {totalOrdersToday > 0 ? ` ${totalOrdersToday} ORD` : ""}
-              {activeOrders > 0 ? ` ${activeOrders} EN CURSO` : ""}
-              {isReady ? " PEDIDO LISTO" : ""}
-            </option>
-          );
-        })}
-      </select>
-
-      <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none">
-        <svg
-          className={`h-4 w-4 transition-transform duration-300 ${hasSelectedLocation ? "text-[#39FF14]" : "text-slate-500"}`}
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={4}
-            d="M19 9l-7 7-7-7"
-          />
-        </svg>
-      </div>
-
-      {hasSelectedLocation && (
-        <div className="absolute -bottom-1 left-6 right-6 h-[2px] bg-[#39FF14] shadow-[0_0_10px_#39FF14] animate-pulse" />
+                <div className="flex h-full flex-col items-center justify-center">
+                  <span className="text-[8px] font-black uppercase tracking-[0.16em] opacity-70">
+                    Mesa
+                  </span>
+                  <span className="mt-1 text-lg font-black leading-none sm:text-xl">
+                    {table.number}
+                  </span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
       )}
     </div>
   );

@@ -25,14 +25,14 @@ const formatCurrency = (value) =>
     currency: "USD",
   }).format(value || 0);
 
+const formatTime = (value = Date.now()) =>
+  new Date(value).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
 const getOrderLocationLabel = (order) =>
   Number(order?.tableNumber) > 0 ? `Mesa ${order.tableNumber}` : "Para llevar";
-
-const getOrderTotal = (order) =>
-  order?.items?.reduce(
-    (subtotal, item) => subtotal + (item.unitPrice || 0) * item.quantity,
-    0,
-  ) || 0;
 
 const getRemainingItemQuantity = (item) => {
   const fallbackRemaining =
@@ -85,6 +85,16 @@ const getGroupPendingSummary = (orders) => {
   };
 };
 
+const createChargeSummaryEntry = ({ type, label, amount, detail, paymentMethod }) => ({
+  id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+  type,
+  label,
+  amount,
+  detail,
+  paymentMethod,
+  createdAt: Date.now(),
+});
+
 const CashierView = () => {
   const navigate = useNavigate();
   const [history, setHistory] = useState([]);
@@ -94,6 +104,7 @@ const CashierView = () => {
   const [tableSearch, setTableSearch] = useState("");
   const [groupMode, setGroupMode] = useState("grouped");
   const [selectedItemPayments, setSelectedItemPayments] = useState({});
+  const [recentCharges, setRecentCharges] = useState([]);
 
   const { isConnected } = useSignalRConnection("cashier");
   const { showToast } = useToast();
@@ -203,6 +214,29 @@ const CashierView = () => {
     ];
   }, [filteredPendingPayments]);
 
+  useEffect(() => {
+    const validOrderIds = new Set(pendingPayments.map((order) => String(order.id)));
+    const validGroupKeys = new Set(groupedPendingPayments.map((group) => group.groupKey));
+
+    setSelectedItemPayments((prev) => {
+      const next = Object.fromEntries(
+        Object.entries(prev).filter(([orderId]) => validOrderIds.has(String(orderId))),
+      );
+
+      return Object.keys(next).length === Object.keys(prev).length ? prev : next;
+    });
+
+    setPaymentForms((prev) => {
+      const next = Object.fromEntries(
+        Object.entries(prev).filter(
+          ([key]) => validOrderIds.has(String(key)) || validGroupKeys.has(key),
+        ),
+      );
+
+      return Object.keys(next).length === Object.keys(prev).length ? prev : next;
+    });
+  }, [groupedPendingPayments, pendingPayments]);
+
   const totals = useMemo(() => {
     const totalOrders = pendingPayments.length;
     const totalAmount = pendingPayments.reduce((acc, order) => acc + getRemainingOrderTotal(order), 0);
@@ -265,6 +299,10 @@ const CashierView = () => {
     });
   };
 
+  const registerChargeSummary = (entry) => {
+    setRecentCharges((prev) => [entry, ...prev].slice(0, 6));
+  };
+
   const handleCharge = async (order) => {
     try {
       setChargingOrders((prev) => ({ ...prev, [order.id]: true }));
@@ -275,6 +313,15 @@ const CashierView = () => {
         documentType: form.documentType || "ticket",
         invoiceRequested: Boolean(form.invoiceRequested),
       });
+      registerChargeSummary(
+        createChargeSummaryEntry({
+          type: "total",
+          label: order.correlativeCode || order.id,
+          amount: getRemainingOrderTotal(order),
+          detail: `${getOrderLocationLabel(order)} · cobro completo`,
+          paymentMethod: form.paymentMethod || "efectivo",
+        }),
+      );
       showToast(`Pedido ${order.id} cobrado correctamente`, "success");
       await loadCashierData(true);
     } catch (error) {
@@ -296,6 +343,7 @@ const CashierView = () => {
     try {
       setChargingOrders((prev) => ({ ...prev, [order.id]: true }));
       const form = paymentForms[order.id] || {};
+      const selectedTotal = getSelectedOrderTotal(order);
       await payOrder(order.id, {
         paymentMethod: form.paymentMethod || "efectivo",
         receiptNumber: form.receiptNumber || "",
@@ -304,6 +352,15 @@ const CashierView = () => {
         itemPayments,
       });
       clearSelectedItemPayments(order.id);
+      registerChargeSummary(
+        createChargeSummaryEntry({
+          type: "partial",
+          label: order.correlativeCode || order.id,
+          amount: selectedTotal,
+          detail: `${getOrderLocationLabel(order)} · ${itemPayments.length} lineas cobradas`,
+          paymentMethod: form.paymentMethod || "efectivo",
+        }),
+      );
       showToast(`Cobro parcial aplicado a ${order.correlativeCode || order.id}`, "success");
       await loadCashierData(true);
     } catch (error) {
@@ -316,13 +373,14 @@ const CashierView = () => {
 
   const handleChargeGroup = async (group) => {
     const orderIds = group.orders.map((order) => order.id).filter(Boolean);
+    let chargedCount = 0;
+    const form = paymentForms[group.groupKey] || {};
+    const totalToCharge = getGroupTotal(group.orders);
 
     try {
       setChargingOrders((prev) =>
         orderIds.reduce((acc, id) => ({ ...acc, [id]: true }), { ...prev }),
       );
-
-      const form = paymentForms[group.groupKey] || {};
 
       for (const order of group.orders) {
         await payOrder(order.id, {
@@ -331,13 +389,30 @@ const CashierView = () => {
           documentType: form.documentType || "ticket",
           invoiceRequested: Boolean(form.invoiceRequested),
         });
+        clearSelectedItemPayments(order.id);
+        chargedCount += 1;
       }
 
+      registerChargeSummary(
+        createChargeSummaryEntry({
+          type: "group",
+          label: group.locationLabel,
+          amount: totalToCharge,
+          detail: `${chargedCount} pedidos cobrados en grupo`,
+          paymentMethod: form.paymentMethod || "efectivo",
+        }),
+      );
       showToast(`${group.locationLabel} cobrada correctamente`, "success");
       await loadCashierData(true);
     } catch (error) {
       console.error("Error cobrando grupo:", error);
-      showToast(`No se pudo cobrar ${group.locationLabel}`, "error");
+      await loadCashierData(true);
+      showToast(
+        chargedCount > 0
+          ? `${group.locationLabel}: se cobraron ${chargedCount} pedidos antes del error. La vista fue actualizada.`
+          : `No se pudo cobrar ${group.locationLabel}`,
+        "error",
+      );
     } finally {
       setChargingOrders((prev) => {
         const next = { ...prev };
@@ -417,6 +492,36 @@ const CashierView = () => {
               {loading ? "Actualizando..." : "Caja sincronizada"}
             </p>
           </div>
+        </section>
+
+        <section className="rounded-[2rem] border border-slate-800 bg-slate-900/70 p-5 shadow-xl">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500">
+                Resumen operativo
+              </p>
+              <h2 className="mt-2 text-lg font-black uppercase tracking-[0.16em] text-white">
+                Ultimos cobros aplicados
+              </h2>
+            </div>
+            <div className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-4 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-emerald-300">
+              {recentCharges.length} registro{recentCharges.length === 1 ? "" : "s"}
+            </div>
+          </div>
+
+          {recentCharges.length === 0 ? (
+            <div className="mt-4 rounded-[1.6rem] border border-dashed border-slate-800 bg-slate-950/50 p-8 text-center">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+                Aun no hay cobros registrados en esta sesion
+              </p>
+            </div>
+          ) : (
+            <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-3">
+              {recentCharges.map((entry) => (
+                <ChargeSummaryCard key={entry.id} entry={entry} />
+              ))}
+            </div>
+          )}
         </section>
 
         <section className="bg-slate-900 border border-slate-800 rounded-[2.5rem] p-6 lg:p-8 shadow-2xl">
@@ -960,5 +1065,58 @@ const SeparatePaymentsView = ({
     ))}
   </div>
 );
+
+const ChargeSummaryCard = ({ entry }) => {
+  const toneMap = {
+    total: "border-emerald-400/20 bg-emerald-400/10 text-emerald-300",
+    partial: "border-cyan-400/20 bg-cyan-400/10 text-cyan-300",
+    group: "border-amber-400/20 bg-amber-400/10 text-amber-300",
+  };
+
+  return (
+    <article className="rounded-[1.6rem] border border-slate-800 bg-slate-950/70 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <span className={`inline-flex rounded-full border px-3 py-1.5 text-[8px] font-black uppercase tracking-[0.16em] ${toneMap[entry.type] || toneMap.total}`}>
+            {entry.type === "partial" ? "Parcial" : entry.type === "group" ? "Mesa completa" : "Cobro total"}
+          </span>
+          <p className="mt-3 text-sm font-black uppercase tracking-[0.14em] text-white">
+            {entry.label}
+          </p>
+          <p className="mt-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">
+            {entry.detail}
+          </p>
+        </div>
+        <div className="text-right">
+          <p className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-500">
+            Hora
+          </p>
+          <p className="mt-2 text-sm font-black text-slate-200">
+            {formatTime(entry.createdAt)}
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-4 flex items-center justify-between gap-3 rounded-[1.2rem] border border-slate-800 bg-slate-900/60 px-4 py-3">
+        <div>
+          <p className="text-[8px] font-black uppercase tracking-[0.16em] text-slate-500">
+            Metodo
+          </p>
+          <p className="mt-2 text-[10px] font-black uppercase text-slate-200">
+            {entry.paymentMethod || "efectivo"}
+          </p>
+        </div>
+        <div className="text-right">
+          <p className="text-[8px] font-black uppercase tracking-[0.16em] text-slate-500">
+            Monto
+          </p>
+          <p className="mt-2 text-lg font-black text-emerald-300">
+            {formatCurrency(entry.amount)}
+          </p>
+        </div>
+      </div>
+    </article>
+  );
+};
 
 export default CashierView;

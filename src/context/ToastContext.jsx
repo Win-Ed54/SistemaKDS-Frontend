@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { CheckCircle2, XCircle } from "lucide-react";
 
 const ToastContext = createContext();
 
@@ -36,9 +37,11 @@ export const ToastProvider = ({ children }) => {
   };
 
   useEffect(() => {
+    const timeoutMap = timeoutMapRef.current;
+
     return () => {
-      timeoutMapRef.current.forEach((timeoutId) => clearTimeout(timeoutId));
-      timeoutMapRef.current.clear();
+      timeoutMap.forEach((timeoutId) => clearTimeout(timeoutId));
+      timeoutMap.clear();
     };
   }, []);
 
@@ -67,32 +70,36 @@ export const ToastProvider = ({ children }) => {
       {children}
 
       <div
-        style={{
-          position: "fixed",
-          top: 20,
-          right: 20,
-          display: "flex",
-          flexDirection: "column",
-          gap: "10px",
-          zIndex: 9999,
-        }}
+        className="fixed right-4 top-4 z-[9999] flex max-w-[calc(100vw-2rem)] flex-col gap-3 sm:right-5 sm:top-5"
       >
         {toasts.map((toast) => (
           <div
             key={toast.id}
-            style={{
-              background: toast.type === "error" ? "#ff4d4f" : "#00c853",
-              color: "#fff",
-              padding: "12px 16px",
-              borderRadius: "8px",
-              minWidth: "220px",
-              boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
-              fontSize: "14px",
-              cursor: "pointer",
-            }}
             onClick={() => dismissToast(toast.id)}
+            className={`flex min-w-[240px] max-w-[360px] cursor-pointer items-start gap-3 rounded-[1.4rem] border p-4 shadow-2xl backdrop-blur-md transition-all ${
+              toast.type === "error"
+                ? "border-red-500/30 bg-red-500/15 text-red-50"
+                : "border-emerald-500/30 bg-emerald-500/15 text-emerald-50"
+            }`}
           >
-            {toast.message}
+            <div
+              className={`mt-0.5 rounded-2xl p-2 ${
+                toast.type === "error" ? "bg-red-500/20 text-red-200" : "bg-emerald-500/20 text-emerald-200"
+              }`}
+            >
+              {toast.type === "error" ? (
+                <XCircle className="h-4 w-4" />
+              ) : (
+                <CheckCircle2 className="h-4 w-4" />
+              )}
+            </div>
+
+            <div className="min-w-0">
+              <p className="text-[10px] font-black uppercase tracking-[0.22em] opacity-80">
+                {toast.type === "error" ? "Error" : "Correcto"}
+              </p>
+              <p className="mt-1 text-sm font-bold break-words">{toast.message}</p>
+            </div>
           </div>
         ))}
       </div>

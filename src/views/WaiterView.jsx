@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   BellRing,
@@ -76,6 +76,12 @@ const CATEGORY_IMAGE_MAP = {
 
 const getOrderLocationLabel = (order) =>
   Number(order?.tableNumber) > 0 ? `Mesa ${order.tableNumber}` : "Para llevar";
+
+const formatOrderCurrency = (value) =>
+  new Intl.NumberFormat("es-SV", {
+    style: "currency",
+    currency: "USD",
+  }).format(Number(value) || 0);
 
 const formatMinutes = (minutes) => `${Math.max(0, Math.ceil(Number(minutes) || 0))} min`;
 
@@ -182,6 +188,80 @@ const compareAssignedTablesByArrival = (a, b) => {
   return a.number - b.number;
 };
 
+const getAssignmentAlertId = (table) => {
+  const assignmentTimestamp = Number(table?.assignmentTimestamp || 0);
+  return `${Number(table?.number || 0)}-${assignmentTimestamp}`;
+};
+
+const getOrderStatusNumber = (status) => {
+  if (typeof status === "number") return status;
+
+  const statusMap = {
+    pending: 0,
+    preparing: 1,
+    ready: 2,
+    delivered: 3,
+    cancelled: 4,
+  };
+
+  return statusMap[String(status || "").toLowerCase()] ?? -1;
+};
+
+const getOrderStatusConfig = (status) => {
+  const statusNumber = getOrderStatusNumber(status);
+
+  switch (statusNumber) {
+    case 0:
+      return {
+        label: "En cola",
+        accent: "text-amber-300",
+        badge: "border-amber-400/20 bg-amber-400/10 text-amber-300",
+      };
+    case 1:
+      return {
+        label: "En cocina",
+        accent: "text-cyan-300",
+        badge: "border-cyan-400/20 bg-cyan-400/10 text-cyan-300",
+      };
+    case 2:
+      return {
+        label: "Lista",
+        accent: "text-emerald-300",
+        badge: "border-emerald-400/20 bg-emerald-400/10 text-emerald-300",
+      };
+    case 3:
+      return {
+        label: "Entregada",
+        accent: "text-slate-200",
+        badge: "border-slate-700 bg-slate-800 text-slate-200",
+      };
+    case 4:
+      return {
+        label: "Cancelada",
+        accent: "text-red-300",
+        badge: "border-red-400/20 bg-red-400/10 text-red-300",
+      };
+    default:
+      return {
+        label: "Sin estado",
+        accent: "text-slate-400",
+        badge: "border-slate-800 bg-slate-900 text-slate-400",
+      };
+  }
+};
+
+const formatOrderTime = (value) => {
+  if (!value) return "--:--";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "--:--";
+
+  return date.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
+
 export default function WaiterView() {
   const navigate = useNavigate();
   const { isConnected } = useSignalRConnection();
@@ -205,6 +285,8 @@ export default function WaiterView() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const [lastAssignedTableAlert, setLastAssignedTableAlert] = useState(null);
+  const [assignmentAlerts, setAssignmentAlerts] = useState([]);
+  const knownAssignedTableAlertIdsRef = useRef(new Set());
 
   const waiterName = localStorage.getItem("user_name") || "Mesero de Turno";
   const waiterId = getCurrentUserId();
@@ -243,12 +325,38 @@ export default function WaiterView() {
     [normalizedTables, waiterId, waiterName],
   );
 
+  const tableAssignmentByNumber = useMemo(() => {
+    const map = new Map();
+
+    normalizedTables.forEach((table) => {
+      const tableNumber = Number(table?.number);
+      if (!Number.isFinite(tableNumber) || tableNumber <= 0) return;
+
+      map.set(tableNumber, {
+        assignmentTimestamp: Number(table?.assignmentTimestamp || 0),
+        isOccupied: Boolean(table?.isOccupied),
+      });
+    });
+
+    return map;
+  }, [normalizedTables]);
+
   const tableOrderSummaryByNumber = useMemo(() => {
     const map = new Map();
 
     todayOrders.forEach((order) => {
       const tableNumber = Number(order?.tableNumber);
       if (!Number.isFinite(tableNumber) || tableNumber <= 0) return;
+
+      const tableAssignment = tableAssignmentByNumber.get(tableNumber);
+      const assignmentTimestamp = Number(tableAssignment?.assignmentTimestamp || 0);
+      const isOccupied = Boolean(tableAssignment?.isOccupied);
+      const createdAt = new Date(order?.createdAt || 0).getTime();
+
+      // Si la mesa ya fue liberada y reasignada, solo contamos ordenes del ciclo actual.
+      if (isOccupied && assignmentTimestamp > 0 && createdAt > 0 && createdAt < assignmentTimestamp) {
+        return;
+      }
 
       const current = map.get(tableNumber) || {
         totalOrdersToday: 0,
@@ -258,8 +366,7 @@ export default function WaiterView() {
         lastCreatedAt: 0,
       };
 
-      const status = Number(order?.status);
-      const createdAt = new Date(order?.createdAt || 0).getTime();
+      const status = getOrderStatusNumber(order?.status);
 
       current.totalOrdersToday += 1;
       if ([0, 1, 2].includes(status)) current.activeOrders += 1;
@@ -271,7 +378,7 @@ export default function WaiterView() {
     });
 
     return map;
-  }, [todayOrders]);
+  }, [tableAssignmentByNumber, todayOrders]);
 
   const enrichedServiceTables = useMemo(
     () =>
@@ -297,10 +404,8 @@ export default function WaiterView() {
     [enrichedServiceTables],
   );
 
-  const maxCapacity = currentTable?.capacity ?? 10;
   const isTakeout = Number(tableId) === 0;
   const assignedPartySize = currentTable?.currentPartySize ?? 0;
-  const isHostAssignedTable = !isTakeout && assignedPartySize > 0;
 
   const loadWaiterData = useCallback(async () => {
     try {
@@ -339,6 +444,35 @@ export default function WaiterView() {
         return isMine && isReady;
       }),
     [ordersFromStore, waiterId, waiterName],
+  );
+
+  const todayOrdersSorted = useMemo(
+    () =>
+      [...todayOrders].sort(
+        (a, b) => new Date(b?.createdAt || 0).getTime() - new Date(a?.createdAt || 0).getTime(),
+      ),
+    [todayOrders],
+  );
+
+  const activityActiveOrders = useMemo(
+    () =>
+      todayOrdersSorted.filter((order) => {
+        const status = getOrderStatusNumber(order?.status);
+        return status >= 0 && status <= 2;
+      }),
+    [todayOrdersSorted],
+  );
+
+  const activityDeliveredOrders = useMemo(
+    () =>
+      todayOrdersSorted.filter((order) => getOrderStatusNumber(order?.status) === 3),
+    [todayOrdersSorted],
+  );
+
+  const activityCancelledOrders = useMemo(
+    () =>
+      todayOrdersSorted.filter((order) => getOrderStatusNumber(order?.status) === 4),
+    [todayOrdersSorted],
   );
 
   const cleanupTasks = useMemo(
@@ -443,7 +577,7 @@ export default function WaiterView() {
     if ((tableId === null || tableId === undefined || tableId === "") && assignedDiningTables.length > 0) {
       setTable(assignedDiningTables[0].number);
     }
-  }, [assignedDiningTables, enrichedServiceTables, setTable, tableId]);
+  }, [assignedDiningTables, enrichedServiceTables, serviceTables, setTable, tableId]);
 
   useEffect(() => {
     if (isTakeout) {
@@ -456,7 +590,7 @@ export default function WaiterView() {
       setPax(String(assignedPartySize));
       if (tableId && lastAssignedTableAlert !== tableId) {
         showToast(
-          `Mesa ${tableId} ya fue asignada por host con ${assignedPartySize} comensales.`,
+          `Mesa ${tableId} ya fue asignada por host.`,
           "success",
         );
         setLastAssignedTableAlert(tableId);
@@ -467,18 +601,121 @@ export default function WaiterView() {
     setLastAssignedTableAlert(null);
   }, [assignedPartySize, isTakeout, lastAssignedTableAlert, pax, showToast, tableId]);
 
-  const handlePaxChange = (event) => {
-    if (isHostAssignedTable) return;
-    const raw = String(event.target.value || "").replace(/\D/g, "").slice(0, 2);
-    if (!raw) return setPax("");
-    const value = parseInt(raw, 10);
-    if (Number.isNaN(value)) return setPax("");
-    if (value > maxCapacity) {
-      showToast(`Capacidad maxima: ${maxCapacity}`, "error");
-      return setPax(maxCapacity);
+  useEffect(() => {
+    const currentAssignedDiningTables = assignedDiningTables.filter(
+      (table) => Number(table.number) > 0 && Number(table.assignmentTimestamp || 0) > 0,
+    );
+
+    const nextKnownIds = new Set(
+      currentAssignedDiningTables.map((table) => getAssignmentAlertId(table)),
+    );
+
+    const newAlerts = currentAssignedDiningTables
+      .filter((table) => !knownAssignedTableAlertIdsRef.current.has(getAssignmentAlertId(table)))
+      .map((table) => ({
+        id: getAssignmentAlertId(table),
+        tableNumber: table.number,
+        assignedAt: Number(table.assignmentTimestamp || Date.now()),
+      }))
+      .sort((a, b) => a.assignedAt - b.assignedAt);
+
+    if (newAlerts.length > 0) {
+      const latestAlert = newAlerts[newAlerts.length - 1];
+      showToast(
+        `Nueva mesa asignada: mesa ${latestAlert.tableNumber}.`,
+        "success",
+      );
+
+      setAssignmentAlerts((prev) => {
+        const merged = [...prev];
+
+        newAlerts.forEach((alert) => {
+          if (!merged.some((item) => item.id === alert.id)) {
+            merged.push(alert);
+          }
+        });
+
+        return merged.sort((a, b) => a.assignedAt - b.assignedAt);
+      });
     }
-    setPax(Math.max(1, value));
-  };
+
+    setAssignmentAlerts((prev) =>
+      prev.filter((alert) => nextKnownIds.has(alert.id)),
+    );
+
+    knownAssignedTableAlertIdsRef.current = nextKnownIds;
+  }, [assignedDiningTables, showToast]);
+
+  const dismissAssignmentAlert = useCallback((alertId) => {
+    setAssignmentAlerts((prev) => prev.filter((alert) => alert.id !== alertId));
+  }, []);
+
+  const alertCenterItems = useMemo(() => {
+    const assignmentItems = assignmentAlerts.map((alert) => ({
+      id: `assignment-${alert.id}`,
+      type: "assignment",
+      priority: 0,
+      tableNumber: alert.tableNumber,
+      title: `Mesa ${alert.tableNumber} asignada`,
+      subtitle: "Lista para tomar pedido",
+      actionLabel: `Ir a mesa ${alert.tableNumber}`,
+      createdAt: Number(alert.assignedAt || 0),
+      onAction: () => {
+        setTable(alert.tableNumber);
+        setActiveTab("ordenar");
+        dismissAssignmentAlert(alert.id);
+      },
+      onDismiss: () => dismissAssignmentAlert(alert.id),
+    }));
+
+    const readyItems = readyOrders.map((order) => ({
+      id: `ready-${order.id}`,
+      type: "ready",
+      priority: 1,
+      tableNumber: Number(order?.tableNumber || 0),
+      title: order?.tableNumber > 0 ? `Mesa ${order.tableNumber} lista` : "Pedido para llevar listo",
+      subtitle: order?.correlativeCode || `Orden ${order?.id || "---"}`,
+      actionLabel: order?.tableNumber > 0 ? "Abrir entregas" : "Ver pedido listo",
+      createdAt: new Date(order?.readyAt || order?.createdAt || 0).getTime(),
+      onAction: () => {
+        if (Number(order?.tableNumber) > 0) {
+          setTable(order.tableNumber);
+        }
+        setActiveTab("listas");
+      },
+    }));
+
+    const cleanupItems = cleanupTasks.map((order) => ({
+      id: `cleanup-${order.id}-${order.tableNumber}`,
+      type: "cleanup",
+      priority: 2,
+      tableNumber: Number(order?.tableNumber || 0),
+      title: `Mesa ${order.tableNumber} lista para limpieza`,
+      subtitle: order?.customerName ? `Cliente: ${order.customerName}` : "Caja ya confirmo el cobro",
+      actionLabel: "Ir a limpieza",
+      createdAt: new Date(order?.paidAt || order?.deliveredAt || order?.createdAt || 0).getTime(),
+      onAction: () => {
+        if (Number(order?.tableNumber) > 0) {
+          setTable(order.tableNumber);
+        }
+        setActiveTab("limpieza");
+      },
+    }));
+
+    return [...assignmentItems, ...readyItems, ...cleanupItems].sort((a, b) => {
+      if (a.priority !== b.priority) return a.priority - b.priority;
+      return (b.createdAt || 0) - (a.createdAt || 0);
+    });
+  }, [assignmentAlerts, cleanupTasks, dismissAssignmentAlert, readyOrders, setTable]);
+
+  const alertCenterSummary = useMemo(
+    () => ({
+      assignment: assignmentAlerts.length,
+      ready: readyOrders.length,
+      cleanup: cleanupTasks.length,
+    }),
+    [assignmentAlerts.length, cleanupTasks.length, readyOrders.length],
+  );
 
   const handleStartCleaning = async (tableNumber) => {
     try {
@@ -583,6 +820,36 @@ export default function WaiterView() {
           </div>
         </section>
 
+        {alertCenterItems.length > 0 && (
+          <section className="rounded-[1.6rem] border border-cyan-500/20 bg-[linear-gradient(135deg,_rgba(34,211,238,0.12)_0%,_rgba(15,23,42,0.95)_42%,_rgba(2,6,23,0.98)_100%)] p-3.5 sm:p-4 shadow-xl">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <p className="text-[9px] font-black uppercase tracking-[0.24em] text-cyan-200/80">
+                  Centro de alertas
+                </p>
+                <h2 className="mt-1.5 text-sm sm:text-lg font-black tracking-tighter uppercase text-white">
+                  Pendientes del turno
+                </h2>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <AlertPill label="Nuevas mesas" value={alertCenterSummary.assignment} tone="amber" />
+                <AlertPill label="Listas" value={alertCenterSummary.ready} tone="cyan" />
+                <AlertPill label="Limpieza" value={alertCenterSummary.cleanup} tone="emerald" />
+              </div>
+            </div>
+
+            <div className="mt-3 grid grid-cols-1 gap-2.5 md:grid-cols-2 xl:grid-cols-3">
+              {alertCenterItems.map((alert) => (
+                <AlertCenterCard
+                  key={alert.id}
+                  alert={alert}
+                />
+              ))}
+            </div>
+          </section>
+        )}
+
         {activeTab === "ordenar" && (
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 items-start">
             <div className="xl:col-span-8 2xl:col-span-9 space-y-5">
@@ -594,18 +861,36 @@ export default function WaiterView() {
                       {isTakeout ? "Preparando pedido para llevar" : tableId ? `Mesa asignada ${tableId}` : assignedDiningTables.length > 0 ? "Mesa asignada o para llevar" : "Esperando mesa asignada o para llevar"}
                     </h2>
                   </div>
-                  {items.length > 0 && <button onClick={() => setIsCartOpen(true)} className="xl:hidden inline-flex items-center gap-2 px-4 py-3 rounded-2xl bg-cyan-400 text-slate-950 font-black uppercase text-[10px] tracking-[0.2em]"><PackageCheck className="w-4 h-4" />Ver orden</button>}
+                  <div className="flex items-center gap-3">
+                    {!isTakeout && Number(tableId) > 0 && (
+                      <button
+                        onClick={() => setTable(0)}
+                        className="hidden sm:inline-flex items-center gap-2 px-4 py-3 rounded-2xl border border-amber-400/30 bg-amber-400/10 text-amber-200 font-black uppercase text-[10px] tracking-[0.2em] hover:bg-amber-300 hover:text-slate-950 transition-all"
+                      >
+                        <ReceiptText className="w-4 h-4" />
+                        Cliente pide para llevar
+                      </button>
+                    )}
+                    {isTakeout && assignedDiningTables.length > 0 && (
+                      <button
+                        onClick={() => setTable(assignedDiningTables[0].number)}
+                        className="hidden sm:inline-flex items-center gap-2 px-4 py-3 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 text-cyan-200 font-black uppercase text-[10px] tracking-[0.2em] hover:bg-cyan-400 hover:text-slate-950 transition-all"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                        Volver a mesas
+                      </button>
+                    )}
+                    {items.length > 0 && <button onClick={() => setIsCartOpen(true)} className="xl:hidden inline-flex items-center gap-2 px-4 py-3 rounded-2xl bg-cyan-400 text-slate-950 font-black uppercase text-[10px] tracking-[0.2em]"><PackageCheck className="w-4 h-4" />Ver orden</button>}
+                  </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <StepCard
                       step="1"
                       title="Mesa asignada o para llevar"
-                      subtitle={assignedDiningTables.length > 0 ? "Trabaja sobre las mesas asignadas por host" : "Sin mesas asignadas por ahora"}
                     >
                     <TableSelector
                       tables={enrichedServiceTables}
                       allowOccupiedAssigned
-                      placeholder="-- MESA ASIGNADA O PARA LLEVAR --"
                     />
                     {currentTable?.number > 0 && (
                       <div className="mt-4 grid grid-cols-3 gap-3">
@@ -635,17 +920,9 @@ export default function WaiterView() {
                         </div>
                       </div>
                     )}
-                  </StepCard>
-                  <StepCard step="2" title={isTakeout ? "Comensales" : `Comensales${currentTable ? ` de mesa ${tableId}` : ""}`} subtitle={isTakeout ? "No requerido para llevar" : isHostAssignedTable ? "Definidos por host" : `Capacidad maxima: ${maxCapacity}`}>
-                    {isHostAssignedTable ? (
-                      <div className="space-y-3">
-                        <div className="w-full border-2 rounded-[1.4rem] p-4 font-black text-2xl bg-slate-900/50 border-cyan-500/30 text-cyan-300">
-                          {assignedPartySize} comensales
-                        </div>
-                      </div>
-                    ) : (
-                      <input type="number" value={pax} onChange={handlePaxChange} disabled={isTakeout} placeholder={isTakeout ? "No requerido para llevar" : "Cantidad de clientes"} className={`w-full border-2 rounded-[1.4rem] p-4 font-black text-2xl outline-none ${isTakeout ? "bg-slate-900/50 border-slate-800 text-slate-500" : "bg-slate-950 border-slate-800 text-[#FFFF00]"}`} />
-                    )}
+                    <p className="mt-4 text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">
+                      Puedes pasar una mesa a para llevar sin perder el borrador actual.
+                    </p>  
                   </StepCard>
                 </div>
               </section>
@@ -726,12 +1003,74 @@ export default function WaiterView() {
 
         {activeTab === "actividad" && (
           <section className="space-y-5">
-            <SurfaceHeader eyebrow="Seguimiento" title="Tus ordenes activas y el estado de turno" badge={`${myActiveOrders.length} activas`} />
+            <SurfaceHeader eyebrow="Seguimiento" title="Estado e historial de tus ordenes" badge={`${todayOrdersSorted.length} hoy`} />
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               <MetricCard label="Creadas hoy" value={stats.created} accent="text-white" />
               <MetricCard label="Entregadas" value={stats.delivered} accent="text-emerald-300" />
-              <MetricCard label="En cocina" value={myActiveOrders.filter((o) => [0, 1].includes(Number(o.status))).length} accent="text-yellow-300" />
+              <MetricCard label="En cocina" value={activityActiveOrders.filter((o) => [0, 1].includes(getOrderStatusNumber(o.status))).length} accent="text-yellow-300" />
               <MetricCard label="Esperando entrega" value={readyOrders.length} accent="text-cyan-300" />
+            </div>
+
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 items-start">
+              <section className="rounded-[2rem] border border-slate-800 bg-slate-900/60 p-5 shadow-xl">
+                <div className="flex items-center justify-between gap-3 mb-4">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">
+                      Activas
+                    </p>
+                    <h3 className="text-lg font-black uppercase tracking-[0.16em] text-white mt-2">
+                      Tus ordenes en curso
+                    </h3>
+                  </div>
+                  <div className="px-4 py-2 rounded-full border border-cyan-500/20 bg-cyan-500/10 text-cyan-300 text-[10px] font-black uppercase tracking-[0.18em]">
+                    {activityActiveOrders.length} activas
+                  </div>
+                </div>
+
+                {activityActiveOrders.length === 0 ? (
+                  <EmptyState title="No tienes ordenes activas" subtitle="Cuando envies una nueva orden o cocina avance una actual, aparecera aqui." />
+                ) : (
+                  <div className="space-y-3">
+                    {activityActiveOrders.map((order) => (
+                      <OrderActivityCard key={order.id} order={order} />
+                    ))}
+                  </div>
+                )}
+              </section>
+
+              <section className="rounded-[2rem] border border-slate-800 bg-slate-900/60 p-5 shadow-xl">
+                <div className="flex items-center justify-between gap-3 mb-4">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">
+                      Historial
+                    </p>
+                    <h3 className="text-lg font-black uppercase tracking-[0.16em] text-white mt-2">
+                      Lo que llevas hoy
+                    </h3>
+                  </div>
+                  <div className="px-4 py-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 text-emerald-300 text-[10px] font-black uppercase tracking-[0.18em]">
+                    {activityDeliveredOrders.length} entregadas
+                  </div>
+                </div>
+
+                {todayOrdersSorted.length === 0 ? (
+                  <EmptyState title="Sin actividad hoy" subtitle="Todavia no tienes ordenes registradas en este turno." />
+                ) : (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-3 gap-3">
+                      <MiniMetricCard label="Activas" value={activityActiveOrders.length} accent="text-cyan-300" />
+                      <MiniMetricCard label="Entregadas" value={activityDeliveredOrders.length} accent="text-emerald-300" />
+                      <MiniMetricCard label="Canceladas" value={activityCancelledOrders.length} accent="text-red-300" />
+                    </div>
+
+                    <div className="space-y-3 max-h-[680px] overflow-y-auto pr-1">
+                      {todayOrdersSorted.map((order) => (
+                        <OrderActivityCard key={`history-${order.id}`} order={order} compact />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </section>
             </div>
           </section>
         )}
@@ -739,7 +1078,7 @@ export default function WaiterView() {
 
       {activeTab === "ordenar" && items.length > 0 && !isCartOpen && <button onClick={() => setIsCartOpen(true)} className="xl:hidden fixed bottom-5 left-3 right-3 z-40 rounded-[1.6rem] bg-cyan-400 text-slate-950 px-5 py-4 flex items-center justify-between"><div className="flex items-center gap-3"><PackageCheck className="w-5 h-5" /><div className="text-left"><p className="text-[10px] font-black uppercase">Orden actual</p><p className="text-xs font-black uppercase">{items.length}</p></div></div><div className="text-right"><p className="text-lg font-black">${cartTotal.toFixed(2)}</p><p className="text-[10px] font-black uppercase">Abrir</p></div></button>}
       {activeTab === "ordenar" && isCartOpen && <div className="fixed inset-0 bg-slate-950/40 z-40 xl:hidden" onClick={() => setIsCartOpen(false)} />}
-      {activeTab === "ordenar" && <aside className={`xl:hidden fixed inset-y-0 right-0 z-50 w-[92vw] max-w-[460px] bg-slate-950 border-l border-slate-800 transition-transform ${isCartOpen ? "translate-x-0" : "translate-x-full"}`}><div className="h-full overflow-y-auto p-3"><div className="flex items-center justify-between mb-3 px-1"><div><p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Orden actual</p><p className="text-sm font-black uppercase text-white mt-1">Panel de confirmacion</p></div><button onClick={() => setIsCartOpen(false)} className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-slate-900 border border-slate-800 text-slate-300 text-[10px] font-black uppercase tracking-[0.18em]"><X className="w-4 h-4" />Cerrar</button></div><OrderPanel pax={pax} tableId={tableId} onOrderSent={() => setIsCartOpen(false)} /></div></aside>}
+      {activeTab === "ordenar" && <aside className={`xl:hidden fixed inset-y-0 right-0 z-50 w-[84vw] max-w-[380px] bg-slate-950 border-l border-slate-800 transition-transform ${isCartOpen ? "translate-x-0" : "translate-x-full"}`}><div className="h-full overflow-y-auto p-2.5 sm:p-3"><div className="flex items-center justify-between mb-2 sm:mb-3 px-1"><div><p className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Orden actual</p><p className="text-xs sm:text-sm font-black uppercase text-white mt-1">Panel de confirmacion</p></div><button onClick={() => setIsCartOpen(false)} className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-2xl bg-slate-900 border border-slate-800 text-slate-300 text-[9px] sm:text-[10px] font-black uppercase tracking-[0.18em]"><X className="w-4 h-4" />Cerrar</button></div><OrderPanel pax={pax} tableId={tableId} onOrderSent={() => setIsCartOpen(false)} /></div></aside>}
       {showProfile && <WaiterProfile user={currentUser} onClose={() => setShowProfile(false)} />}
     </div>
   );
@@ -749,6 +1088,94 @@ const MetricCard = ({ label, value, accent }) => (
   <div className="rounded-[1.5rem] border border-slate-800 bg-slate-950/75 p-4">
     <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">{label}</p>
     <p className={`text-2xl sm:text-3xl font-black mt-3 ${accent}`}>{value}</p>
+  </div>
+);
+
+const MiniMetricCard = ({ label, value, accent }) => (
+  <div className="rounded-[1.3rem] border border-slate-800 bg-slate-950/70 p-3">
+    <p className="text-[8px] font-black uppercase tracking-[0.18em] text-slate-500">{label}</p>
+    <p className={`mt-2 text-xl font-black ${accent}`}>{value}</p>
+  </div>
+);
+
+const OrderActivityCard = ({ order, compact = false }) => {
+  const status = getOrderStatusConfig(order?.status);
+  const itemCount = Array.isArray(order?.items)
+    ? order.items.reduce((acc, item) => acc + Number(item?.quantity || 0), 0)
+    : 0;
+
+  const statusTime =
+    order?.paidAt ||
+    order?.deliveredAt ||
+    order?.readyAt ||
+    order?.startedAt ||
+    order?.createdAt;
+
+  return (
+    <article className={`rounded-[1.6rem] border border-slate-800 bg-slate-950/75 ${compact ? "p-4" : "p-5"}`}>
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">
+            {getOrderLocationLabel(order)}
+          </p>
+          <h4 className={`${compact ? "text-sm" : "text-lg"} mt-2 font-black uppercase tracking-[0.14em] text-white break-all`}>
+            {order?.correlativeCode || `Orden ${order?.id || "---"}`}
+          </h4>
+          <p className="mt-2 text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
+            Cliente: {order?.customerName || "General"}
+          </p>
+        </div>
+
+        <span className={`shrink-0 rounded-full border px-3 py-2 text-[9px] font-black uppercase tracking-[0.16em] ${status.badge}`}>
+          {status.label}
+        </span>
+      </div>
+
+      <div className={`mt-4 grid ${compact ? "grid-cols-2" : "grid-cols-2 lg:grid-cols-4"} gap-3`}>
+        <InfoPill label="Hora" value={formatOrderTime(statusTime)} accent={status.accent} />
+        <InfoPill label="Productos" value={itemCount} accent="text-cyan-300" />
+        <InfoPill label="Total" value={formatOrderCurrency(order?.totalAmount)} accent="text-emerald-300" />
+        {!compact && (
+          <InfoPill
+            label="Cobro"
+            value={order?.isPaid ? "Pagada" : "Pendiente"}
+            accent={order?.isPaid ? "text-emerald-300" : "text-amber-300"}
+          />
+        )}
+      </div>
+
+      {!compact && Array.isArray(order?.items) && order.items.length > 0 && (
+        <div className="mt-4 rounded-[1.2rem] border border-slate-800 bg-slate-900/70 p-4">
+          <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">
+            Resumen de pedido
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {order.items.map((item, index) => (
+              <div
+                key={`${order?.id}-${index}`}
+                className="rounded-[1rem] border border-slate-800 bg-slate-950/80 px-3 py-2"
+              >
+                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-200">
+                  {item?.quantity}x {item?.productName}
+                </p>
+                {item?.notes && (
+                  <p className="mt-1 text-[9px] font-black uppercase tracking-[0.12em] text-amber-300">
+                    {item.notes}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </article>
+  );
+};
+
+const InfoPill = ({ label, value, accent }) => (
+  <div className="rounded-[1.2rem] border border-slate-800 bg-slate-900/70 p-3">
+    <p className="text-[8px] font-black uppercase tracking-[0.16em] text-slate-500">{label}</p>
+    <p className={`mt-2 text-sm font-black uppercase ${accent}`}>{value}</p>
   </div>
 );
 
@@ -778,3 +1205,77 @@ const EmptyState = ({ title, subtitle }) => (
     <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-600 mt-3">{subtitle}</p>
   </div>
 );
+
+const AlertPill = ({ label, value, tone }) => {
+  const toneMap = {
+    amber: "border-amber-400/20 bg-amber-400/10 text-amber-300",
+    cyan: "border-cyan-400/20 bg-cyan-400/10 text-cyan-300",
+    emerald: "border-emerald-400/20 bg-emerald-400/10 text-emerald-300",
+  };
+
+  return (
+    <div className={`rounded-full border px-3 py-1.5 ${toneMap[tone] || toneMap.cyan}`}>
+      <p className="text-[7px] font-black uppercase tracking-[0.14em] opacity-80">{label}</p>
+      <p className="mt-0.5 text-xs font-black">{value}</p>
+    </div>
+  );
+};
+
+const AlertCenterCard = ({ alert }) => {
+  const toneMap = {
+    assignment: {
+      badge: "border-amber-400/20 bg-amber-400/10 text-amber-300",
+      button: "bg-amber-300 text-slate-950 hover:bg-amber-200",
+      label: "Nueva mesa",
+    },
+    ready: {
+      badge: "border-cyan-400/20 bg-cyan-400/10 text-cyan-300",
+      button: "bg-cyan-400 text-slate-950 hover:bg-cyan-300",
+      label: "Pedido listo",
+    },
+    cleanup: {
+      badge: "border-emerald-400/20 bg-emerald-400/10 text-emerald-300",
+      button: "bg-emerald-400 text-slate-950 hover:bg-emerald-300",
+      label: "Limpieza",
+    },
+  };
+
+  const tone = toneMap[alert.type] || toneMap.ready;
+
+  return (
+    <article className="rounded-[1.2rem] border border-slate-800 bg-slate-950/75 p-3">
+      <div className="flex items-start justify-between gap-2.5">
+        <div className="min-w-0">
+          <span className={`inline-flex rounded-full border px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.14em] ${tone.badge}`}>
+            {tone.label}
+          </span>
+          <p className="mt-2 text-sm font-black uppercase tracking-[0.14em] text-white">
+            {alert.title}
+          </p>
+          <p className="mt-1.5 text-[9px] font-black uppercase tracking-[0.14em] text-slate-400">
+            {alert.subtitle}
+          </p>
+        </div>
+
+        {alert.onDismiss ? (
+          <button
+            type="button"
+            onClick={alert.onDismiss}
+            className="inline-flex items-center justify-center rounded-lg border border-slate-800 bg-slate-900 p-1.5 text-slate-400 transition-all hover:text-white"
+            aria-label={`Cerrar alerta ${alert.title}`}
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        ) : null}
+      </div>
+
+      <button
+        type="button"
+        onClick={alert.onAction}
+        className={`mt-3 w-full rounded-[1rem] px-3 py-2.5 text-[9px] font-black uppercase tracking-[0.16em] transition-all ${tone.button}`}
+      >
+        {alert.actionLabel}
+      </button>
+    </article>
+  );
+};

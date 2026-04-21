@@ -7,16 +7,76 @@ import {
 } from "../constants/orderLimits";
 import { getCurrentKdsSettings } from "./kdsSettingsStore";
 
+const EMPTY_DRAFT = {
+  customerName: "",
+  items: [],
+};
+
+const getLocationKey = (tableId) => {
+  if (tableId === null || tableId === undefined || tableId === "") {
+    return "__unassigned__";
+  }
+
+  const normalizedNumber = Number(tableId);
+  return Number.isFinite(normalizedNumber) ? String(normalizedNumber) : String(tableId);
+};
+
+const cloneDraft = (draft = EMPTY_DRAFT) => ({
+  customerName: draft.customerName || "",
+  items: Array.isArray(draft.items) ? [...draft.items] : [],
+});
+
+const getDraftForLocation = (state, tableId) =>
+  cloneDraft(state.draftsByLocation?.[getLocationKey(tableId)] || EMPTY_DRAFT);
+
+const buildDraftState = (state, tableId, draftPatch) => {
+  const locationKey = getLocationKey(tableId ?? state.tableId);
+  const currentDraft = getDraftForLocation(state, tableId ?? state.tableId);
+  const nextDraft = {
+    ...currentDraft,
+    ...draftPatch,
+  };
+
+  return {
+    draftsByLocation: {
+      ...(state.draftsByLocation || {}),
+      [locationKey]: nextDraft,
+    },
+    customerName: nextDraft.customerName,
+    items: nextDraft.items,
+  };
+};
+
 const useOrderBuilderStore = create((set, get) => ({
   tableId: null,
   waiterName: "",
   customerName: "",
   items: [],
   noteTarget: null,
+  draftsByLocation: {
+    [getLocationKey(null)]: cloneDraft(),
+  },
 
-  setTable: (tableId) => set({ tableId }),
+  setTable: (tableId) =>
+    set((state) => {
+      const nextDraft = getDraftForLocation(state, tableId);
+
+      return {
+        tableId,
+        customerName: nextDraft.customerName,
+        items: nextDraft.items,
+        noteTarget: null,
+        draftsByLocation: {
+          ...(state.draftsByLocation || {}),
+          [getLocationKey(tableId)]: nextDraft,
+        },
+      };
+    }),
   setWaiter: (name) => set({ waiterName: name }),
-  setCustomer: (name) => set({ customerName: name }),
+  setCustomer: (name) =>
+    set((state) =>
+      buildDraftState(state, state.tableId, { customerName: String(name || "") }),
+    ),
   setNoteTarget: (target) => set({ noteTarget: target }),
   clearNoteTarget: () => set({ noteTarget: null }),
 
@@ -66,25 +126,29 @@ const useOrderBuilderStore = create((set, get) => ({
 
       if (existingClean) {
         return {
-          items: state.items.map((item) =>
-            item.productId === productId && !item.notes
-              ? { ...item, quantity: item.quantity + 1 }
-              : item
-          ),
+          ...buildDraftState(state, state.tableId, {
+            items: state.items.map((item) =>
+              item.productId === productId && !item.notes
+                ? { ...item, quantity: item.quantity + 1 }
+                : item
+            ),
+          }),
         };
       }
 
       return {
-        items: [
-          ...state.items,
-          {
-            productId,
-            productName: product.name || product.Name,
-            price: product.price || product.Price,
-            quantity: 1,
-            notes: "",
-          },
-        ],
+        ...buildDraftState(state, state.tableId, {
+          items: [
+            ...state.items,
+            {
+              productId,
+              productName: product.name || product.Name,
+              price: product.price || product.Price,
+              quantity: 1,
+              notes: "",
+            },
+          ],
+        }),
       };
     });
 
@@ -139,26 +203,30 @@ const useOrderBuilderStore = create((set, get) => ({
 
       if (matchingItem) {
         return {
-          items: state.items.map((item) =>
-            item.productId === productId && (item.notes || "") === normalizedNotes
-              ? { ...item, quantity: item.quantity + 1 }
-              : item
-          ),
+          ...buildDraftState(state, state.tableId, {
+            items: state.items.map((item) =>
+              item.productId === productId && (item.notes || "") === normalizedNotes
+                ? { ...item, quantity: item.quantity + 1 }
+                : item
+            ),
+          }),
           noteTarget: null,
         };
       }
 
       return {
-        items: [
-          ...state.items,
-          {
-            productId,
-            productName: product.name || product.Name,
-            price: product.price || product.Price,
-            quantity: 1,
-            notes: normalizedNotes,
-          },
-        ],
+        ...buildDraftState(state, state.tableId, {
+          items: [
+            ...state.items,
+            {
+              productId,
+              productName: product.name || product.Name,
+              price: product.price || product.Price,
+              quantity: 1,
+              notes: normalizedNotes,
+            },
+          ],
+        }),
         noteTarget: null,
       };
     });
@@ -175,9 +243,11 @@ const useOrderBuilderStore = create((set, get) => ({
     const current = products.find((p) => (p.id || p._id || p.Id) === productId);
 
     set((state) => ({
-      items: state.items.filter(
-        (item) => !(item.productId === productId && item.notes === notes)
-      ),
+      ...buildDraftState(state, state.tableId, {
+        items: state.items.filter(
+          (item) => !(item.productId === productId && item.notes === notes)
+        ),
+      }),
       noteTarget:
         state.noteTarget?.productId === productId &&
         (state.noteTarget?.currentNotes || "") === (notes || "")
@@ -200,16 +270,18 @@ const useOrderBuilderStore = create((set, get) => ({
     if (!inCart) return;
 
     set((state) => ({
-      items:
-        inCart.quantity <= 1
-          ? state.items.filter(
-              (item) => !(item.productId === productId && item.notes === notes)
-            )
-          : state.items.map((item) =>
-              item.productId === productId && item.notes === notes
-                ? { ...item, quantity: item.quantity - 1 }
-                : item
-            ),
+      ...buildDraftState(state, state.tableId, {
+        items:
+          inCart.quantity <= 1
+            ? state.items.filter(
+                (item) => !(item.productId === productId && item.notes === notes)
+              )
+            : state.items.map((item) =>
+                item.productId === productId && item.notes === notes
+                  ? { ...item, quantity: item.quantity - 1 }
+                  : item
+              ),
+      }),
       noteTarget:
         inCart.quantity <= 1 &&
         state.noteTarget?.productId === productId &&
@@ -268,7 +340,9 @@ const useOrderBuilderStore = create((set, get) => ({
       }
 
       return {
-        items: remainingItems,
+        ...buildDraftState(state, state.tableId, {
+          items: remainingItems,
+        }),
         noteTarget: null,
       };
     });
@@ -309,7 +383,7 @@ const useOrderBuilderStore = create((set, get) => ({
         );
       });
 
-      return { items: nextItems };
+      return buildDraftState(state, state.tableId, { items: nextItems });
     });
   },
 
@@ -319,11 +393,23 @@ const useOrderBuilderStore = create((set, get) => ({
       const current = products.find((p) => (p.id || p._id || p.Id) === item.productId);
       if (current) updateStock(item.productId, (current.stock ?? current.Stock ?? 0) + item.quantity);
     });
-    set({ items: [], customerName: "", noteTarget: null });
+    set((state) => ({
+      ...buildDraftState(state, state.tableId, {
+        items: [],
+        customerName: "",
+      }),
+      noteTarget: null,
+    }));
   },
 
   resetAfterOrder: () =>
-    set({ items: [], customerName: "", noteTarget: null }),
+    set((state) => ({
+      ...buildDraftState(state, state.tableId, {
+        items: [],
+        customerName: "",
+      }),
+      noteTarget: null,
+    })),
 }));
 
 export default useOrderBuilderStore;

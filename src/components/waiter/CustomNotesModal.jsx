@@ -16,8 +16,6 @@ const QUICK_NOTES = {
 const sanitizeNote = (value) =>
   value
     .replace(/[<>]/g, "")
-    .replace(/\s+/g, " ")
-    .trimStart()
     .slice(0, MAX_NOTE_LENGTH);
 
 const CustomNotesModal = ({ product, currentNote = "", onClose, onConfirm }) => {
@@ -43,7 +41,12 @@ const CustomNotesModal = ({ product, currentNote = "", onClose, onConfirm }) => 
   };
 
   const handleConfirm = () => {
-    onConfirm(sanitizeNote(note).replace(/^,|,$/g, ""));
+    onConfirm(
+      sanitizeNote(note)
+        .replace(/\r?\n/g, " ")
+        .trim()
+        .replace(/^,|,$/g, "")
+    );
   };
 
   return (
