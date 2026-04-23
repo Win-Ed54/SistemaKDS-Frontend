@@ -32,6 +32,7 @@ Frontend del sistema KDS para restaurantes, construido con React y Vite. Esta ap
 ## Funcionalidad implementada
 
 - Login por rol y almacenamiento de token por contexto
+- Sesion unica por usuario coordinada con backend
 - Login siempre visible: si el backend no responde, se muestra en gris con estado `Sin conexion con servidor`
 - Toma de pedidos para mesa o para llevar
 - Destino para pedidos para llevar visible en cocina, caja y alertas del mesero
@@ -44,6 +45,7 @@ Frontend del sistema KDS para restaurantes, construido con React y Vite. Esta ap
 - Configuracion dinamica del KDS desde admin
 - Reporte de platillos mas vendidos con actualizacion automatica
 - Reconexion automatica de SignalR y reintentos de lectura HTTP
+- Reinicio automatico de SignalR despues de login, refresh o cambio de sesion, sin requerir `F5`
 - Cabeceras compactas en cocina, caja, host y admin para dejar mas espacio al trabajo principal
 
 ## Estructura
@@ -93,6 +95,7 @@ Esto reduce datos innecesarios en el cliente y evita que una vista reciba inform
 - Host muestra estado de sala en chips compactos y elimina tarjetas redundantes de cabecera.
 - Admin tiene cabecera reducida con estado de conexion, sincronizacion y areas.
 - Pedidos para llevar muestran destino operativo en caja, cocina y tarjetas/alertas del mesero.
+- La reconexion compartida de SignalR evita estados falsos de `Sin conexion` al entrar en host, cocina, caja, admin o mesero justo despues del login.
 - La pantalla de login ya no muestra overlay bloqueante de error; mantiene el formulario visible con reintento.
 
 ## Seguridad en frontend
@@ -102,6 +105,8 @@ Esto reduce datos innecesarios en el cliente y evita que una vista reciba inform
 - El rol recibido en login y refresh se normaliza para evitar fallos por mayusculas o espacios.
 - Las rutas protegidas comparan roles normalizados.
 - SignalR usa `accessTokenFactory` para enviar el token al hub.
+- SignalR prioriza el token del rol activo y reconstruye la conexion cuando cambian credenciales o se reemplaza la sesion.
+- Si la sesion fue reemplazada por otro login, la vista actual pierde autorizacion y debe volver a autenticarse.
 - Nginx agrega headers de seguridad:
   - `Content-Security-Policy`
   - `X-Content-Type-Options`
