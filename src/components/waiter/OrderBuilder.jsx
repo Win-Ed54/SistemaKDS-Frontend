@@ -34,6 +34,12 @@ const normalizeCustomerName = (value) =>
     .trim()
     .toUpperCase();
 
+const normalizeTakeoutDestination = (value) =>
+  String(value || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toUpperCase();
+
 const sanitizeNoteInput = (value) =>
   String(value || "")
     .replace(/[<>]/g, "")
@@ -51,6 +57,7 @@ const OrderBuilder = ({
   onOrderSent,
   serviceMode = "dine-in",
   sourceTableId = null,
+  takeoutDestination = "",
 }) => {
   const {
     items,
@@ -112,6 +119,9 @@ const OrderBuilder = ({
 
   const sendOrder = async () => {
     const normalizedCustomerName = normalizeCustomerName(customerName || "");
+    const normalizedTakeoutDestination = normalizeTakeoutDestination(
+      takeoutDestination || (Number(sourceTableId) > 0 ? `Mesa ${sourceTableId}` : ""),
+    );
     const normalizedPax = Number.parseInt(pax, 10);
 
     if (normalizedCustomerName && !/^[A-ZÁÉÍÓÚÜÑ\s]+$/u.test(normalizedCustomerName)) {
@@ -146,6 +156,7 @@ const OrderBuilder = ({
       tableNumber: Number.parseInt(tableId, 10),
       waiterName: localStorage.getItem("user_name") || "Mesero",
       customerName: normalizedCustomerName || "GENERAL",
+      takeoutDestination: isTakeout ? normalizedTakeoutDestination : "",
       pax: isTakeout ? 0 : normalizedPax,
       items,
       status: 0,

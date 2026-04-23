@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { ChefHat, Clock3, LogOut, PanelTopOpen } from "lucide-react";
+import { ChefHat, Clock3, LogOut } from "lucide-react";
 import OrderCard from "../components/kitchen/OrderCard";
 import useKitchenClock from "../hooks/useKitchenClock";
 import useKitchenOrders from "../hooks/useKitchenOrders";
@@ -79,26 +79,26 @@ const KitchenDisplay = () => {
       className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(249,115,22,0.10),_transparent_24%),linear-gradient(180deg,_#020617_0%,_#020617_100%)] text-white selection:bg-orange-500/30"
       style={{ height: "100vh", display: "flex", flexDirection: "column" }}
     >
-      <header className="px-3 pt-3 lg:px-6 lg:pt-6" style={{ flexShrink: 0 }}>
-        <div className="mx-auto max-w-[1800px] rounded-[2.2rem] border border-slate-800 bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.14),_transparent_28%),linear-gradient(135deg,_rgba(15,23,42,0.98)_0%,_rgba(2,6,23,0.98)_100%)] p-4 shadow-2xl lg:p-5">
-          <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
-            <div className="flex items-start gap-4">
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[1.5rem] border border-orange-500/30 bg-orange-500/10">
-                <ChefHat className="h-6 w-6 text-orange-300" />
+      <header className="px-3 pt-3 lg:px-5 lg:pt-4" style={{ flexShrink: 0 }}>
+        <div className="mx-auto max-w-[1800px] rounded-[1.4rem] border border-slate-800 bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.10),_transparent_24%),linear-gradient(135deg,_rgba(15,23,42,0.98)_0%,_rgba(2,6,23,0.98)_100%)] px-4 py-3 shadow-2xl">
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[1rem] border border-orange-500/30 bg-orange-500/10">
+                <ChefHat className="h-5 w-5 text-orange-300" />
               </div>
               <div>
-                <h1 className="text-xl font-black tracking-tighter uppercase sm:text-2xl">
+                <h1 className="text-lg font-black tracking-tighter uppercase sm:text-xl">
                   KDS <span className="text-orange-400">Cocina</span>
                 </h1>
-                <p className="mt-1 text-[10px] font-black uppercase tracking-[0.28em] text-slate-500">
+                <p className="mt-0.5 text-[8px] font-black uppercase tracking-[0.24em] text-slate-500">
                   Produccion en tiempo real
                 </p>
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3 xl:justify-end">
+            <div className="flex flex-wrap items-center gap-2 xl:justify-end">
               <div
-                className={`flex items-center gap-2 rounded-full border px-4 py-2 ${
+                className={`flex items-center gap-2 rounded-full border px-3 py-2 ${
                   isConnected
                     ? "border-emerald-500/30 bg-emerald-950/20 text-emerald-400"
                     : "border-red-500/20 bg-red-950/20 text-red-400"
@@ -110,58 +110,28 @@ const KitchenDisplay = () => {
                 </span>
               </div>
 
-              <div className="flex items-center gap-2 rounded-full border border-orange-500/20 bg-orange-500/10 px-4 py-2 text-orange-300">
+              <div className="flex items-center gap-2 rounded-full border border-orange-500/20 bg-orange-500/10 px-3 py-2 text-orange-300">
                 <Clock3 className="h-4 w-4" />
                 <span className="text-[10px] font-black uppercase tracking-[0.18em]">
                   {currentTimeLabel}
                 </span>
               </div>
 
+              <div className="h-8 w-px bg-slate-800" />
               <button
                 onClick={handleLogout}
-                className="inline-flex items-center gap-2 rounded-2xl border border-red-500/20 bg-red-500/10 px-5 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-red-300 transition-all hover:bg-red-500 hover:text-white"
+                className="inline-flex items-center gap-2 rounded-full border border-red-500/20 bg-red-500/10 px-4 py-2 text-[9px] font-black uppercase tracking-[0.2em] text-red-300 transition-all hover:bg-red-500 hover:text-white"
               >
                 <LogOut className="h-4 w-4" />
                 Cerrar sesion
               </button>
             </div>
           </div>
-
-          <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <KitchenMetricCard
-              icon={PanelTopOpen}
-              label="Pendientes"
-              value={grouped[0].length}
-              accent="text-amber-300"
-              glow="border-amber-400/20 bg-amber-400/10"
-            />
-            <KitchenMetricCard
-              icon={ChefHat}
-              label="Preparando"
-              value={grouped[1].length}
-              accent="text-cyan-300"
-              glow="border-cyan-400/20 bg-cyan-400/10"
-            />
-            <KitchenMetricCard
-              icon={Clock3}
-              label="Listas"
-              value={readyCount}
-              accent="text-emerald-300"
-              glow="border-emerald-400/20 bg-emerald-400/10"
-            />
-            <KitchenMetricCard
-              icon={ChefHat}
-              label="Total activo"
-              value={normalized.length}
-              accent="text-white"
-              glow="border-orange-400/20 bg-orange-400/10"
-            />
-          </div>
         </div>
       </header>
 
       <div
-        className="mx-auto mt-4 w-full max-w-[1800px] px-3 pb-3 lg:px-6 lg:pb-6"
+        className="mx-auto mt-3 w-full max-w-[1800px] px-3 pb-3 lg:px-5 lg:pb-5"
         style={{
           flex: 1,
           display: "grid",
@@ -279,19 +249,3 @@ const KitchenDisplay = () => {
 };
 
 export default KitchenDisplay;
-
-const KitchenMetricCard = ({ icon: Icon, label, value, accent, glow }) => (
-  <div className="rounded-[1.5rem] border border-slate-800 bg-slate-950/70 p-4">
-    <div className="flex items-center justify-between gap-3">
-      <div>
-        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">
-          {label}
-        </p>
-        <p className={`mt-3 text-3xl font-black tracking-tighter ${accent}`}>{value}</p>
-      </div>
-      <div className={`flex h-11 w-11 items-center justify-center rounded-2xl border ${glow}`}>
-        <Icon className={`h-5 w-5 ${accent}`} />
-      </div>
-    </div>
-  </div>
-);

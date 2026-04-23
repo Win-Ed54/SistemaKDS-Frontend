@@ -3,22 +3,36 @@ import useOrderStore from "../store/orderStore";
 import { clearAuthStorage, getAuthValue } from "./authStorage";
 
 const HUB_URL = import.meta.env.VITE_HUB_URL;
+const ROLE_TOKEN_MAP = {
+  kitchen: "kitchen_token",
+  host: "host_token",
+  waiter: "waiter_token",
+  admin: "admin_token",
+  cashier: "cashier_token",
+};
 
 if (!HUB_URL) throw new Error("VITE_HUB_URL no definido");
 
+const getSignalRToken = () => {
+  const role = String(getAuthValue("role") || "").trim().toLowerCase();
+  const scopedTokenKey = ROLE_TOKEN_MAP[role];
+  const scopedToken = scopedTokenKey ? getAuthValue(scopedTokenKey) : null;
+  if (scopedToken) return scopedToken;
+
+  const path = window.location.pathname;
+
+  if (path.includes("cocina")) return getAuthValue("kitchen_token");
+  if (path.includes("host")) return getAuthValue("host_token");
+  if (path.includes("terminal")) return getAuthValue("waiter_token");
+  if (path.includes("panel")) return getAuthValue("admin_token");
+  if (path.includes("caja")) return getAuthValue("cashier_token");
+
+  return getAuthValue("token");
+};
+
 const connection = new signalR.HubConnectionBuilder()
   .withUrl(HUB_URL, {
-    accessTokenFactory: () => {
-      const path = window.location.pathname;
-
-      if (path.includes("cocina")) return getAuthValue("kitchen_token");
-      if (path.includes("host")) return getAuthValue("host_token");
-      if (path.includes("terminal")) return getAuthValue("waiter_token");
-      if (path.includes("panel")) return getAuthValue("admin_token");
-      if (path.includes("caja")) return getAuthValue("cashier_token");
-
-      return getAuthValue("token");
-    },
+    accessTokenFactory: () => getSignalRToken(),
   })
   .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
   .configureLogging(signalR.LogLevel.None)
@@ -41,6 +55,7 @@ const scheduleReconnect = () => {
 
 export const subscribeConnectionStatus = (cb) => {
   listeners.push(cb);
+  cb(isConnected);
   return () => {
     listeners = listeners.filter((listener) => listener !== cb);
   };
@@ -112,6 +127,37 @@ export const startConnection = async () => {
     });
 
   return startPromise;
+};
+
+export const restartConnection = async () => {
+  if (reconnectTimeoutId) {
+    clearTimeout(reconnectTimeoutId);
+    reconnectTimeoutId = null;
+  }
+
+  if (!getSignalRToken()) {
+    notifyStatus(false);
+    return connection;
+  }
+
+  if (startPromise) {
+    return startPromise;
+  }
+
+  if (
+    connection.state === signalR.HubConnectionState.Connected ||
+    connection.state === signalR.HubConnectionState.Connecting ||
+    connection.state === signalR.HubConnectionState.Reconnecting
+  ) {
+    try {
+      await connection.stop();
+    } catch {
+      // Keep going; a fresh start attempt below will settle the state.
+    }
+  }
+
+  notifyStatus(false);
+  return startConnection();
 };
 
 const removeHandler = (eventName, handler) => connection.off(eventName, handler);

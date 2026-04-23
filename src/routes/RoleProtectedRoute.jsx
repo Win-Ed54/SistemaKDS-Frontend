@@ -4,17 +4,19 @@ import { clearAuthStorage, getAuthValue } from "../services/authStorage";
 const RoleProtectedRoute = ({ children, role }) => {
   const token = getAuthValue("token");
   const userRole = getAuthValue("role");
+  const normalizedUserRole = String(userRole || "").trim().toLowerCase();
+  const requiredRole = String(role || "").trim().toLowerCase();
 
   if (!token) {
     return <Navigate to="/login" replace />;
   }
 
-  if (role && userRole !== role) {
+  if (requiredRole && normalizedUserRole !== requiredRole) {
     return (
       <div style={{ textAlign: "center", marginTop: "50px", fontFamily: "sans-serif" }}>
         <h2>Acceso Denegado</h2>
         <p>
-          Tu rol es <b>{userRole}</b>, pero esta pagina requiere ser <b>{role}</b>.
+          Tu rol es <b>{normalizedUserRole || "desconocido"}</b>, pero esta pagina requiere ser <b>{requiredRole}</b>.
         </p>
         <button onClick={() => (window.location.href = "/login")}>Volver al Inicio</button>
         <br />

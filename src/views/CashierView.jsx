@@ -33,8 +33,15 @@ const formatTime = (value = Date.now()) =>
     minute: "2-digit",
   });
 
-const getOrderLocationLabel = (order) =>
-  Number(order?.tableNumber) > 0 ? `Mesa ${order.tableNumber}` : "Para llevar";
+const getTakeoutDestination = (order) =>
+  String(order?.takeoutDestination || order?.TakeoutDestination || "").trim();
+
+const getOrderLocationLabel = (order) => {
+  if (Number(order?.tableNumber) > 0) return `Mesa ${order.tableNumber}`;
+
+  const destination = getTakeoutDestination(order);
+  return destination ? `Para llevar · ${destination}` : "Para llevar";
+};
 
 const isTakeoutPrepaymentOrder = (order, settings) =>
   Boolean(settings?.takeoutRequirePrepayment) &&
@@ -187,6 +194,7 @@ const CashierView = () => {
       const searchableValues = [
         Number.isFinite(tableNumber) && tableNumber > 0 ? String(tableNumber) : "",
         locationLabel,
+        getTakeoutDestination(order).toLowerCase(),
         String(order?.correlativeCode || "").toLowerCase(),
         String(order?.customerName || "").toLowerCase(),
       ];
@@ -462,110 +470,56 @@ const CashierView = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white p-4 lg:p-8 selection:bg-emerald-400/30">
-      <div className="max-w-[1500px] mx-auto space-y-8">
-        <header className="border border-slate-800 p-6 rounded-[2.5rem] shadow-2xl flex flex-col lg:flex-row justify-between items-start lg:items-center gap-5 bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.14),_transparent_28%),linear-gradient(135deg,_rgba(15,23,42,0.98)_0%,_rgba(2,6,23,0.98)_100%)]">
-          <div className="flex flex-col gap-5 w-full">
-            <div className="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-5">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-emerald-500/10 rounded-2xl border border-emerald-500/30">
-                  <Wallet className="w-8 h-8 text-emerald-400" />
-                </div>
-                <div>
-                  <h1 className="text-2xl font-black tracking-tighter uppercase">
-                    KDS <span className="text-emerald-400">Caja</span>
-                  </h1>
-                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.3em] mt-1">
-                    {settings?.takeoutRequirePrepayment
-                      ? "Cobros, prepagos y cierre operativo"
-                      : "Cobro y cierre operativo"}
-                  </p>
-                </div>
+    <div className="min-h-screen bg-slate-950 text-white p-4 lg:p-6 selection:bg-emerald-400/30">
+      <div className="max-w-[1500px] mx-auto space-y-6">
+        <header className="rounded-[1.4rem] border border-slate-800 bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.10),_transparent_24%),linear-gradient(135deg,_rgba(15,23,42,0.98)_0%,_rgba(2,6,23,0.98)_100%)] px-4 py-3 shadow-2xl">
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-[1rem] border border-emerald-500/30 bg-emerald-500/10">
+                <Wallet className="h-5 w-5 text-emerald-400" />
               </div>
-
-              <div className="flex flex-wrap items-center gap-3">
-                <div className={`flex items-center gap-2 px-4 py-2 rounded-full border ${isConnected ? "border-emerald-500/30 bg-emerald-950/20 text-emerald-400" : "border-red-500/20 bg-red-950/20 text-red-400"}`}>
-                  <div className={`w-2 h-2 rounded-full ${isConnected ? "bg-emerald-500" : "bg-red-500"}`} />
-                  <span className="text-[10px] font-black uppercase tracking-wider">
-                    {isConnected ? "En linea" : "Sin conexion"}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-2 px-4 py-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 text-emerald-300">
-                  <Clock3 className="w-4 h-4" />
-                  <span className="text-[10px] font-black uppercase tracking-[0.18em]">
-                    Ultimo cobro {getLatestChargeTime(recentCharges)}
-                  </span>
-                </div>
-
-                <button
-                  onClick={handleLogout}
-                  className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-300 text-[10px] font-black uppercase tracking-[0.2em] hover:bg-red-500 hover:text-white transition-all"
-                >
-                  <LogOut className="w-4 h-4" />
-                  Cerrar sesion
-                </button>
+              <div>
+                <h1 className="text-lg font-black tracking-tighter uppercase sm:text-xl">
+                  KDS <span className="text-emerald-400">Caja</span>
+                </h1>
+                <p className="mt-0.5 text-[8px] text-slate-500 font-bold uppercase tracking-[0.24em]">
+                  {settings?.takeoutRequirePrepayment ? "Cobros y prepagos" : "Cobro operativo"}
+                </p>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              <CashierTopMetric
-                label="Pendientes"
-                value={totals.totalOrders}
-                accent="text-white"
-                tone="border-slate-800 bg-slate-950/70"
-              />
-              <CashierTopMetric
-                label="Total a cobrar"
-                value={formatCurrency(totals.totalAmount)}
-                accent="text-emerald-300"
-                tone="border-emerald-500/20 bg-emerald-500/10"
-              />
-              <CashierTopMetric
-                label="Prepagos"
-                value={totals.takeoutPrepayments}
-                accent="text-cyan-300"
-                tone="border-cyan-500/20 bg-cyan-500/10"
-              />
+            <div className="flex flex-wrap items-center gap-2">
               <CashierTopMetric
                 label="Sesion"
-                value={loading ? "Actualizando" : "Activa"}
+                value={loading ? "Sync" : "Activa"}
                 accent="text-slate-200"
                 tone="border-slate-700 bg-slate-900/80"
               />
+              <div className={`flex items-center gap-2 rounded-full border px-3 py-2 ${isConnected ? "border-emerald-500/30 bg-emerald-950/20 text-emerald-400" : "border-red-500/20 bg-red-950/20 text-red-400"}`}>
+                <div className={`h-2 w-2 rounded-full ${isConnected ? "bg-emerald-500" : "bg-red-500"}`} />
+                <span className="text-[9px] font-black uppercase tracking-wider">
+                  {isConnected ? "En linea" : "Sin conexion"}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-emerald-300">
+                <Clock3 className="h-4 w-4" />
+                <span className="text-[9px] font-black uppercase tracking-[0.16em]">
+                  {getLatestChargeTime(recentCharges)}
+                </span>
+              </div>
+
+              <div className="h-8 w-px bg-slate-800" />
+              <button
+                onClick={handleLogout}
+                className="inline-flex items-center gap-2 rounded-full border border-red-500/20 bg-red-500/10 px-4 py-2 text-[9px] font-black uppercase tracking-[0.18em] text-red-300 transition-all hover:bg-red-500 hover:text-white"
+              >
+                <LogOut className="w-4 h-4" />
+                Cerrar sesion
+              </button>
             </div>
           </div>
         </header>
-
-        <section className="rounded-[2rem] border border-slate-800 bg-slate-900/70 p-5 shadow-xl">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500">
-                Resumen operativo
-              </p>
-              <h2 className="mt-2 text-lg font-black uppercase tracking-[0.16em] text-white">
-                Ultimos cobros aplicados
-              </h2>
-            </div>
-            <div className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-4 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-emerald-300">
-              {recentCharges.length} registro{recentCharges.length === 1 ? "" : "s"}
-            </div>
-          </div>
-
-          {recentCharges.length === 0 ? (
-            <div className="mt-4 rounded-[1.6rem] border border-dashed border-slate-800 bg-slate-950/50 p-8 text-center">
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
-                Aun no hay cobros registrados en esta sesion
-              </p>
-            </div>
-          ) : (
-            <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-3">
-              {recentCharges.map((entry) => (
-                <ChargeSummaryCard key={entry.id} entry={entry} />
-              ))}
-            </div>
-          )}
-        </section>
 
         <section className="bg-slate-900 border border-slate-800 rounded-[2.5rem] p-6 lg:p-8 shadow-2xl">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
@@ -673,6 +627,36 @@ const CashierView = () => {
                   settings={settings}
                 />
               )}
+            </div>
+          )}
+        </section>
+
+        <section className="rounded-[2rem] border border-slate-800 bg-slate-900/70 p-5 shadow-xl">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500">
+                Registro de caja
+              </p>
+              <h2 className="mt-2 text-lg font-black uppercase tracking-[0.16em] text-white">
+                Ultimos cobros aplicados
+              </h2>
+            </div>
+            <div className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-4 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-emerald-300">
+              {recentCharges.length} registro{recentCharges.length === 1 ? "" : "s"}
+            </div>
+          </div>
+
+          {recentCharges.length === 0 ? (
+            <div className="mt-4 rounded-[1.6rem] border border-dashed border-slate-800 bg-slate-950/50 p-8 text-center">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+                Aun no hay cobros registrados en esta sesion
+              </p>
+            </div>
+          ) : (
+            <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-3">
+              {recentCharges.map((entry) => (
+                <ChargeSummaryCard key={entry.id} entry={entry} />
+              ))}
             </div>
           )}
         </section>
@@ -889,6 +873,17 @@ const GroupedPaymentsView = ({
                   </div>
                 </div>
 
+                {Number(order?.tableNumber) === 0 && getTakeoutDestination(order) && (
+                  <div className="rounded-[1.2rem] border border-amber-300/20 bg-amber-300/10 p-3">
+                    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-amber-200/80">
+                      Destino para llevar
+                    </p>
+                    <p className="mt-1 text-sm font-black uppercase text-amber-100">
+                      {getTakeoutDestination(order)}
+                    </p>
+                  </div>
+                )}
+
                 <div className="bg-slate-950/70 border border-slate-800 rounded-[1.2rem] p-3 space-y-2">
                   {order.items?.map((item, index) => {
                     const lineIndex = Number(item?.lineIndex ?? index);
@@ -1052,6 +1047,17 @@ const SeparatePaymentsView = ({
           </div>
         </div>
 
+        {Number(order?.tableNumber) === 0 && getTakeoutDestination(order) && (
+          <div className="rounded-[1.2rem] border border-amber-300/20 bg-amber-300/10 p-3">
+            <p className="text-[9px] font-black uppercase tracking-[0.18em] text-amber-200/80">
+              Destino para llevar
+            </p>
+            <p className="mt-1 text-sm font-black uppercase text-amber-100">
+              {getTakeoutDestination(order)}
+            </p>
+          </div>
+        )}
+
         <div className="bg-slate-900/60 border border-slate-800 rounded-[1.5rem] p-4 space-y-2">
           {order.items?.map((item, index) => {
             const lineIndex = Number(item?.lineIndex ?? index);
@@ -1201,10 +1207,10 @@ const ChargeSummaryCard = ({ entry }) => {
 export default CashierView;
 
 const CashierTopMetric = ({ label, value, accent, tone }) => (
-  <div className={`rounded-[1.4rem] border p-4 ${tone}`}>
-    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">
+  <div className={`inline-flex h-9 min-w-[104px] items-center justify-between gap-3 rounded-full border px-3 ${tone}`}>
+    <p className="text-[8px] font-black uppercase tracking-[0.16em] text-slate-400">
       {label}
     </p>
-    <p className={`mt-3 text-2xl font-black tracking-tighter ${accent}`}>{value}</p>
+    <p className={`text-sm font-black tracking-tighter tabular-nums ${accent}`}>{value}</p>
   </div>
 );

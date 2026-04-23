@@ -33,10 +33,11 @@ const refreshAccessToken = async () => {
   }
 
   const data = await res.json();
+  const normalizedRole = String(data.role || "").trim().toLowerCase();
   setAuthValue("token", data.token);
   setAuthValue("refresh_token", data.refreshToken);
-  setAuthValue(`${data.role}_token`, data.token);
-  setAuthValue("role", data.role);
+  setAuthValue(`${normalizedRole}_token`, data.token);
+  setAuthValue("role", normalizedRole);
   return data.token;
 };
 

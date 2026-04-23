@@ -7,7 +7,10 @@ const toStatusNumber = (status) => {
   return map[String(status).toLowerCase()] ?? -1;
 };
 
-const isAdmin = () => getAuthValue("role") === "admin";
+const isAdmin = () => String(getAuthValue("role") || "").trim().toLowerCase() === "admin";
+
+const getTakeoutDestination = (order) =>
+  String(order?.takeoutDestination || order?.TakeoutDestination || "").trim();
 
 const OrderCard = ({ order, now, isConnected, onPreparing, onReady, onFinish, onCancel }) => {
   const id     = order.id || order._id || order.Id;
@@ -50,6 +53,8 @@ const OrderCard = ({ order, now, isConnected, onPreparing, onReady, onFinish, on
 
   const timer   = timerInfo(order.createdAt);
   const elapsed = getElapsed(order.createdAt);
+  const isTakeout = Number(order.tableNumber) === 0;
+  const takeoutDestination = getTakeoutDestination(order);
 
   const btnConfig = {
     0: { label: "PREPARAR", color: "#FFFF00" },
@@ -73,8 +78,12 @@ const OrderCard = ({ order, now, isConnected, onPreparing, onReady, onFinish, on
 
         <div className="flex flex-col">
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-black text-white/70 uppercase tracking-widest leading-none">Mesa</span>
-            <span className="font-black text-3xl text-white leading-none">{order.tableNumber}</span>
+            <span className="text-[10px] font-black text-white/70 uppercase tracking-widest leading-none">
+              {isTakeout ? "Destino" : "Mesa"}
+            </span>
+            <span className="font-black text-3xl text-white leading-none">
+              {isTakeout ? "Para llevar" : order.tableNumber}
+            </span>
           </div>
           {/* NUEVO: Identificador de Orden (Ticket) */}
           <span className="text-[11px] font-black text-white bg-black/20 px-2 py-0.5 rounded-md mt-1.5 w-fit border border-white/10 uppercase tracking-tighter">
@@ -100,6 +109,11 @@ const OrderCard = ({ order, now, isConnected, onPreparing, onReady, onFinish, on
         <p className="font-black text-lg text-white uppercase leading-tight">
           {order.customerName || "General"}
         </p>
+        {isTakeout && takeoutDestination && (
+          <p className="mt-2 text-[10px] font-black uppercase tracking-[0.16em] text-amber-200">
+            Va para: {takeoutDestination}
+          </p>
+        )}
       </div>
 
       {/* ── ITEMS AGRUPADOS ── */}

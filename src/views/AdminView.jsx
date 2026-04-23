@@ -477,26 +477,26 @@ const AdminView = () => {
         </div>
 
         {(activeSection === "overview" || activeSection === "operations") && (
-          <section className="rounded-[2rem] border border-red-500/20 bg-[linear-gradient(135deg,_rgba(239,68,68,0.10)_0%,_rgba(15,23,42,0.96)_42%,_rgba(2,6,23,0.98)_100%)] p-5 shadow-xl">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <section className="rounded-[1.5rem] border border-red-500/20 bg-[linear-gradient(135deg,_rgba(239,68,68,0.08)_0%,_rgba(15,23,42,0.96)_42%,_rgba(2,6,23,0.98)_100%)] p-3 shadow-xl">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.24em] text-red-200/80">
+                <p className="text-[8px] font-black uppercase tracking-[0.18em] text-red-200/80">
                   Incidencias automaticas
                 </p>
-                <h2 className="mt-2 text-lg font-black uppercase tracking-[0.16em] text-white">
+                <h2 className="mt-1 text-sm font-black uppercase tracking-[0.12em] text-white">
                   Alertas operativas detectadas por el sistema
                 </h2>
-                <p className="mt-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
+                <p className="mt-1 text-[8px] font-black uppercase tracking-[0.12em] text-slate-500">
                   Ordenes listas sin entregar, cobros pendientes, limpiezas atrasadas y productos agotados.
                 </p>
               </div>
 
-              <div className="rounded-full border border-red-400/20 bg-red-400/10 px-4 py-3 text-[10px] font-black uppercase tracking-[0.18em] text-red-200">
+              <div className="rounded-full border border-red-400/20 bg-red-400/10 px-3 py-1.5 text-[8px] font-black uppercase tracking-[0.16em] text-red-200">
                 {incidents.total} incidencia{incidents.total === 1 ? "" : "s"} activas
               </div>
             </div>
 
-            <div className="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-2 2xl:grid-cols-4">
+            <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2 2xl:grid-cols-4">
               <IncidentCard
                 tone="red"
                 title="Pedidos listos sin entregar"
@@ -644,28 +644,28 @@ const IncidentCard = ({ tone = "red", title, count, helper, items }) => {
   const currentTone = toneMap[tone] || toneMap.red;
 
   return (
-    <article className="rounded-[1.8rem] border border-slate-800 bg-slate-950/70 p-5 shadow-xl">
-      <div className="flex items-start justify-between gap-3">
+    <article className="rounded-[1.2rem] border border-slate-800 bg-slate-950/70 p-3 shadow-xl">
+      <div className="flex items-start justify-between gap-2">
         <div>
-          <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">
+          <p className="text-[7px] font-black uppercase tracking-[0.14em] text-slate-500">
             Incidencia
           </p>
-          <h3 className="mt-2 text-sm font-black uppercase tracking-[0.16em] text-white">
+          <h3 className="mt-1 text-[10px] font-black uppercase tracking-[0.12em] text-white">
             {title}
           </h3>
         </div>
-        <span className={`rounded-full border px-3 py-2 text-[9px] font-black uppercase tracking-[0.16em] ${currentTone.badge}`}>
+        <span className={`rounded-full border px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.12em] ${currentTone.badge}`}>
           {count}
         </span>
       </div>
 
-      <p className={`mt-4 text-3xl font-black tracking-tighter ${currentTone.accent}`}>{count}</p>
-      <p className="mt-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">{helper}</p>
+      <p className={`mt-2 text-xl font-black tracking-tighter ${currentTone.accent}`}>{count}</p>
+      <p className="mt-1 text-[8px] font-black uppercase tracking-[0.12em] text-slate-500">{helper}</p>
 
-      <div className="mt-4 space-y-2">
+      <div className="mt-2 space-y-1.5">
         {count === 0 ? (
-          <div className="rounded-[1.2rem] border border-dashed border-slate-800 bg-slate-900/40 p-4 text-center">
-            <p className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-500">
+          <div className="rounded-[0.9rem] border border-dashed border-slate-800 bg-slate-900/40 p-2.5 text-center">
+            <p className="text-[8px] font-black uppercase tracking-[0.12em] text-slate-500">
               Sin incidencias
             </p>
           </div>
@@ -673,12 +673,12 @@ const IncidentCard = ({ tone = "red", title, count, helper, items }) => {
           items.map((item) => (
             <div
               key={item.id}
-              className="rounded-[1.2rem] border border-slate-800 bg-slate-900/60 p-3"
+              className="rounded-[0.9rem] border border-slate-800 bg-slate-900/60 p-2"
             >
-              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-100">
+              <p className="text-[9px] font-black uppercase tracking-[0.1em] text-slate-100">
                 {item.label}
               </p>
-              <p className="mt-1 text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">
+              <p className="mt-0.5 text-[8px] font-black uppercase tracking-[0.1em] text-slate-500">
                 {item.detail}
               </p>
             </div>

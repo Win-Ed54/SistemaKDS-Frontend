@@ -3,26 +3,41 @@ import { ReceiptText, MapPin, User } from "lucide-react";
 import OrderBuilder from "./OrderBuilder";
 import useOrderBuilderStore from "../../store/orderBuilderStore";
 
+const TAKEOUT_DESTINATIONS = ["Mostrador", "Autoservicio", "Delivery"];
+
 const normalizeCustomerName = (value) =>
   value
     .replace(/[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s]/g, "")
     .replace(/\s+/g, " ")
     .slice(0, 60);
 
+const normalizeTakeoutDestination = (value) =>
+  value
+    .replace(/[^A-Za-z0-9ÃÃ‰ÃÃ“ÃšÃœÃ‘Ã¡Ã©Ã­Ã³ÃºÃ¼Ã±#\-\s]/g, "")
+    .replace(/\s+/g, " ")
+    .slice(0, 80);
+
 const OrderPanel = ({ pax, tableId, onOrderSent }) => {
   const customerName = useOrderBuilderStore((state) => state.customerName);
   const setCustomer = useOrderBuilderStore((state) => state.setCustomer);
+  const [takeoutDestination, setTakeoutDestination] = useState(TAKEOUT_DESTINATIONS[0]);
   const [serviceMode, setServiceMode] = useState(
     Number(tableId) === 0 ? "takeout" : "dine-in",
   );
   const isAssignedTakeout = Number(tableId) === 0;
   const isTakeout = isAssignedTakeout || serviceMode === "takeout";
+  const takeoutDestinations =
+    Number(tableId) > 0
+      ? [`Mesa ${tableId}`, ...TAKEOUT_DESTINATIONS]
+      : TAKEOUT_DESTINATIONS;
 
   useEffect(() => {
     setServiceMode(Number(tableId) === 0 ? "takeout" : "dine-in");
+    setTakeoutDestination(TAKEOUT_DESTINATIONS[0]);
   }, [tableId]);
 
   const handleOrderSent = () => {
+    setTakeoutDestination(TAKEOUT_DESTINATIONS[0]);
     onOrderSent?.();
   };
 
@@ -57,6 +72,35 @@ const OrderPanel = ({ pax, tableId, onOrderSent }) => {
           </div>
         </div>
       </div>
+
+      {isTakeout && (
+        <div className="mb-4 sm:mb-6">
+          <div className="bg-slate-950 border border-amber-300/20 p-3 rounded-[1.2rem] sm:rounded-2xl flex items-center gap-3 focus-within:border-amber-300/60 transition-colors">
+            <MapPin className="w-4 h-4 text-amber-300" />
+            <div className="flex-1">
+              <p className="text-[8px] font-black text-amber-200/70 uppercase tracking-tighter">
+                Destino para llevar
+              </p>
+              <div className="mt-2 grid grid-cols-1 gap-2">
+                {takeoutDestinations.map((destination) => (
+                  <button
+                    key={destination}
+                    type="button"
+                    onClick={() => setTakeoutDestination(destination)}
+                    className={`rounded-xl border px-3 py-2 text-left text-[10px] font-black uppercase tracking-[0.14em] transition-all ${
+                      takeoutDestination === destination
+                        ? "border-amber-300 bg-amber-300 text-slate-950"
+                        : "border-slate-800 bg-slate-950 text-slate-300"
+                    }`}
+                  >
+                    {destination}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="mb-4 sm:mb-6">
         {!isAssignedTakeout && Number(tableId) > 0 && (
@@ -124,6 +168,7 @@ const OrderPanel = ({ pax, tableId, onOrderSent }) => {
           onOrderSent={handleOrderSent}
           serviceMode={isTakeout ? "takeout" : "dine-in"}
           sourceTableId={Number(tableId) > 0 ? tableId : null}
+          takeoutDestination={takeoutDestination}
         />
       </div>
 

@@ -41,10 +41,12 @@ const applySessionTokens = ({ token, role, refreshToken }) => {
     throw new Error("No se recibieron credenciales completas");
   }
 
+  const normalizedRole = String(role).trim().toLowerCase();
+
   setAuthValue("token", token);
-  setAuthValue("role", role);
+  setAuthValue("role", normalizedRole);
   setAuthValue("refresh_token", refreshToken);
-  setAuthValue(`${role}_token`, token);
+  setAuthValue(`${normalizedRole}_token`, token);
 };
 
 const scheduleRefresh = (token) => {
@@ -134,7 +136,7 @@ export const getSession = () => {
     return null;
   }
 
-  return { token, role };
+  return { token, role: String(role).trim().toLowerCase() };
 };
 
 export { getRoleRoute as getRouteForRole };

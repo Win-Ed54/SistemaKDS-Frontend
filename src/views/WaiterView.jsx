@@ -82,8 +82,15 @@ const CATEGORY_IMAGE_MAP = {
   },
 };
 
-const getOrderLocationLabel = (order) =>
-  Number(order?.tableNumber) > 0 ? `Mesa ${order.tableNumber}` : "Para llevar";
+const getTakeoutDestination = (order) =>
+  String(order?.takeoutDestination || order?.TakeoutDestination || "").trim();
+
+const getOrderLocationLabel = (order) => {
+  if (Number(order?.tableNumber) > 0) return `Mesa ${order.tableNumber}`;
+
+  const destination = getTakeoutDestination(order);
+  return destination ? `Para llevar · ${destination}` : "Para llevar";
+};
 
 const formatOrderCurrency = (value) =>
   new Intl.NumberFormat("es-SV", {
@@ -685,8 +692,11 @@ export default function WaiterView() {
       type: "ready",
       priority: 1,
       tableNumber: Number(order?.tableNumber || 0),
-      title: order?.tableNumber > 0 ? `Mesa ${order.tableNumber} lista` : "Pedido para llevar listo",
-      subtitle: order?.correlativeCode || `Orden ${order?.id || "---"}`,
+      title: order?.tableNumber > 0 ? `Mesa ${order.tableNumber} lista` : getOrderLocationLabel(order),
+      subtitle:
+        Number(order?.tableNumber) === 0 && getTakeoutDestination(order)
+          ? `${order?.correlativeCode || `Orden ${order?.id || "---"}`} · Cliente: ${order?.customerName || "General"}`
+          : order?.correlativeCode || `Orden ${order?.id || "---"}`,
       actionLabel: order?.tableNumber > 0 ? "Abrir entregas" : "Ver pedido listo",
       createdAt: new Date(order?.readyAt || order?.createdAt || 0).getTime(),
       onAction: () => {
@@ -782,40 +792,26 @@ export default function WaiterView() {
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(34,211,238,0.10),_transparent_28%),linear-gradient(180deg,_#020617_0%,_#0f172a_100%)] text-white">
-      <header className="sticky top-0 z-50 px-3 pt-3 lg:px-6 lg:pt-6 backdrop-blur-md">
-        <div className="max-w-[1600px] mx-auto rounded-[2rem] border border-slate-800 bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.14),_transparent_28%),linear-gradient(135deg,_rgba(15,23,42,0.98)_0%,_rgba(2,6,23,0.98)_100%)] shadow-2xl p-4 lg:p-5">
-          <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
-            <div className="min-w-0">
-              <button onClick={() => setShowProfile(true)} className="flex items-center gap-3 text-left">
-                <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
-                  <User className="w-5 h-5 text-cyan-300" />
-                </div>
-                <div>
-                  <h1 className="text-lg sm:text-2xl font-black tracking-tighter uppercase leading-none">
-                    KDS <span className="text-cyan-400">Terminal</span>
-                  </h1>
-                  <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.28em] mt-1">
-                    Operador: {waiterName}
-                  </p>
-                </div>
-              </button>
-
-              <div className="mt-3 flex flex-wrap gap-2">
-                <span className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.18em] text-cyan-300">
-                  {assignedDiningTables.length} mesas asignadas
-                </span>
-                <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.18em] text-emerald-300">
-                  {readyOrders.length} listas para entregar
-                </span>
-                <span className="rounded-full border border-slate-700 bg-slate-950/70 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">
-                  {items.length} en orden actual
-                </span>
+      <header className="sticky top-0 z-50 px-3 pt-3 lg:px-5 lg:pt-4 backdrop-blur-md">
+        <div className="max-w-[1600px] mx-auto rounded-[1.4rem] border border-slate-800 bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.10),_transparent_24%),linear-gradient(135deg,_rgba(15,23,42,0.98)_0%,_rgba(2,6,23,0.98)_100%)] px-4 py-3 shadow-2xl">
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+            <button onClick={() => setShowProfile(true)} className="flex items-center gap-3 text-left">
+              <div className="flex h-10 w-10 items-center justify-center rounded-[1rem] border border-cyan-500/20 bg-cyan-500/10">
+                <User className="h-5 w-5 text-cyan-300" />
               </div>
-            </div>
+              <div>
+                <h1 className="text-lg font-black tracking-tighter uppercase leading-none sm:text-xl">
+                  KDS <span className="text-cyan-400">Terminal</span>
+                </h1>
+                <p className="mt-0.5 text-[8px] text-slate-500 font-black uppercase tracking-[0.24em]">
+                  Operador: {waiterName}
+                </p>
+              </div>
+            </button>
 
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2">
               <div
-                className={`flex items-center gap-2 px-4 py-2 rounded-full border ${
+                className={`flex items-center gap-2 px-3 py-2 rounded-full border ${
                   isConnected
                     ? "border-emerald-500/30 bg-emerald-950/20 text-emerald-400"
                     : "border-red-500/20 bg-red-950/20 text-red-400"
@@ -829,7 +825,8 @@ export default function WaiterView() {
                 </span>
               </div>
 
-              <button onClick={handleLogout} className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-300 text-[10px] font-black uppercase tracking-[0.2em] hover:bg-red-500 hover:text-white transition-all">
+              <div className="h-8 w-px bg-slate-800" />
+              <button onClick={handleLogout} className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-red-500/10 border border-red-500/20 text-red-300 text-[9px] font-black uppercase tracking-[0.18em] hover:bg-red-500 hover:text-white transition-all">
                 <LogOut className="w-4 h-4" />
                 <span className="hidden md:block">Cerrar sesion</span>
               </button>
@@ -838,8 +835,8 @@ export default function WaiterView() {
         </div>
       </header>
 
-      <main className="max-w-[1600px] mx-auto px-3 pb-32 pt-4 lg:px-6 lg:pb-10 space-y-5">
-        <section className="sticky top-[154px] lg:top-[138px] z-40 rounded-[2rem] border border-slate-800 bg-slate-900/90 p-2 shadow-xl overflow-x-auto no-scrollbar">
+      <main className="max-w-[1600px] mx-auto px-3 pb-32 pt-3 lg:px-5 lg:pb-10 space-y-5">
+        <section className="sticky top-[94px] lg:top-[86px] z-40 rounded-[2rem] border border-slate-800 bg-slate-900/90 p-2 shadow-xl overflow-x-auto no-scrollbar">
           <div className="flex gap-2 min-w-max">
             {TABS.map((tab) => {
               const Icon = tab.icon;
@@ -1146,6 +1143,11 @@ const OrderActivityCard = ({ order, compact = false }) => {
           <p className="mt-2 text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
             Cliente: {order?.customerName || "General"}
           </p>
+          {Number(order?.tableNumber) === 0 && getTakeoutDestination(order) && (
+            <p className="mt-2 text-[10px] font-black uppercase tracking-[0.16em] text-amber-200">
+              Destino: {getTakeoutDestination(order)}
+            </p>
+          )}
         </div>
 
         <span className={`shrink-0 rounded-full border px-3 py-2 text-[9px] font-black uppercase tracking-[0.16em] ${status.badge}`}>

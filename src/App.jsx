@@ -17,6 +17,7 @@ import {
   onOrderPreparing,
   onOrderReady,
   onReceiveOrder,
+  restartConnection,
   startConnection,
 } from "./services/signalrService";
 import { getAuthValue } from "./services/authStorage";
@@ -27,14 +28,18 @@ let signalRCleanup = [];
 
 function App() {
   useEffect(() => {
-    const init = async () => {
+    const init = async (forceRestart = false) => {
       const token = getAuthValue("token");
       const isLoginRoute = window.location.pathname === "/login";
       if (!token || signalRInitialized || isLoginRoute) return;
 
       try {
         signalRInitialized = true;
-        await startConnection();
+        if (forceRestart) {
+          await restartConnection();
+        } else {
+          await startConnection();
+        }
 
         signalRCleanup.forEach((cleanup) => cleanup?.());
         signalRCleanup = [
@@ -54,7 +59,7 @@ function App() {
       signalRInitialized = false;
       signalRCleanup.forEach((cleanup) => cleanup?.());
       signalRCleanup = [];
-      void init();
+      void init(true);
     };
 
     startAutoRefreshSession();

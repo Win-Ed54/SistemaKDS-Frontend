@@ -32,7 +32,9 @@ Frontend del sistema KDS para restaurantes, construido con React y Vite. Esta ap
 ## Funcionalidad implementada
 
 - Login por rol y almacenamiento de token por contexto
+- Login siempre visible: si el backend no responde, se muestra en gris con estado `Sin conexion con servidor`
 - Toma de pedidos para mesa o para llevar
+- Destino para pedidos para llevar visible en cocina, caja y alertas del mesero
 - Asignacion de mesa por host
 - Permitir al mesero agregar mas productos a su mesa asignada
 - Vista de pedidos listos para entrega
@@ -42,6 +44,7 @@ Frontend del sistema KDS para restaurantes, construido con React y Vite. Esta ap
 - Configuracion dinamica del KDS desde admin
 - Reporte de platillos mas vendidos con actualizacion automatica
 - Reconexion automatica de SignalR y reintentos de lectura HTTP
+- Cabeceras compactas en cocina, caja, host y admin para dejar mas espacio al trabajo principal
 
 ## Estructura
 
@@ -70,6 +73,42 @@ Sincroniza:
 - producto agotado
 - cambios de mesa
 - configuracion KDS
+
+### Segmentacion por rol
+
+El backend ya no emite eventos con `Clients.All`. Cada pantalla recibe solo lo necesario:
+
+- Cocina: ordenes nuevas, preparando, listas y canceladas.
+- Caja: ordenes entregadas, pagadas y pendientes de cobro.
+- Mesero: solo eventos de sus propias ordenes cuando estan listas, entregadas, pagadas o canceladas.
+- Host: cambios de mesas y configuracion necesaria.
+- Admin: eventos operativos amplios para monitoreo y control.
+
+Esto reduce datos innecesarios en el cliente y evita que una vista reciba informacion de otra area.
+
+## Mejoras recientes de interfaz
+
+- Cocina prioriza las columnas `Pendiente` y `Preparando`; metricas superiores quedaron como chips compactos.
+- Caja muestra sus metricas como chips compactos y mantiene el foco en cobros pendientes.
+- Host muestra estado de sala en chips compactos y elimina tarjetas redundantes de cabecera.
+- Admin tiene cabecera reducida con estado de conexion, sincronizacion y areas.
+- Pedidos para llevar muestran destino operativo en caja, cocina y tarjetas/alertas del mesero.
+- La pantalla de login ya no muestra overlay bloqueante de error; mantiene el formulario visible con reintento.
+
+## Seguridad en frontend
+
+- Tokens se guardan en `sessionStorage` y se limpian en logout o sesion expirada.
+- El cliente migra tokens legados desde `localStorage` a `sessionStorage` y remueve el valor anterior.
+- El rol recibido en login y refresh se normaliza para evitar fallos por mayusculas o espacios.
+- Las rutas protegidas comparan roles normalizados.
+- SignalR usa `accessTokenFactory` para enviar el token al hub.
+- Nginx agrega headers de seguridad:
+  - `Content-Security-Policy`
+  - `X-Content-Type-Options`
+  - `X-Frame-Options`
+  - `Referrer-Policy`
+  - `Permissions-Policy`
+- Las pantallas dependen de autorizacion real del backend; los guards del frontend son solo una barrera de navegacion.
 
 ## Configuracion local
 
@@ -139,4 +178,5 @@ Salida:
 ## Notas
 
 - En el build puede aparecer una advertencia conocida de Rollup con `@microsoft/signalr`; no bloquea la compilacion.
+- Tambien puede aparecer una advertencia por tamano de chunk; no bloquea el build.
 - El README anterior era el template por defecto de Vite; este archivo ya documenta el proyecto real.

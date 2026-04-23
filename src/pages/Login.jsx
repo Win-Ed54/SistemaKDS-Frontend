@@ -168,29 +168,6 @@ export default function Login() {
     <div style={styles.container}>
       <div style={styles.bgGrid} />
 
-      {healthState === "checking" && (
-        <div style={styles.statusScreen}>
-          <div style={styles.statusCard}>
-            <div style={styles.loader} />
-            <h2 style={styles.statusTitle}>Cargando sistema</h2>
-            <p style={styles.statusText}>{healthMessage}</p>
-          </div>
-        </div>
-      )}
-
-      {healthState === "error" && (
-        <div style={styles.statusScreen}>
-          <div style={styles.statusCard}>
-            <div style={styles.errorIcon}>!</div>
-            <h2 style={styles.statusTitle}>No se pudo iniciar el login</h2>
-            <p style={styles.statusText}>{healthMessage}</p>
-            <button style={styles.retryButton} onClick={retryHealthCheck}>
-              Reintentar conexion
-            </button>
-          </div>
-        </div>
-      )}
-
       <div style={styles.card}>
         <div style={styles.logoWrapper}>
           <svg viewBox="0 0 120 120" width="90" height="90" style={styles.logoSvg(isServerReachable)}>
@@ -220,8 +197,25 @@ export default function Login() {
         </div>
 
         <div style={styles.statusBadge(isServerReachable)}>
-          {isServerReachable ? "Servidor activo" : "Sin conexion con servidor"}
+          {healthState === "checking"
+            ? "Verificando servidor"
+            : isServerReachable
+              ? "Servidor activo"
+              : "Sin conexion con servidor"}
         </div>
+        {!isServerReachable && (
+          <div style={styles.inlineStatus}>
+            <p style={styles.inlineStatusText}>{healthMessage}</p>
+            <button
+              type="button"
+              style={styles.inlineRetryButton}
+              onClick={retryHealthCheck}
+              disabled={healthState === "checking"}
+            >
+              {healthState === "checking" ? "Verificando..." : "Reintentar"}
+            </button>
+          </div>
+        )}
 
         <div style={styles.divider} />
         <p style={styles.subtitle}>KDS - Acceso al sistema</p>
@@ -260,18 +254,18 @@ export default function Login() {
         <button
           style={{
             ...styles.button,
-            ...(loading ? styles.buttonDisabled : null),
+            ...(loading || !isServerReachable ? styles.buttonDisabled : null),
           }}
           onClick={handleLogin}
           onMouseEnter={(event) => {
-            if (loading) return;
+            if (loading || !isServerReachable) return;
             event.target.style.background = "#e05e00";
           }}
           onMouseLeave={(event) => {
-            if (loading) return;
+            if (loading || !isServerReachable) return;
             event.target.style.background = "#ff6b00";
           }}
-          disabled={loading}
+          disabled={loading || !isServerReachable}
         >
           {loading ? "Ingresando..." : "Iniciar sesion"}
         </button>
@@ -303,30 +297,6 @@ const styles = {
     backgroundSize: "36px 36px",
     pointerEvents: "none",
   },
-  statusScreen: {
-    position: "absolute",
-    inset: 0,
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    background: "rgba(10,15,26,0.82)",
-    backdropFilter: "blur(8px)",
-    zIndex: 3,
-    padding: "16px",
-  },
-  statusCard: {
-    width: "360px",
-    maxWidth: "calc(100vw - 32px)",
-    borderRadius: "24px",
-    background: "linear-gradient(160deg, #ffffff 0%, #e8f0ff 60%, #dceeff 100%)",
-    padding: "32px 28px",
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    gap: "14px",
-    boxShadow: "0 8px 40px rgba(0,0,0,0.35)",
-    textAlign: "center",
-  },
   loader: {
     width: "48px",
     height: "48px",
@@ -334,43 +304,6 @@ const styles = {
     border: "4px solid rgba(26,111,255,0.18)",
     borderTopColor: "#1a6fff",
     animation: "spin 1s linear infinite",
-  },
-  errorIcon: {
-    width: "52px",
-    height: "52px",
-    borderRadius: "999px",
-    background: "rgba(239,68,68,0.14)",
-    border: "1px solid rgba(239,68,68,0.25)",
-    color: "#b91c1c",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: "24px",
-    fontWeight: 800,
-  },
-  statusTitle: {
-    margin: 0,
-    color: "#0a1628",
-    fontSize: "22px",
-    fontWeight: 800,
-    letterSpacing: "0.5px",
-  },
-  statusText: {
-    margin: 0,
-    color: "#475569",
-    fontSize: "14px",
-    lineHeight: 1.5,
-  },
-  retryButton: {
-    marginTop: "6px",
-    padding: "12px 18px",
-    border: "none",
-    borderRadius: "10px",
-    background: "#1a6fff",
-    color: "#fff",
-    fontWeight: 700,
-    fontSize: "14px",
-    cursor: "pointer",
   },
   card: {
     background: "linear-gradient(160deg, #ffffff 0%, #e8f0ff 60%, #dceeff 100%)",
@@ -435,6 +368,34 @@ const styles = {
     background: isServerReachable ? "rgba(34,197,94,0.12)" : "rgba(148,163,184,0.18)",
     border: `1px solid ${isServerReachable ? "rgba(34,197,94,0.25)" : "rgba(148,163,184,0.35)"}`,
   }),
+  inlineStatus: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: "10px",
+    borderRadius: "12px",
+    border: "1px solid rgba(148,163,184,0.28)",
+    background: "rgba(148,163,184,0.12)",
+    padding: "10px 12px",
+  },
+  inlineStatusText: {
+    margin: 0,
+    color: "#64748b",
+    fontSize: "11px",
+    fontWeight: 700,
+    lineHeight: 1.35,
+  },
+  inlineRetryButton: {
+    border: "1px solid rgba(100,116,139,0.35)",
+    borderRadius: "9px",
+    background: "rgba(255,255,255,0.65)",
+    color: "#475569",
+    cursor: "pointer",
+    fontSize: "10px",
+    fontWeight: 800,
+    padding: "8px 10px",
+    whiteSpace: "nowrap",
+  },
   subtitle: {
     color: "#3a4a6b",
     textAlign: "center",

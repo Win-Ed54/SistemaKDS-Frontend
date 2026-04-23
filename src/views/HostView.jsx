@@ -136,6 +136,23 @@ const HOST_STATUS_FILTERS = [
   { id: "free", label: "Libres" },
 ];
 
+const normalizeWaiter = (waiter) => {
+  if (!waiter || typeof waiter !== "object") return null;
+
+  const id = String(
+    waiter.id ?? waiter.Id ?? waiter._id ?? waiter.userId ?? waiter.UserId ?? "",
+  ).trim();
+  const username = String(
+    waiter.username ?? waiter.Username ?? waiter.name ?? waiter.Name ?? "",
+  ).trim();
+  const role = String(waiter.role ?? waiter.Role ?? "waiter").trim().toLowerCase();
+
+  if (!id || !username) return null;
+  if (role && role !== "waiter") return null;
+
+  return { ...waiter, id, username, role };
+};
+
 const HostView = () => {
   const navigate = useNavigate();
   const { isConnected } = useSignalRConnection();
@@ -172,9 +189,16 @@ const HostView = () => {
     const loadWaiters = async () => {
       try {
         const data = await getWaiters();
-        const waiterList = Array.isArray(data) ? data : [];
+        const waiterList = (Array.isArray(data) ? data : [])
+          .map(normalizeWaiter)
+          .filter(Boolean)
+          .sort((a, b) => a.username.localeCompare(b.username));
         setWaiters(waiterList);
-        setSelectedWaiterId((current) => current || waiterList[0]?.id || "");
+        setSelectedWaiterId((current) =>
+          waiterList.some((waiter) => waiter.id === current)
+            ? current
+            : waiterList[0]?.id || "",
+        );
       } catch (error) {
         console.error("Error al cargar meseros:", error);
         showToast("No se pudo cargar la lista de meseros", "error");
@@ -543,40 +567,38 @@ const HostView = () => {
         }}
       />
 
-      <header className="sticky top-0 z-50 px-3 pt-3 lg:px-6 lg:pt-6 backdrop-blur-md">
-        <div className="max-w-[1600px] mx-auto rounded-[2rem] border border-slate-800 bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.14),_transparent_28%),linear-gradient(135deg,_rgba(15,23,42,0.98)_0%,_rgba(2,6,23,0.98)_100%)] shadow-2xl p-4 lg:p-5">
-          <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
-            <div className="min-w-0">
-              <div className="flex items-center gap-3 text-left">
-                <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
-                  <Armchair className="w-5 h-5 text-cyan-300" />
-                </div>
-                <div>
-                  <h1 className="text-lg sm:text-2xl font-black tracking-tighter uppercase leading-none">
-                    KDS <span className="text-cyan-400">Host</span>
-                  </h1>
-                  <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.28em] mt-1">
-                    Recepcion: {hostName}
-                  </p>
-                </div>
+      <header className="sticky top-0 z-50 px-3 pt-3 lg:px-5 lg:pt-4 backdrop-blur-md">
+        <div className="max-w-[1600px] mx-auto rounded-[1.4rem] border border-slate-800 bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.10),_transparent_24%),linear-gradient(135deg,_rgba(15,23,42,0.98)_0%,_rgba(2,6,23,0.98)_100%)] px-4 py-3 shadow-2xl">
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+            <div className="flex items-center gap-3 text-left">
+              <div className="flex h-10 w-10 items-center justify-center rounded-[1rem] border border-cyan-500/20 bg-cyan-500/10">
+                <Armchair className="h-5 w-5 text-cyan-300" />
               </div>
-
-              <div className="mt-3 flex flex-wrap gap-2">
-                <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.18em] text-emerald-300">
-                  {availableTables.length} libres
-                </span>
-                <span className="rounded-full border border-amber-400/20 bg-amber-400/10 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.18em] text-amber-300">
-                  {diningTablesCount} ocupadas
-                </span>
-                <span className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.18em] text-cyan-300">
-                  {cleaningTablesCount} en limpieza
-                </span>
+              <div>
+                <h1 className="text-lg font-black tracking-tighter uppercase leading-none sm:text-xl">
+                  KDS <span className="text-cyan-400">Host</span>
+                </h1>
+                <p className="mt-0.5 text-[8px] text-slate-500 font-black uppercase tracking-[0.24em]">
+                  Recepcion: {hostName}
+                </p>
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <MetricCard label="Libres" value={availableTables.length} accent="text-emerald-300" />
+              <MetricCard label="Ocupadas" value={diningTablesCount} accent="text-amber-300" />
+              <MetricCard label="Limpieza" value={cleaningTablesCount} accent="text-cyan-300" />
+              <MetricCard
+                label="Proxima"
+                value={
+                  nextTableToFree
+                    ? `M${nextTableToFree.number} ${formatMinutes(nextTableToFree.remainingMinutes)}`
+                    : "Libre"
+                }
+                accent="text-white"
+              />
               <div
-                className={`flex items-center gap-2 px-4 py-2 rounded-full border ${
+                className={`flex items-center gap-2 px-3 py-2 rounded-full border ${
                   isConnected
                     ? "border-emerald-500/30 bg-emerald-950/20 text-emerald-400"
                     : "border-red-500/20 bg-red-950/20 text-red-400"
@@ -590,9 +612,10 @@ const HostView = () => {
                 </span>
               </div>
 
+              <div className="h-8 w-px bg-slate-800" />
               <button
                 onClick={handleLogout}
-                className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-300 text-[10px] font-black uppercase tracking-[0.2em] hover:bg-red-500 hover:text-white transition-all"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-red-500/10 border border-red-500/20 text-red-300 text-[9px] font-black uppercase tracking-[0.18em] hover:bg-red-500 hover:text-white transition-all"
               >
                 <LogOut className="w-4 h-4" />
                 <span className="hidden md:block">Cerrar sesion</span>
@@ -602,39 +625,24 @@ const HostView = () => {
         </div>
       </header>
 
-      <main className="max-w-[1600px] mx-auto px-3 pb-10 pt-4 lg:px-6 space-y-5">
+      <main className="max-w-[1600px] mx-auto px-3 pb-10 pt-3 lg:px-5 space-y-5">
         <SurfaceHeader
           eyebrow="Recepcion"
           title="Sala de espera y asignacion de mesas"
           badge={`${availableTables.length} libres`}
         />
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <MetricCard label="Mesas libres" value={availableTables.length} accent="text-emerald-300" />
-          <MetricCard label="Mesas ocupadas" value={diningTablesCount} accent="text-amber-300" />
-          <MetricCard label="En limpieza" value={cleaningTablesCount} accent="text-cyan-300" />
-          <MetricCard
-            label="Proxima liberacion"
-            value={
-              nextTableToFree
-                ? `M${nextTableToFree.number} ${formatMinutes(nextTableToFree.remainingMinutes)}`
-                : "Libre"
-            }
-            accent="text-white"
-          />
-        </div>
-
-        <section className="rounded-[2rem] border border-slate-800 bg-slate-900/60 p-5 shadow-xl space-y-4">
+        <section className="rounded-[1.5rem] border border-slate-800 bg-slate-900/60 p-3 shadow-xl space-y-3">
           <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.28em] text-slate-500">
+              <p className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-500">
                 Carga de meseros
               </p>
-              <h2 className="mt-2 text-xl font-black tracking-tighter uppercase text-white">
+              <h2 className="mt-1 text-sm font-black tracking-[0.12em] uppercase text-white">
                 Mesas asignadas por mesero
               </h2>
             </div>
-            <div className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300">
+            <div className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-3 py-1.5 text-[8px] font-black uppercase tracking-[0.16em] text-cyan-300">
               {waiterTableAssignments.reduce((total, waiter) => total + waiter.activeTables, 0)} mesas activas
             </div>
           </div>
@@ -646,41 +654,38 @@ const HostView = () => {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-2">
               {waiterTableAssignments.map((waiter) => (
                 <article
                   key={waiter.id}
-                  className="rounded-[1.6rem] border border-slate-800 bg-slate-950/70 p-4"
+                  className="rounded-[1.1rem] border border-slate-800 bg-slate-950/70 p-3"
                 >
-                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
-                    Mesero
-                  </p>
-                  <h3 className="mt-2 text-lg font-black uppercase tracking-[0.12em] text-white">
+                  <h3 className="text-xs font-black uppercase tracking-[0.12em] text-white truncate">
                     {waiter.username}
                   </h3>
 
-                  <div className="mt-4 grid grid-cols-3 gap-2">
-                    <div className="rounded-[1rem] border border-cyan-500/20 bg-cyan-500/10 p-3">
-                      <p className="text-[8px] font-black uppercase tracking-[0.16em] text-cyan-300">
+                  <div className="mt-2 grid grid-cols-3 gap-1.5">
+                    <div className="rounded-[0.8rem] border border-cyan-500/20 bg-cyan-500/10 px-2 py-2">
+                      <p className="text-[7px] font-black uppercase tracking-[0.12em] text-cyan-300">
                         Total
                       </p>
-                      <p className="mt-2 text-xl font-black text-cyan-200">
+                      <p className="mt-1 text-sm font-black text-cyan-200">
                         {waiter.activeTables}
                       </p>
                     </div>
-                    <div className="rounded-[1rem] border border-amber-500/20 bg-amber-500/10 p-3">
-                      <p className="text-[8px] font-black uppercase tracking-[0.16em] text-amber-300">
+                    <div className="rounded-[0.8rem] border border-amber-500/20 bg-amber-500/10 px-2 py-2">
+                      <p className="text-[7px] font-black uppercase tracking-[0.12em] text-amber-300">
                         Ocupadas
                       </p>
-                      <p className="mt-2 text-xl font-black text-amber-200">
+                      <p className="mt-1 text-sm font-black text-amber-200">
                         {waiter.occupiedTables}
                       </p>
                     </div>
-                    <div className="rounded-[1rem] border border-emerald-500/20 bg-emerald-500/10 p-3">
-                      <p className="text-[8px] font-black uppercase tracking-[0.16em] text-emerald-300">
+                    <div className="rounded-[0.8rem] border border-emerald-500/20 bg-emerald-500/10 px-2 py-2">
+                      <p className="text-[7px] font-black uppercase tracking-[0.12em] text-emerald-300">
                         Limpieza
                       </p>
-                      <p className="mt-2 text-xl font-black text-emerald-200">
+                      <p className="mt-1 text-sm font-black text-emerald-200">
                         {waiter.cleaningTables}
                       </p>
                     </div>
@@ -977,11 +982,11 @@ const HostView = () => {
 };
 
 const MetricCard = ({ label, value, accent }) => (
-  <div className="rounded-[1.5rem] border border-slate-800 bg-slate-950/75 p-4">
-    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">
+  <div className="inline-flex h-9 min-w-[98px] items-center justify-between gap-3 rounded-full border border-slate-800 bg-slate-950/75 px-3">
+    <p className="text-[8px] font-black uppercase tracking-[0.16em] text-slate-400">
       {label}
     </p>
-    <p className={`text-2xl sm:text-3xl font-black mt-3 ${accent}`}>{value}</p>
+    <p className={`text-sm font-black tabular-nums ${accent}`}>{value}</p>
   </div>
 );
 

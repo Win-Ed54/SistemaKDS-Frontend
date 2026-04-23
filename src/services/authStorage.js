@@ -36,6 +36,7 @@ export const clearAuthStorage = () => {
 };
 
 export const getRoleRoute = (role) => {
+  const normalizedRole = String(role || "").trim().toLowerCase();
   const map = {
     kitchen: "/cocina",
     host: "/host",
@@ -44,5 +45,5 @@ export const getRoleRoute = (role) => {
     cashier: "/caja",
   };
 
-  return map[role] ?? "/login";
+  return map[normalizedRole] ?? "/login";
 };
