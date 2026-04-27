@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Clock3,
   CreditCard,
@@ -124,6 +124,7 @@ const CashierView = () => {
   const [groupMode, setGroupMode] = useState("grouped");
   const [selectedItemPayments, setSelectedItemPayments] = useState({});
   const [recentCharges, setRecentCharges] = useState([]);
+  const refreshTimeoutRef = useRef(null);
 
   const { isConnected } = useSignalRConnection("cashier");
   const { settings } = useKdsSettings();
@@ -144,21 +145,34 @@ const CashierView = () => {
   }, [showToast]);
 
   useEffect(() => {
+    const scheduleRefresh = () => {
+      if (refreshTimeoutRef.current) return;
+
+      refreshTimeoutRef.current = window.setTimeout(() => {
+        refreshTimeoutRef.current = null;
+        loadCashierData(true);
+      }, 300);
+    };
+
     loadCashierData();
 
     const unsubscribeDelivered = onOrderDelivered(() => {
-      loadCashierData(true);
+      scheduleRefresh();
     });
 
     const unsubscribePaid = onOrderPaid(() => {
-      loadCashierData(true);
+      scheduleRefresh();
     });
 
     const unsubscribeConnection = subscribeConnectionStatus((connected) => {
-      if (connected) loadCashierData(true);
+      if (connected) scheduleRefresh();
     });
 
     return () => {
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+        refreshTimeoutRef.current = null;
+      }
       unsubscribeDelivered?.();
       unsubscribePaid?.();
       unsubscribeConnection?.();
@@ -261,16 +275,6 @@ const CashierView = () => {
       return Object.keys(next).length === Object.keys(prev).length ? prev : next;
     });
   }, [groupedPendingPayments, pendingPayments]);
-
-  const totals = useMemo(() => {
-    const totalOrders = pendingPayments.length;
-    const totalAmount = pendingPayments.reduce((acc, order) => acc + getRemainingOrderTotal(order), 0);
-    const takeoutPrepayments = pendingPayments.filter((order) =>
-      isTakeoutPrepaymentOrder(order, settings),
-    ).length;
-
-    return { totalOrders, totalAmount, takeoutPrepayments };
-  }, [pendingPayments, settings]);
 
   const getSelectedPaymentsForOrder = useCallback((order) => {
     const selectedByLine = selectedItemPayments[order.id] || {};

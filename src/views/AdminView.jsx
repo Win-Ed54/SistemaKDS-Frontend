@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import useSignalRConnection from "../hooks/useSignalRConnection";
 import { BarChart3, Boxes, ClipboardList, LayoutDashboard, Settings2 } from "lucide-react";
 import {
@@ -68,6 +68,7 @@ const AdminView = () => {
   const [activeSection, setActiveSection] = useState("overview");
   const [pendingTableRelease, setPendingTableRelease] = useState(null);
   const [releasingTable, setReleasingTable] = useState(false);
+  const refreshTimeoutRef = useRef(null);
 
   const { connection, isConnected } = useSignalRConnection("admin");
   const { showToast } = useToast();
@@ -112,6 +113,15 @@ const AdminView = () => {
       setLoading(false);
     }
   }, [isDev]);
+
+  const scheduleSilentLoad = useCallback(() => {
+    if (refreshTimeoutRef.current) return;
+
+    refreshTimeoutRef.current = window.setTimeout(() => {
+      refreshTimeoutRef.current = null;
+      loadData(true);
+    }, 350);
+  }, [loadData]);
 
   const handleCloseTable = async () => {
     if (!pendingTableRelease) return;
@@ -179,7 +189,7 @@ const AdminView = () => {
       );
     };
 
-    const handleReload = () => loadData(true);
+    const handleReload = () => scheduleSilentLoad();
     const reloadEvents = [
       "receiveorder",
       "orderready",
@@ -197,17 +207,21 @@ const AdminView = () => {
       reloadEvents.forEach((eventName) => connection.off(eventName, handleReload));
       connection.off("stockupdated", handleStockUpdate);
     };
-  }, [connection, loadData]);
+  }, [connection, scheduleSilentLoad]);
 
   useEffect(() => {
     const unsubscribeConnection = subscribeConnectionStatus((connected) => {
-      if (connected) void loadData(true);
+      if (connected) scheduleSilentLoad();
     });
 
     return () => {
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+        refreshTimeoutRef.current = null;
+      }
       unsubscribeConnection?.();
     };
-  }, [loadData]);
+  }, [scheduleSilentLoad]);
 
   const stats = useMemo(() => {
     const finished = orders.filter((order) => order.startedAt && order.readyAt);

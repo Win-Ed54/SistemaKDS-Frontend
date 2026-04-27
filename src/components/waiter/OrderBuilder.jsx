@@ -223,8 +223,8 @@ const OrderBuilder = ({
   };
 
   return (
-    <div className="flex min-h-0 flex-col rounded-[1.8rem] sm:rounded-[2.5rem] border border-slate-800 bg-slate-900 p-4 sm:p-5 shadow-2xl backdrop-blur-md">
-      <div className="mb-3 sm:mb-4 flex items-center justify-between border-b border-slate-800 pb-3 sm:pb-4">
+    <div className="flex h-full min-h-0 flex-col rounded-[1.8rem] border border-slate-800 bg-slate-900 p-4 shadow-2xl backdrop-blur-md sm:rounded-[2.5rem] sm:p-5">
+      <div className="mb-3 flex shrink-0 items-center justify-between border-b border-slate-800 pb-3 sm:mb-4 sm:pb-4">
         <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
           Carrito actual
         </h2>
@@ -238,7 +238,7 @@ const OrderBuilder = ({
         )}
       </div>
 
-      <div className="mb-4 sm:mb-6 min-h-[150px] max-h-[42vh] sm:min-h-[200px] sm:max-h-[55vh] flex-1 space-y-2.5 sm:space-y-3 overflow-y-auto pr-1 sm:pr-2 custom-scrollbar">
+      <div className="mb-4 min-h-[120px] flex-1 space-y-2.5 overflow-y-auto pr-1 custom-scrollbar sm:mb-5 sm:space-y-3 sm:pr-2 xl:max-h-[calc(100dvh-560px)] 2xl:max-h-[calc(100dvh-520px)]">
         {items.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-10 opacity-20">
             <ReceiptText className="mb-2 h-12 w-12" />
@@ -506,7 +506,7 @@ const OrderBuilder = ({
       <button
         onClick={sendOrder}
         disabled={isButtonDisabled}
-        className={`flex w-full items-center justify-between rounded-[1.4rem] sm:rounded-[1.8rem] px-5 sm:px-8 py-4 sm:py-5 text-[11px] sm:text-xs font-black uppercase tracking-[0.16em] sm:tracking-[0.2em] shadow-xl transition-all ${
+        className={`sticky bottom-0 z-10 mt-auto flex w-full shrink-0 items-center justify-between rounded-[1.4rem] px-5 py-4 text-[11px] font-black uppercase tracking-[0.16em] shadow-xl transition-all sm:rounded-[1.8rem] sm:px-8 sm:py-5 sm:text-xs sm:tracking-[0.2em] ${
           isButtonDisabled
             ? "cursor-not-allowed border border-slate-700 bg-slate-800 text-slate-600 opacity-50"
             : "bg-emerald-400 text-black shadow-emerald-400/20 active:scale-95 hover:scale-[1.01]"

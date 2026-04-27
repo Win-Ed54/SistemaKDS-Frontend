@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
+/* global process */
 const devApiTarget = process.env.VITE_DEV_API_TARGET || 'http://localhost:5162'
 
 export default defineConfig({

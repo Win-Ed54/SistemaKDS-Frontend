@@ -1,9 +1,10 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { getTables } from "../services/api.service";
 import { onTableUpdated, subscribeConnectionStatus } from "../services/signalrService";
 
 const useTables = () => {
   const [tables, setTables] = useState([]);
+  const fetchTimeoutRef = useRef(null);
 
   const fetchTables = useCallback(async () => {
     try {
@@ -15,6 +16,15 @@ const useTables = () => {
   }, []);
 
   useEffect(() => {
+    const scheduleFetchTables = () => {
+      if (fetchTimeoutRef.current) return;
+
+      fetchTimeoutRef.current = window.setTimeout(() => {
+        fetchTimeoutRef.current = null;
+        fetchTables();
+      }, 250);
+    };
+
     queueMicrotask(fetchTables);
 
     const unsubscribe = onTableUpdated((data) => {
@@ -39,21 +49,25 @@ const useTables = () => {
       );
 
       if (!foundMatch) {
-        fetchTables();
+        scheduleFetchTables();
       }
     });
 
     const unsubscribeConnection = subscribeConnectionStatus((connected) => {
-      if (connected) fetchTables();
+      if (connected) scheduleFetchTables();
     });
 
     const handleForceSync = () => {
-      fetchTables();
+      scheduleFetchTables();
     };
 
     window.addEventListener("kds-sync-tables", handleForceSync);
 
     return () => {
+      if (fetchTimeoutRef.current) {
+        clearTimeout(fetchTimeoutRef.current);
+        fetchTimeoutRef.current = null;
+      }
       unsubscribe?.();
       unsubscribeConnection?.();
       window.removeEventListener("kds-sync-tables", handleForceSync);

@@ -282,13 +282,14 @@ export default function Login() {
 
 const styles = {
   container: {
-    height: "100vh",
+    minHeight: "100dvh",
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
     background: "radial-gradient(ellipse at 60% 40%, #0d1a2e 0%, #0a0f1a 60%, #121212 100%)",
     position: "relative",
-    overflow: "hidden",
+    overflow: "auto",
+    padding: "24px 16px",
   },
   bgGrid: {
     position: "absolute",
@@ -310,7 +311,7 @@ const styles = {
     padding: "40px 36px",
     borderRadius: "24px",
     width: "360px",
-    maxWidth: "calc(100vw - 32px)",
+    maxWidth: "100%",
     display: "flex",
     flexDirection: "column",
     gap: "14px",

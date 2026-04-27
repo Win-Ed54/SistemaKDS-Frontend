@@ -17,6 +17,9 @@ const ProductCard = ({ product, onAdd }) => {
   const isLowStock = productStock > 0 && productStock <= 5;
   const isInCart = quantityInCart > 0;
   const totalPrice = isInCart ? productPrice * quantityInCart : productPrice;
+  const handleImageAdd = () => {
+    if (!isOutOfStock) onAdd(product);
+  };
 
   return (
     <div
@@ -36,7 +39,22 @@ const ProductCard = ({ product, onAdd }) => {
         </div>
       )}
 
-      <div className="relative aspect-square w-full overflow-hidden bg-slate-800">
+      <div
+        role="button"
+        tabIndex={isOutOfStock ? -1 : 0}
+        aria-label={isOutOfStock ? `${productName} agotado` : `Agregar ${productName}`}
+        onClick={handleImageAdd}
+        onKeyDown={(event) => {
+          if (isOutOfStock) return;
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            handleImageAdd();
+          }
+        }}
+        className={`relative aspect-[4/3] w-full overflow-hidden bg-slate-800 sm:aspect-square lg:aspect-[4/3] ${
+          isOutOfStock ? "cursor-not-allowed" : "cursor-pointer"
+        }`}
+      >
         {productImageUrl ? (
           <img
             src={productImageUrl}
@@ -60,6 +78,11 @@ const ProductCard = ({ product, onAdd }) => {
             {isOutOfStock ? "Sin stock" : `Stock ${productStock}`}
           </span>
         </div>
+        {!isOutOfStock && (
+          <div className="absolute inset-x-2.5 bottom-2.5 rounded-xl border border-white/10 bg-slate-950/75 px-3 py-2 text-center text-[8px] font-black uppercase tracking-[0.14em] text-cyan-100 opacity-0 backdrop-blur-md transition-opacity group-hover:opacity-100 sm:opacity-100 lg:opacity-0">
+            Toca imagen para agregar
+          </div>
+        )}
       </div>
 
       <div className="flex flex-1 flex-col p-3 sm:p-4">
@@ -84,7 +107,10 @@ const ProductCard = ({ product, onAdd }) => {
 
           <div className="flex flex-col gap-2">
             <button
-              onClick={() => !isOutOfStock && onAdd(product)}
+              onClick={(event) => {
+                event.stopPropagation();
+                if (!isOutOfStock) onAdd(product);
+              }}
               disabled={isOutOfStock}
               className={`w-full rounded-[0.95rem] py-2.5 text-[9px] font-black uppercase tracking-[0.18em] transition-all ${
                 isOutOfStock

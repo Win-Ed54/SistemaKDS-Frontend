@@ -11,12 +11,6 @@ const normalizeCustomerName = (value) =>
     .replace(/\s+/g, " ")
     .slice(0, 60);
 
-const normalizeTakeoutDestination = (value) =>
-  value
-    .replace(/[^A-Za-z0-9ÃÃ‰ÃÃ“ÃšÃœÃ‘Ã¡Ã©Ã­Ã³ÃºÃ¼Ã±#\-\s]/g, "")
-    .replace(/\s+/g, " ")
-    .slice(0, 80);
-
 const OrderPanel = ({ pax, tableId, onOrderSent }) => {
   const customerName = useOrderBuilderStore((state) => state.customerName);
   const setCustomer = useOrderBuilderStore((state) => state.setCustomer);
@@ -32,8 +26,10 @@ const OrderPanel = ({ pax, tableId, onOrderSent }) => {
       : TAKEOUT_DESTINATIONS;
 
   useEffect(() => {
-    setServiceMode(Number(tableId) === 0 ? "takeout" : "dine-in");
-    setTakeoutDestination(TAKEOUT_DESTINATIONS[0]);
+    queueMicrotask(() => {
+      setServiceMode(Number(tableId) === 0 ? "takeout" : "dine-in");
+      setTakeoutDestination(TAKEOUT_DESTINATIONS[0]);
+    });
   }, [tableId]);
 
   const handleOrderSent = () => {
@@ -42,8 +38,8 @@ const OrderPanel = ({ pax, tableId, onOrderSent }) => {
   };
 
   return (
-    <div className="bg-slate-900/80 border border-slate-800 p-4 sm:p-6 rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl backdrop-blur-xl flex flex-col min-h-0">
-      <div className="flex items-center justify-between mb-4 sm:mb-6">
+    <div className="flex h-full min-h-0 flex-col rounded-[2rem] border border-slate-800 bg-slate-900/80 p-4 shadow-2xl backdrop-blur-xl sm:rounded-[2.5rem] sm:p-5 xl:p-4">
+      <div className="mb-4 flex shrink-0 items-center justify-between xl:mb-3">
         <div className="flex items-center gap-3">
           <div className="w-1.5 h-6 bg-[#39FF14] rounded-full shadow-[0_0_15px_#39FF14]" />
           <h2 className="text-[11px] sm:text-sm font-black uppercase tracking-[0.26em] sm:tracking-[0.3em] text-slate-400">
@@ -53,7 +49,7 @@ const OrderPanel = ({ pax, tableId, onOrderSent }) => {
         <ReceiptText className="w-5 h-5 text-slate-600" />
       </div>
 
-      <div className="mb-4 sm:mb-6">
+      <div className="mb-4 shrink-0 xl:mb-3">
         <div className="bg-slate-950 border border-slate-800 p-3 rounded-[1.2rem] sm:rounded-2xl flex items-center gap-3 focus-within:border-cyan-500/50 transition-colors">
           <User className="w-4 h-4 text-cyan-400" />
           <div className="flex-1">
@@ -74,7 +70,7 @@ const OrderPanel = ({ pax, tableId, onOrderSent }) => {
       </div>
 
       {isTakeout && (
-        <div className="mb-4 sm:mb-6">
+        <div className="mb-4 shrink-0 xl:mb-3">
           <div className="bg-slate-950 border border-amber-300/20 p-3 rounded-[1.2rem] sm:rounded-2xl flex items-center gap-3 focus-within:border-amber-300/60 transition-colors">
             <MapPin className="w-4 h-4 text-amber-300" />
             <div className="flex-1">
@@ -102,7 +98,7 @@ const OrderPanel = ({ pax, tableId, onOrderSent }) => {
         </div>
       )}
 
-      <div className="mb-4 sm:mb-6">
+      <div className="mb-4 shrink-0 xl:mb-3">
         {!isAssignedTakeout && Number(tableId) > 0 && (
           <div className="mb-3 grid grid-cols-2 gap-2">
             <button
@@ -172,7 +168,7 @@ const OrderPanel = ({ pax, tableId, onOrderSent }) => {
         />
       </div>
 
-      <p className="mt-3 sm:mt-4 text-[8px] sm:text-[9px] text-center font-black text-slate-700 uppercase tracking-[0.18em] sm:tracking-widest">
+      <p className="mt-3 shrink-0 text-center text-[8px] font-black uppercase tracking-[0.18em] text-slate-700 sm:mt-4 sm:text-[9px] sm:tracking-widest">
         {isTakeout && Number(tableId) > 0
           ? `La orden se enviara para llevar sin salir de la mesa ${tableId}`
           : "Verifica los productos antes de enviar"}

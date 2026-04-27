@@ -10,6 +10,7 @@ import {
   User,
   X,
   ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 import { logout } from "../services/authService";
@@ -298,10 +299,11 @@ export default function WaiterView() {
   const [todayOrders, setTodayOrders] = useState([]);
   const [cleaningTables, setCleaningTables] = useState({});
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isDesktopCartOpen, setIsDesktopCartOpen] = useState(true);
   const [now, setNow] = useState(() => Date.now());
   const [lastAssignedTableAlert, setLastAssignedTableAlert] = useState(null);
-  const [assignmentAlerts, setAssignmentAlerts] = useState([]);
   const knownAssignedTableAlertIdsRef = useRef(new Set());
+  const refreshTimeoutRef = useRef(null);
 
   const waiterName = localStorage.getItem("user_name") || "Mesero de Turno";
   const waiterId = getCurrentUserId();
@@ -449,6 +451,15 @@ export default function WaiterView() {
     }
   }, [setOrderStore]);
 
+  const scheduleWaiterRefresh = useCallback(() => {
+    if (refreshTimeoutRef.current) return;
+
+    refreshTimeoutRef.current = window.setTimeout(() => {
+      refreshTimeoutRef.current = null;
+      void loadWaiterData();
+    }, 250);
+  }, [loadWaiterData]);
+
   const readyOrders = useMemo(
     () =>
       ordersFromStore.filter((order) => {
@@ -553,26 +564,30 @@ export default function WaiterView() {
 
     const unsubReady = onOrderReady((order) => {
       showToast(`${getOrderLocationLabel(order)} esta LISTA`, "success");
-      loadWaiterData();
+      scheduleWaiterRefresh();
     });
-    const unsubDelivered = onOrderDelivered(() => loadWaiterData());
+    const unsubDelivered = onOrderDelivered(() => scheduleWaiterRefresh());
     const unsubPaid = onOrderPaid((order) => {
       if (Number(order?.tableNumber) > 0) {
         showToast(`${getOrderLocationLabel(order)} pagada, lista para limpieza`, "success");
       }
-      loadWaiterData();
+      scheduleWaiterRefresh();
     });
 
     return () => {
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+        refreshTimeoutRef.current = null;
+      }
       unsubReady?.();
       unsubDelivered?.();
       unsubPaid?.();
     };
-  }, [loadWaiterData, showToast]);
+  }, [loadWaiterData, scheduleWaiterRefresh, showToast]);
 
   useEffect(() => {
-    if (isConnected) void loadWaiterData();
-  }, [isConnected, loadWaiterData]);
+    if (isConnected) scheduleWaiterRefresh();
+  }, [isConnected, scheduleWaiterRefresh]);
 
   useEffect(() => {
     const selectedTableStillAvailable = serviceTables.some(
@@ -645,109 +660,10 @@ export default function WaiterView() {
         "success",
       );
 
-      setAssignmentAlerts((prev) => {
-        const merged = [...prev];
-
-        newAlerts.forEach((alert) => {
-          if (!merged.some((item) => item.id === alert.id)) {
-            merged.push(alert);
-          }
-        });
-
-        return merged.sort((a, b) => a.assignedAt - b.assignedAt);
-      });
     }
-
-    setAssignmentAlerts((prev) =>
-      prev.filter((alert) => nextKnownIds.has(alert.id)),
-    );
 
     knownAssignedTableAlertIdsRef.current = nextKnownIds;
   }, [assignedDiningTables, showToast]);
-
-  const dismissAssignmentAlert = useCallback((alertId) => {
-    setAssignmentAlerts((prev) => prev.filter((alert) => alert.id !== alertId));
-  }, []);
-
-  const alertCenterItems = useMemo(() => {
-    const assignmentItems = assignmentAlerts.map((alert) => ({
-      id: `assignment-${alert.id}`,
-      type: "assignment",
-      priority: 0,
-      tableNumber: alert.tableNumber,
-      title: `Mesa ${alert.tableNumber} asignada`,
-      subtitle: "Lista para tomar pedido",
-      actionLabel: `Ir a mesa ${alert.tableNumber}`,
-      createdAt: Number(alert.assignedAt || 0),
-      onAction: () => {
-        setTable(alert.tableNumber);
-        setActiveTab("ordenar");
-        dismissAssignmentAlert(alert.id);
-      },
-      onDismiss: () => dismissAssignmentAlert(alert.id),
-    }));
-
-    const readyItems = readyOrders.map((order) => ({
-      id: `ready-${order.id}`,
-      type: "ready",
-      priority: 1,
-      tableNumber: Number(order?.tableNumber || 0),
-      title: order?.tableNumber > 0 ? `Mesa ${order.tableNumber} lista` : getOrderLocationLabel(order),
-      subtitle:
-        Number(order?.tableNumber) === 0 && getTakeoutDestination(order)
-          ? `${order?.correlativeCode || `Orden ${order?.id || "---"}`} · Cliente: ${order?.customerName || "General"}`
-          : order?.correlativeCode || `Orden ${order?.id || "---"}`,
-      actionLabel: order?.tableNumber > 0 ? "Abrir entregas" : "Ver pedido listo",
-      createdAt: new Date(order?.readyAt || order?.createdAt || 0).getTime(),
-      onAction: () => {
-        if (Number(order?.tableNumber) > 0) {
-          setTable(order.tableNumber);
-        }
-        setActiveTab("listas");
-      },
-    }));
-
-    const cleanupItems = cleanupTasks.map((order) => ({
-      id: `cleanup-${order.id}-${order.tableNumber}`,
-      type: "cleanup",
-      priority: 2,
-      tableNumber: Number(order?.tableNumber || 0),
-      title: `Mesa ${order.tableNumber} lista para limpieza`,
-      subtitle: order?.customerName ? `Cliente: ${order.customerName}` : "Caja ya confirmo el cobro",
-      actionLabel: "Ir a limpieza",
-      createdAt: new Date(order?.paidAt || order?.deliveredAt || order?.createdAt || 0).getTime(),
-      onAction: () => {
-        if (Number(order?.tableNumber) > 0) {
-          setTable(order.tableNumber);
-        }
-        setActiveTab("limpieza");
-      },
-    }));
-
-    return [...assignmentItems, ...readyItems, ...cleanupItems].sort((a, b) => {
-      const createdAtDiff = (a.createdAt || 0) - (b.createdAt || 0);
-      if (createdAtDiff !== 0) return createdAtDiff;
-
-      const tableDiff = Number(a.tableNumber || 0) - Number(b.tableNumber || 0);
-      if (tableDiff !== 0) return tableDiff;
-
-      return String(a.id || "").localeCompare(String(b.id || ""));
-    });
-  }, [assignmentAlerts, cleanupTasks, dismissAssignmentAlert, readyOrders, setTable]);
-
-  const alertCenterSummary = useMemo(
-    () => ({
-      assignment: assignmentAlerts.length,
-      ready: readyOrders.length,
-      cleanup: cleanupTasks.length,
-    }),
-    [assignmentAlerts.length, cleanupTasks.length, readyOrders.length],
-  );
-
-  const compactAlertCenterItems = useMemo(
-    () => alertCenterItems.slice(0, 4),
-    [alertCenterItems],
-  );
 
   const handleStartCleaning = async (tableNumber) => {
     try {
@@ -836,7 +752,7 @@ export default function WaiterView() {
       </header>
 
       <main className="max-w-[1600px] mx-auto px-3 pb-32 pt-3 lg:px-5 lg:pb-10 space-y-5">
-        <section className="sticky top-[94px] lg:top-[86px] z-40 rounded-[2rem] border border-slate-800 bg-slate-900/90 p-2 shadow-xl overflow-x-auto no-scrollbar">
+        <section className="sticky top-[94px] z-30 rounded-[2rem] border border-slate-800 bg-slate-900/90 p-2 shadow-xl overflow-x-auto no-scrollbar xl:static">
           <div className="flex gap-2 min-w-max">
             {TABS.map((tab) => {
               const Icon = tab.icon;
@@ -889,7 +805,7 @@ export default function WaiterView() {
                     {items.length > 0 && <button onClick={() => setIsCartOpen(true)} className="xl:hidden inline-flex items-center gap-2 px-4 py-3 rounded-2xl bg-cyan-400 text-slate-950 font-black uppercase text-[10px] tracking-[0.2em]"><PackageCheck className="w-4 h-4" />Ver orden</button>}
                   </div>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4">
                     <StepCard
                       step="1"
                       title="Mesa asignada o para llevar"
@@ -934,9 +850,6 @@ export default function WaiterView() {
                         </div>
                       </div>
                     )}
-                    <p className="mt-4 text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">
-                      Puedes pasar una mesa a para llevar sin perder el borrador actual.
-                    </p>  
                   </StepCard>
                 </div>
               </section>
@@ -973,13 +886,51 @@ export default function WaiterView() {
               </section>
             </div>
 
-            <aside className="hidden xl:block xl:col-span-4 2xl:col-span-3 sticky top-[220px]">
-              <OrderPanel
-                key={`desktop-order-panel-${tableId ?? "none"}`}
-                pax={pax}
-                tableId={tableId}
-                onOrderSent={() => setIsCartOpen(false)}
-              />
+            <aside
+              className={`hidden xl:sticky xl:top-[96px] xl:block xl:h-[calc(100dvh-112px)] transition-all duration-300 ${
+                isDesktopCartOpen
+                  ? "xl:col-span-4 2xl:col-span-3"
+                  : "xl:col-span-1"
+              }`}
+            >
+              {isDesktopCartOpen ? (
+                <div className="relative flex h-full min-h-0 flex-col gap-3 pr-1">
+                  <button
+                    type="button"
+                    onClick={() => setIsDesktopCartOpen(false)}
+                    className="inline-flex w-full shrink-0 items-center justify-between rounded-[1.2rem] border border-slate-800 bg-slate-950/95 px-4 py-3 text-[10px] font-black uppercase tracking-[0.18em] text-slate-300 shadow-xl transition-all hover:border-cyan-400/40 hover:text-cyan-200"
+                  >
+                    <span>Ocultar pedido</span>
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                  <div className="min-h-0 flex-1">
+                    <OrderPanel
+                      key={`desktop-order-panel-${tableId ?? "none"}`}
+                      pax={pax}
+                      tableId={tableId}
+                      onOrderSent={() => setIsCartOpen(false)}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setIsDesktopCartOpen(true)}
+                  className="flex min-h-[260px] w-full flex-col items-center justify-between rounded-[1.8rem] border border-cyan-400/25 bg-cyan-400/10 px-3 py-5 text-cyan-200 shadow-xl transition-all hover:bg-cyan-400 hover:text-slate-950"
+                  aria-label="Abrir panel de pedido"
+                >
+                  <ChevronLeft className="h-6 w-6" />
+                  <div className="flex -rotate-90 items-center gap-3 whitespace-nowrap">
+                    <span className="text-[10px] font-black uppercase tracking-[0.22em]">
+                      Abrir pedido
+                    </span>
+                    <span className="rounded-full border border-current px-2 py-1 text-[10px] font-black">
+                      {items.length}
+                    </span>
+                  </div>
+                  <span className="text-sm font-black">${cartTotal.toFixed(2)}</span>
+                </button>
+              )}
             </aside>
           </div>
         )}
@@ -1095,7 +1046,7 @@ export default function WaiterView() {
         )}
       </main>
 
-      {activeTab === "ordenar" && items.length > 0 && !isCartOpen && <button onClick={() => setIsCartOpen(true)} className="xl:hidden fixed bottom-5 left-3 right-3 z-40 rounded-[1.6rem] bg-cyan-400 text-slate-950 px-5 py-4 flex items-center justify-between"><div className="flex items-center gap-3"><PackageCheck className="w-5 h-5" /><div className="text-left"><p className="text-[10px] font-black uppercase">Orden actual</p><p className="text-xs font-black uppercase">{items.length}</p></div></div><div className="text-right"><p className="text-lg font-black">${cartTotal.toFixed(2)}</p><p className="text-[10px] font-black uppercase">Abrir</p></div></button>}
+      {activeTab === "ordenar" && items.length > 0 && !isCartOpen && <button onClick={() => setIsCartOpen(true)} className="xl:hidden fixed bottom-4 right-3 z-40 flex w-[min(92vw,320px)] items-center justify-between rounded-[1.25rem] bg-cyan-400 px-4 py-3 text-slate-950 shadow-2xl shadow-cyan-950/40"><div className="flex items-center gap-2.5"><PackageCheck className="h-4 w-4" /><div className="text-left"><p className="text-[9px] font-black uppercase">Orden actual</p><p className="text-[10px] font-black uppercase">{items.length} items</p></div></div><div className="text-right"><p className="text-base font-black">${cartTotal.toFixed(2)}</p><p className="text-[9px] font-black uppercase">Abrir</p></div></button>}
       {activeTab === "ordenar" && isCartOpen && <div className="fixed inset-0 bg-slate-950/40 z-40 xl:hidden" onClick={() => setIsCartOpen(false)} />}
       {activeTab === "ordenar" && <aside className={`xl:hidden fixed inset-y-0 right-0 z-50 w-[84vw] max-w-[380px] bg-slate-950 border-l border-slate-800 transition-transform ${isCartOpen ? "translate-x-0" : "translate-x-full"}`}><div className="h-full overflow-y-auto p-2.5 sm:p-3"><div className="flex items-center justify-between mb-2 sm:mb-3 px-1"><div><p className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Orden actual</p><p className="text-xs sm:text-sm font-black uppercase text-white mt-1">Panel de confirmacion</p></div><button onClick={() => setIsCartOpen(false)} className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-2xl bg-slate-900 border border-slate-800 text-slate-300 text-[9px] sm:text-[10px] font-black uppercase tracking-[0.18em]"><X className="w-4 h-4" />Cerrar</button></div><OrderPanel key={`mobile-order-panel-${tableId ?? "none"}`} pax={pax} tableId={tableId} onOrderSent={() => setIsCartOpen(false)} /></div></aside>}
       {showProfile && <WaiterProfile user={currentUser} onClose={() => setShowProfile(false)} />}
@@ -1230,76 +1181,3 @@ const EmptyState = ({ title, subtitle }) => (
   </div>
 );
 
-const AlertPill = ({ label, value, tone }) => {
-  const toneMap = {
-    amber: "border-amber-400/20 bg-amber-400/10 text-amber-300",
-    cyan: "border-cyan-400/20 bg-cyan-400/10 text-cyan-300",
-    emerald: "border-emerald-400/20 bg-emerald-400/10 text-emerald-300",
-  };
-
-  return (
-    <div className={`rounded-full border px-3 py-1.5 ${toneMap[tone] || toneMap.cyan}`}>
-      <p className="text-[7px] font-black uppercase tracking-[0.14em] opacity-80">{label}</p>
-      <p className="mt-0.5 text-xs font-black">{value}</p>
-    </div>
-  );
-};
-
-const AlertCenterCard = ({ alert }) => {
-  const toneMap = {
-    assignment: {
-      badge: "border-amber-400/20 bg-amber-400/10 text-amber-300",
-      button: "bg-amber-300 text-slate-950 hover:bg-amber-200",
-      label: "Nueva mesa",
-    },
-    ready: {
-      badge: "border-cyan-400/20 bg-cyan-400/10 text-cyan-300",
-      button: "bg-cyan-400 text-slate-950 hover:bg-cyan-300",
-      label: "Pedido listo",
-    },
-    cleanup: {
-      badge: "border-emerald-400/20 bg-emerald-400/10 text-emerald-300",
-      button: "bg-emerald-400 text-slate-950 hover:bg-emerald-300",
-      label: "Limpieza",
-    },
-  };
-
-  const tone = toneMap[alert.type] || toneMap.ready;
-
-  return (
-    <article className="rounded-[1rem] border border-slate-800 bg-slate-950/75 p-3">
-      <div className="flex items-start justify-between gap-2.5">
-        <div className="min-w-0">
-          <span className={`inline-flex rounded-full border px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.14em] ${tone.badge}`}>
-            {tone.label}
-          </span>
-          <p className="mt-2 text-xs font-black uppercase tracking-[0.14em] text-white">
-            {alert.title}
-          </p>
-          <p className="mt-1 text-[8px] font-black uppercase tracking-[0.12em] text-slate-400">
-            {alert.subtitle}
-          </p>
-        </div>
-
-        {alert.onDismiss ? (
-          <button
-            type="button"
-            onClick={alert.onDismiss}
-            className="inline-flex items-center justify-center rounded-lg border border-slate-800 bg-slate-900 p-1.5 text-slate-400 transition-all hover:text-white"
-            aria-label={`Cerrar alerta ${alert.title}`}
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
-        ) : null}
-      </div>
-
-      <button
-        type="button"
-        onClick={alert.onAction}
-        className={`mt-3 w-full rounded-[1rem] px-3 py-2 text-[8px] font-black uppercase tracking-[0.14em] transition-all ${tone.button}`}
-      >
-        {alert.actionLabel}
-      </button>
-    </article>
-  );
-};

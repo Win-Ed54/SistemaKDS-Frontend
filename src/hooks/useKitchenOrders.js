@@ -1,9 +1,8 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import useOrderStore from "../store/orderStore";
 import { getActiveOrders } from "../services/api.service";
 import {
   onOrderCancelled,
-  onOrderCreated,
   onOrderDelivered,
   onOrderPreparing,
   onOrderReady,
@@ -13,6 +12,7 @@ import {
 
 const useKitchenOrders = () => {
   const { orders, setOrders, purgeInactive } = useOrderStore();
+  const syncTimeoutRef = useRef(null);
 
   const syncActiveOrders = useCallback(async () => {
     try {
@@ -26,6 +26,15 @@ const useKitchenOrders = () => {
 
   useEffect(() => {
     let mounted = true;
+
+    const scheduleSync = () => {
+      if (!mounted || syncTimeoutRef.current) return;
+
+      syncTimeoutRef.current = window.setTimeout(() => {
+        syncTimeoutRef.current = null;
+        if (mounted) void syncActiveOrders();
+      }, 250);
+    };
 
     const init = async () => {
       purgeInactive();
@@ -43,39 +52,38 @@ const useKitchenOrders = () => {
 
     const unsubscribeConnection = subscribeConnectionStatus((connected) => {
       if (connected && mounted) {
-        void syncActiveOrders();
+        scheduleSync();
       }
     });
 
     const unsubscribeReceiveOrder = onReceiveOrder(() => {
-      if (mounted) void syncActiveOrders();
-    });
-
-    const unsubscribeOrderCreated = onOrderCreated(() => {
-      if (mounted) void syncActiveOrders();
+      scheduleSync();
     });
 
     const unsubscribePreparing = onOrderPreparing(() => {
-      if (mounted) void syncActiveOrders();
+      scheduleSync();
     });
 
     const unsubscribeReady = onOrderReady(() => {
-      if (mounted) void syncActiveOrders();
+      scheduleSync();
     });
 
     const unsubscribeDelivered = onOrderDelivered(() => {
-      if (mounted) void syncActiveOrders();
+      scheduleSync();
     });
 
     const unsubscribeCancelled = onOrderCancelled(() => {
-      if (mounted) void syncActiveOrders();
+      scheduleSync();
     });
 
     return () => {
       mounted = false;
+      if (syncTimeoutRef.current) {
+        clearTimeout(syncTimeoutRef.current);
+        syncTimeoutRef.current = null;
+      }
       unsubscribeConnection?.();
       unsubscribeReceiveOrder?.();
-      unsubscribeOrderCreated?.();
       unsubscribePreparing?.();
       unsubscribeReady?.();
       unsubscribeDelivered?.();

@@ -47,6 +47,7 @@ Frontend del sistema KDS para restaurantes, construido con React y Vite. Esta ap
 - Reconexion automatica de SignalR y reintentos de lectura HTTP
 - Reinicio automatico de SignalR despues de login, refresh o cambio de sesion, sin requerir `F5`
 - Cabeceras compactas en cocina, caja, host y admin para dejar mas espacio al trabajo principal
+- Carga por pantalla con `React.lazy` para reducir el JavaScript inicial
 
 ## Estructura
 
@@ -97,6 +98,7 @@ Esto reduce datos innecesarios en el cliente y evita que una vista reciba inform
 - Pedidos para llevar muestran destino operativo en caja, cocina y tarjetas/alertas del mesero.
 - La reconexion compartida de SignalR evita estados falsos de `Sin conexion` al entrar en host, cocina, caja, admin o mesero justo despues del login.
 - La pantalla de login ya no muestra overlay bloqueante de error; mantiene el formulario visible con reintento.
+- Las rutas principales se cargan bajo demanda; login, cocina, host, mesero, admin y caja quedan separados en chunks.
 
 ## Seguridad en frontend
 
@@ -168,6 +170,14 @@ $env:VITE_DEV_API_TARGET="http://TU_HOST:5162"
 npm run dev
 ```
 
+## HTTPS/WSS
+
+El contenedor normal usa `nginx.conf` en HTTP para desarrollo local. Para una instalacion interna profesional, usar la plantilla:
+
+- `nginx.https.example.conf`
+
+Esa plantilla redirige HTTP a HTTPS, sirve el frontend con TLS y mantiene `/ordersHub` como WebSocket seguro (`wss://`) cuando el sitio se abre por `https://`.
+
 ## Build
 
 Build validado:
@@ -183,5 +193,5 @@ Salida:
 ## Notas
 
 - En el build puede aparecer una advertencia conocida de Rollup con `@microsoft/signalr`; no bloquea la compilacion.
-- Tambien puede aparecer una advertencia por tamano de chunk; no bloquea el build.
+- Si reaparece una advertencia por tamano de chunk, el siguiente ajuste recomendado es separar librerias pesadas en `manualChunks`.
 - El README anterior era el template por defecto de Vite; este archivo ya documenta el proyecto real.

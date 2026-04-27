@@ -43,6 +43,42 @@ let listeners = [];
 let statusHandlersRegistered = false;
 let startPromise = null;
 let reconnectTimeoutId = null;
+const EVENT_DEDUPE_MS = 1500;
+
+const getPayloadId = (payload) => {
+  if (payload && typeof payload === "object") {
+    return payload.id ?? payload._id ?? payload.Id ?? payload.orderId ?? payload.tableNumber;
+  }
+
+  return payload;
+};
+
+const createEventDeduper = (scope) => {
+  const recentEvents = new Map();
+
+  return (payload) => {
+    const id = getPayloadId(payload);
+    if (!id) return true;
+
+    const now = Date.now();
+    const key = `${scope}:${id}`;
+    const lastSeen = recentEvents.get(key) || 0;
+
+    if (now - lastSeen < EVENT_DEDUPE_MS) {
+      return false;
+    }
+
+    recentEvents.set(key, now);
+
+    for (const [eventKey, timestamp] of recentEvents.entries()) {
+      if (now - timestamp > EVENT_DEDUPE_MS * 4) {
+        recentEvents.delete(eventKey);
+      }
+    }
+
+    return true;
+  };
+};
 
 const scheduleReconnect = () => {
   if (reconnectTimeoutId) return;
@@ -170,27 +206,21 @@ const bindEvents = (events, handler) => {
 };
 
 export const onReceiveOrder = (callback) => {
+  const shouldProcessEvent = createEventDeduper("order:new");
   const handler = (order) => {
     if (!order) return;
+    if (!shouldProcessEvent(order)) return;
     useOrderStore.getState().addOrder(order);
     callback?.(order);
   };
 
-  return bindEvents(["receiveorder"], handler);
-};
-
-export const onOrderCreated = (callback) => {
-  const handler = (order) => {
-    if (!order) return;
-    useOrderStore.getState().addOrder(order);
-    callback?.(order);
-  };
-
-  return bindEvents(["OrderCreated"], handler);
+  return bindEvents(["receiveorder", "OrderCreated"], handler);
 };
 
 export const onOrderPreparing = (callback) => {
+  const shouldProcessEvent = createEventDeduper("order:preparing");
   const handler = (order) => {
+    if (!shouldProcessEvent(order)) return;
     useOrderStore.getState().updateOrder(order);
     callback?.(order);
   };
@@ -199,7 +229,9 @@ export const onOrderPreparing = (callback) => {
 };
 
 export const onOrderReady = (callback) => {
+  const shouldProcessEvent = createEventDeduper("order:ready");
   const handler = (order) => {
+    if (!shouldProcessEvent(order)) return;
     useOrderStore.getState().updateOrder(order);
     callback?.(order);
   };
@@ -207,18 +239,16 @@ export const onOrderReady = (callback) => {
   return bindEvents(["orderready", "OrderReady"], handler);
 };
 
-export const offOrderReady = (handler) => {
-  removeHandler("orderready", handler);
-  removeHandler("OrderReady", handler);
-};
-
 export const onOrderDelivered = (callback) => {
+  const shouldProcessEvent = createEventDeduper("order:delivered");
   const idHandler = (orderId) => {
+    if (!shouldProcessEvent(orderId)) return;
     useOrderStore.getState().removeOrder(orderId);
     callback?.(orderId);
   };
 
   const objectHandler = (order) => {
+    if (!shouldProcessEvent(order)) return;
     useOrderStore.getState().removeOrder(order?.id);
     callback?.(order);
   };
@@ -233,8 +263,10 @@ export const onOrderDelivered = (callback) => {
 };
 
 export const onOrderCancelled = (callback) => {
+  const shouldProcessEvent = createEventDeduper("order:cancelled");
   const handler = (data) => {
     const id = data?.id ?? data;
+    if (!shouldProcessEvent(id)) return;
     useOrderStore.getState().removeOrder(id);
     callback?.(data);
   };
@@ -243,8 +275,10 @@ export const onOrderCancelled = (callback) => {
 };
 
 export const onOrderPaid = (callback) => {
+  const shouldProcessEvent = createEventDeduper("order:paid");
   const handler = (order) => {
     if (!order) return;
+    if (!shouldProcessEvent(order)) return;
     callback?.(order);
   };
 
@@ -252,6 +286,7 @@ export const onOrderPaid = (callback) => {
 };
 
 export const onStockUpdated = (callback) => {
+  const shouldProcessEvent = createEventDeduper("stock:updated");
   const handler = (data, stock) => {
     let productId = null;
     let currentStock = 0;
@@ -264,6 +299,7 @@ export const onStockUpdated = (callback) => {
       currentStock = stock;
     }
 
+    if (!shouldProcessEvent(productId)) return;
     callback?.(productId, currentStock);
   };
 
@@ -271,7 +307,9 @@ export const onStockUpdated = (callback) => {
 };
 
 export const onProductOutOfStock = (callback) => {
+  const shouldProcessEvent = createEventDeduper("stock:out");
   const handler = (productId) => {
+    if (!shouldProcessEvent(productId)) return;
     callback?.(productId);
   };
 
@@ -279,6 +317,7 @@ export const onProductOutOfStock = (callback) => {
 };
 
 export const onTableUpdated = (callback) => {
+  const shouldProcessEvent = createEventDeduper("table:updated");
   const handler = (data) => {
     if (!data) return;
 
@@ -286,6 +325,7 @@ export const onTableUpdated = (callback) => {
       data.tableNumber ?? data.TableNumber ?? data.number ?? data.Number;
     const isOccupied = data.isOccupied ?? data.IsOccupied;
 
+    if (!shouldProcessEvent(tableNumber)) return;
     callback?.({ ...data, tableNumber, isOccupied });
   };
 

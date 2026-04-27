@@ -21,7 +21,6 @@ const COLUMNS = [
   { key: "preparing", title: "Preparando", status: 1, accent: "#00FFFF" },
 ];
 
-const HEADER_H = 73;
 const COL_H = 48;
 
 const KitchenDisplay = () => {
@@ -45,7 +44,6 @@ const KitchenDisplay = () => {
     0: normalized.filter((order) => order.status === 0).sort(byTime),
     1: normalized.filter((order) => order.status === 1).sort(byTime),
   };
-  const readyCount = normalized.filter((order) => order.status === 2).length;
   const currentTimeLabel = new Date(now).toLocaleTimeString([], {
     hour: "2-digit",
     minute: "2-digit",
@@ -76,8 +74,7 @@ const KitchenDisplay = () => {
 
   return (
     <div
-      className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(249,115,22,0.10),_transparent_24%),linear-gradient(180deg,_#020617_0%,_#020617_100%)] text-white selection:bg-orange-500/30"
-      style={{ height: "100vh", display: "flex", flexDirection: "column" }}
+      className="flex min-h-[100dvh] flex-col bg-[radial-gradient(circle_at_top,_rgba(249,115,22,0.10),_transparent_24%),linear-gradient(180deg,_#020617_0%,_#020617_100%)] text-white selection:bg-orange-500/30 md:h-[100dvh]"
     >
       <header className="px-3 pt-3 lg:px-5 lg:pt-4" style={{ flexShrink: 0 }}>
         <div className="mx-auto max-w-[1800px] rounded-[1.4rem] border border-slate-800 bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.10),_transparent_24%),linear-gradient(135deg,_rgba(15,23,42,0.98)_0%,_rgba(2,6,23,0.98)_100%)] px-4 py-3 shadow-2xl">
@@ -131,12 +128,9 @@ const KitchenDisplay = () => {
       </header>
 
       <div
-        className="mx-auto mt-3 w-full max-w-[1800px] px-3 pb-3 lg:px-5 lg:pb-5"
+        className="mx-auto mt-3 grid w-full max-w-[1800px] grid-cols-1 gap-3 overflow-visible px-3 pb-3 md:grid-cols-2 md:overflow-hidden lg:px-5 lg:pb-5"
         style={{
           flex: 1,
-          display: "grid",
-          gridTemplateColumns: `repeat(${COLUMNS.length}, minmax(0, 1fr))`,
-          overflow: "hidden",
         }}
       >
         {COLUMNS.map((col) => {
@@ -144,6 +138,7 @@ const KitchenDisplay = () => {
           return (
             <div
               key={col.key}
+              className="min-h-[70dvh] md:min-h-0"
               style={{
                 display: "flex",
                 flexDirection: "column",

@@ -12,8 +12,6 @@ const ConfirmDialog = ({
   onConfirm,
   onCancel,
 }) => {
-  if (!open) return null;
-
   useEffect(() => {
     const handleKeyDown = (event) => {
       if (!open || loading) return;
@@ -24,6 +22,8 @@ const ConfirmDialog = ({
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [loading, onCancel, onConfirm, open]);
+
+  if (!open) return null;
 
   const toneStyles =
     tone === "warning"

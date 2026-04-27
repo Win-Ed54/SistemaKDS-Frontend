@@ -261,9 +261,6 @@ const HostView = () => {
           const seatedAt = Number(assignment?.seatedAt) || now;
           const diningEndsAt =
             seatedAt + estimatedDurationMinutes * 60 * 1000;
-          const availableAt =
-            diningEndsAt + DEFAULT_CLEANING_MINUTES * 60 * 1000;
-          
           const calculatedAvailableAt =
             diningEndsAt + defaultCleaningMinutes * 60 * 1000;
 
