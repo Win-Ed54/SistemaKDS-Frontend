@@ -1,6 +1,8 @@
 # Sistema KDS Frontend
 
-Frontend del sistema KDS para restaurantes, construido con React y Vite. Esta aplicacion consume la API .NET del proyecto y sincroniza pedidos, mesas, stock y eventos operativos en tiempo real mediante SignalR.
+Frontend del sistema KDS para restaurantes, construido con React y Vite.
+
+Esta aplicacion consume la API del proyecto y mantiene sincronizados pedidos, mesas, stock y estados operativos mediante SignalR.
 
 ## Stack
 
@@ -10,9 +12,8 @@ Frontend del sistema KDS para restaurantes, construido con React y Vite. Esta ap
 - Zustand
 - Tailwind CSS 4
 - SignalR client
-- React Hot Toast
 
-## Vistas principales
+## Rutas principales
 
 - `/login`
 - `/terminal`
@@ -29,38 +30,69 @@ Frontend del sistema KDS para restaurantes, construido con React y Vite. Esta ap
 - `admin`
 - `host`
 
-## Funcionalidad implementada
+## Funcionalidad actual
 
-- Login por rol y almacenamiento de token por contexto
-- Sesion unica por usuario coordinada con backend
-- Login siempre visible: si el backend no responde, se muestra en gris con estado `Sin conexion con servidor`
-- Toma de pedidos para mesa o para llevar
-- Destino para pedidos para llevar visible en cocina, caja y alertas del mesero
-- Prepago para llevar: cuando esta activo, la orden se cobra primero en caja y solo entra a cocina al completar el pago
-- Asignacion de mesa por host
-- Recomendacion de `mejor ajuste` en host usando solo mesas compatibles con la cantidad de comensales
-- Permitir al mesero agregar mas productos a su mesa asignada
-- Vista de pedidos listos para entrega
-- Vista de limpieza para liberar mesas segun las ordenes del mesero
-- Control de stock en tiempo real
-- Reconciliacion del carrito cuando cambia el inventario
-- Configuracion dinamica del KDS desde admin
-- Reporte de platillos mas vendidos con actualizacion automatica
-- Reconexion automatica de SignalR y reintentos de lectura HTTP
-- Reinicio automatico de SignalR despues de login, refresh o cambio de sesion, sin requerir `F5`
-- Actualizacion automatica de pedidos, mesas, stock, pagos y configuracion sin recarga manual en las pantallas principales
-- Cabeceras compactas en cocina, caja, host y admin para dejar mas espacio al trabajo principal
-- Carga por pantalla con `React.lazy` para reducir el JavaScript inicial
+- login por rol
+- sesion unica por usuario
+- cambio de sesion detectado sin necesidad de recargar
+- pedidos para mesa y para llevar
+- destino visible para pedidos para llevar
+- prepago para llevar configurable desde admin
+- asignacion de mesas por host
+- sugerencia de `mejor ajuste` en host
+- transferencia y liberacion de mesas segun estado operativo
+- selector de mesas del mesero optimizado para desktop
+- vista de ordenes listas para entrega
+- vista de limpieza para liberar mesas
+- bloqueo de nuevas ordenes en mesas que estan en limpieza
+- resincronizacion de mesas despues de iniciar o terminar limpieza
+- control visual de incidencias en admin
+- control de stock en tiempo real
+- reconciliacion del carrito cuando cambia inventario
+- configuracion KDS desde admin
+- actualizacion automatica de pedidos, mesas, pagos, stock y configuracion sin recarga manual
+- reconexion automatica de SignalR al cambiar sesion o recuperar conexion
+- carga diferida de vistas principales
+- despliegue preparado para raiz del sitio o subruta mediante `VITE_BASE_PATH`
 
-## Estructura
+## Vistas destacadas
 
-- `src/views`: vistas principales por rol
-- `src/components`: componentes reutilizables y modulos por area
-- `src/hooks`: integraciones y sincronizacion
-- `src/store`: estado global con Zustand
-- `src/services`: API, autenticacion y SignalR
-- `src/constants`: limites y utilidades operativas
-- `src/context`: toast y soporte UI compartido
+### Mesero
+
+- puede trabajar con mesas asignadas y pedidos para llevar
+- los pedidos para llevar quedan ligados al mesero que los creo
+- ve solo sus ordenes listas
+- recibe notificaciones de sus propios pedidos
+- no puede seguir pidiendo en mesas que ya entraron en limpieza
+- puede iniciar limpieza y liberar mesa con resincronizacion automatica
+
+### Cocina
+
+- recibe ordenes nuevas en tiempo real
+- actualiza estados `Pending`, `Preparing` y `Ready`
+- ve el destino operativo del pedido para llevar
+- recibe pedidos para llevar despues del cobro cuando el prepago esta activo
+
+### Caja
+
+- gestiona cobros de ordenes entregadas
+- cuando el prepago para llevar esta activo, cobra primero y la orden entra a cocina despues del pago completo
+- refresca cuando aparece una nueva orden pendiente de prepago
+- soporta cobros individuales, agrupados y seguimiento de pendientes
+
+### Host
+
+- asigna mesas a comensales
+- calcula `mejor ajuste` con mesas compatibles
+- ve estado de ocupacion y limpieza del salon
+- conserva relacion entre mesa y mesero asignado
+
+### Admin
+
+- monitorea ordenes, mesas, inventario e incidencias
+- ajusta configuracion operativa del KDS
+- puede liberar mesas segun el estado real del flujo
+- distingue entre mesas libres, ocupadas, con cobro pendiente o en limpieza
 
 ## Tiempo real
 
@@ -80,47 +112,28 @@ Sincroniza:
 - cambios de mesa
 - configuracion KDS
 
-### Segmentacion por rol
+## Segmentacion de eventos
 
-El backend ya no emite eventos con `Clients.All`. Cada pantalla recibe solo lo necesario:
+Cada pantalla recibe solo lo que necesita:
 
-- Cocina: ordenes nuevas, preparando, listas y canceladas.
-- Caja: ordenes entregadas, pagadas y pendientes de cobro.
-- Mesero: solo eventos de sus propias ordenes cuando estan listas, entregadas, pagadas o canceladas.
-- Host: cambios de mesas y configuracion necesaria.
-- Admin: eventos operativos amplios para monitoreo y control.
+- Cocina: ordenes nuevas y cambios de estado de cocina.
+- Caja: cobros, pagos y ordenes pendientes de prepago.
+- Mesero: eventos de sus propias ordenes.
+- Host: cambios de mesas y configuracion relacionada.
+- Admin: eventos operativos amplios para monitoreo.
 
-Esto reduce datos innecesarios en el cliente y evita que una vista reciba informacion de otra area.
+## Seguridad implementada
 
-## Mejoras recientes de interfaz
+En frontend ya se considera:
 
-- Cocina prioriza las columnas `Pendiente` y `Preparando`; metricas superiores quedaron como chips compactos.
-- Caja muestra sus metricas como chips compactos y mantiene el foco en cobros pendientes.
-- Host muestra estado de sala en chips compactos y elimina tarjetas redundantes de cabecera.
-- El selector de mesas del mesero usa tarjetas mas compactas en desktop para aprovechar mejor el ancho disponible.
-- Admin tiene cabecera reducida con estado de conexion, sincronizacion y areas.
-- Pedidos para llevar muestran destino operativo en caja, cocina y tarjetas/alertas del mesero.
-- La reconexion compartida de SignalR evita estados falsos de `Sin conexion` al entrar en host, cocina, caja, admin o mesero justo despues del login.
-- La pantalla de login ya no muestra overlay bloqueante de error; mantiene el formulario visible con reintento.
-- Las rutas principales se cargan bajo demanda; login, cocina, host, mesero, admin y caja quedan separados en chunks.
-
-## Seguridad en frontend
-
-- Tokens se guardan en `sessionStorage` y se limpian en logout o sesion expirada.
-- El cliente migra tokens legados desde `localStorage` a `sessionStorage` y remueve el valor anterior.
-- El rol recibido en login y refresh se normaliza para evitar fallos por mayusculas o espacios.
-- Las rutas protegidas comparan roles normalizados.
-- SignalR usa `accessTokenFactory` para enviar el token al hub.
-- SignalR prioriza el token del rol activo y reconstruye la conexion cuando cambian credenciales o se reemplaza la sesion.
-- El hook compartido de conexion valida el mismo token efectivo por rol antes de iniciar o reiniciar el hub.
-- Si la sesion fue reemplazada por otro login, la vista actual pierde autorizacion y debe volver a autenticarse.
-- Nginx agrega headers de seguridad:
-  - `Content-Security-Policy`
-  - `X-Content-Type-Options`
-  - `X-Frame-Options`
-  - `Referrer-Policy`
-  - `Permissions-Policy`
-- Las pantallas dependen de autorizacion real del backend; los guards del frontend son solo una barrera de navegacion.
+- manejo de autenticacion por contexto de rol
+- almacenamiento de sesion del lado cliente
+- cierre de sesion al perder autorizacion
+- proteccion de rutas por rol
+- uso de token en SignalR segun rol activo
+- reconstruccion de conexion cuando cambia la sesion
+- segmentacion de datos recibidos por pantalla
+- configuracion de despliegue con soporte para headers de seguridad desde Nginx
 
 ## Configuracion local
 
@@ -130,12 +143,12 @@ Variables usadas por el frontend:
 - `VITE_DEV_API_TARGET`
 - `VITE_BASE_PATH`
 
-Comportamiento actual:
+Comportamiento esperado:
 
 - Vite corre en `5173`
-- El proxy de desarrollo redirige `/api`, `/images` y `/ordersHub`
-- `VITE_DEV_API_TARGET` por defecto apunta a `http://localhost:5162`
-- `VITE_BASE_PATH` por defecto es `/` y debe cambiarse si el frontend se publica en una subruta
+- el proxy de desarrollo redirige `/api`, `/images` y `/ordersHub`
+- `VITE_DEV_API_TARGET` apunta al backend local
+- `VITE_BASE_PATH` debe ajustarse si el frontend se publica en una subruta
 
 ## Scripts
 
@@ -166,28 +179,16 @@ Acceso:
 
 ## Integracion con backend
 
-Este frontend espera que el backend este ejecutandose en:
+En desarrollo, este frontend espera un backend local accesible desde el proxy de Vite.
 
-- `http://localhost:5162`
-
-Si deseas cambiarlo en desarrollo, puedes usar:
+Si necesitas cambiar el destino:
 
 ```powershell
 $env:VITE_DEV_API_TARGET="http://TU_HOST:5162"
 npm run dev
 ```
 
-## HTTPS/WSS
-
-El contenedor normal usa `nginx.conf` en HTTP para desarrollo local. Para una instalacion interna profesional, usar la plantilla:
-
-- `nginx.https.example.conf`
-
-Esa plantilla redirige HTTP a HTTPS, sirve el frontend con TLS y mantiene `/ordersHub` como WebSocket seguro (`wss://`) cuando el sitio se abre por `https://`.
-
 ## Build
-
-Build validado:
 
 ```powershell
 npm run build
@@ -200,11 +201,11 @@ Salida:
 ## Despliegue
 
 - El despliegue Docker incluido esta pensado para servir el frontend en la raiz del sitio.
-- Si el frontend se publica en una subruta, se debe compilar con `VITE_BASE_PATH` apuntando a esa ruta.
-- `nginx.conf` evita que `/assets/*` caiga al fallback del SPA para no responder `index.html` donde el navegador espera modulos JavaScript.
+- Si se publica en una subruta, se debe compilar con `VITE_BASE_PATH` apuntando a esa ruta.
+- `nginx.conf` protege `/assets/*` para evitar que el fallback del SPA responda `index.html` donde el navegador espera modulos JavaScript.
 
 ## Notas
 
+- Las rutas principales se cargan bajo demanda para reducir el JavaScript inicial.
 - En el build puede aparecer una advertencia conocida de Rollup con `@microsoft/signalr`; no bloquea la compilacion.
-- Si reaparece una advertencia por tamano de chunk, el siguiente ajuste recomendado es separar librerias pesadas en `manualChunks`.
-- El README anterior era el template por defecto de Vite; este archivo ya documenta el proyecto real.
+- La documentacion evita publicar secretos, credenciales o configuraciones internas sensibles.
