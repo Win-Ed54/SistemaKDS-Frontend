@@ -2,6 +2,14 @@ import React from "react";
 import useOrderBuilder from "../../hooks/useOrderBuilder";
 
 const getTableTone = (table, isSelected) => {
+  const isCleaning = Boolean(table?.cleaning);
+
+  if (isCleaning) {
+    return isSelected
+      ? "border-rose-300 bg-rose-400/90 text-slate-950 shadow-[0_0_20px_rgba(251,113,133,0.28)]"
+      : "border-rose-500/30 bg-rose-500/10 text-rose-200";
+  }
+
   if (isSelected) {
     return "border-emerald-300 bg-emerald-400 text-slate-950 shadow-[0_0_20px_rgba(74,222,128,0.28)]";
   }
@@ -31,7 +39,9 @@ const TableSelector = ({
       (table) => Number(table.number) === Number(selectedNumber),
     );
     const isOccupied = selectedTable?.isOccupied || selectedTable?.IsOccupied;
+    const isCleaning = Boolean(selectedTable?.cleaning);
 
+    if (isCleaning) return;
     if (selectedTable && isOccupied && !allowOccupiedAssigned) return;
     setTable(selectedNumber);
   };
@@ -59,16 +69,18 @@ const TableSelector = ({
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-4 gap-2 sm:grid-cols-5 lg:grid-cols-6 xl:grid-cols-6 2xl:grid-cols-7">
+        <div className="flex flex-wrap gap-2.5 xl:max-w-[560px] 2xl:max-w-[640px]">
           {diningTables.map((table, index) => {
             const isSelected = Number(tableId) === Number(table.number);
+            const isCleaning = Boolean(table?.cleaning);
 
             return (
               <button
                 key={table.id ?? table.number}
                 type="button"
                 onClick={() => handleSelect(table.number)}
-                className={`group relative aspect-square rounded-[1rem] border p-2 text-left transition-all ${getTableTone(table, isSelected)}`}
+                disabled={isCleaning}
+                className={`group relative h-[112px] w-[112px] rounded-[1rem] border p-2 text-left transition-all sm:h-[118px] sm:w-[118px] xl:h-[96px] xl:w-[96px] 2xl:h-[104px] 2xl:w-[104px] ${getTableTone(table, isSelected)}`}
                 aria-pressed={isSelected}
                 aria-label={`Mesa ${table.number}`}
               >
@@ -78,6 +90,12 @@ const TableSelector = ({
 
                 {(table?.orderSummary?.readyOrders || 0) > 0 && !isSelected && (
                   <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-cyan-300 shadow-[0_0_10px_rgba(103,232,249,0.9)]" />
+                )}
+
+                {isCleaning && (
+                  <span className="absolute right-2 top-2 rounded-full border border-rose-300/30 bg-rose-300/15 px-1.5 py-0.5 text-[7px] font-black uppercase tracking-[0.14em] text-rose-200">
+                    Limpieza
+                  </span>
                 )}
 
                 <div className="flex h-full flex-col items-center justify-center">
