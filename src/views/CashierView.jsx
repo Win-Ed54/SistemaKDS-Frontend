@@ -16,6 +16,7 @@ import useSignalRConnection from "../hooks/useSignalRConnection";
 import { logout } from "../services/authService";
 import { getOrderHistory, payOrder } from "../services/api.service";
 import {
+  onOrderCreatedForPayment,
   onOrderDelivered,
   onOrderPaid,
   subscribeConnectionStatus,
@@ -160,6 +161,10 @@ const CashierView = () => {
       scheduleRefresh();
     });
 
+    const unsubscribeCreatedForPayment = onOrderCreatedForPayment(() => {
+      scheduleRefresh();
+    });
+
     const unsubscribePaid = onOrderPaid(() => {
       scheduleRefresh();
     });
@@ -173,6 +178,7 @@ const CashierView = () => {
         clearTimeout(refreshTimeoutRef.current);
         refreshTimeoutRef.current = null;
       }
+      unsubscribeCreatedForPayment?.();
       unsubscribeDelivered?.();
       unsubscribePaid?.();
       unsubscribeConnection?.();

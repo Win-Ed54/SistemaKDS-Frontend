@@ -303,6 +303,17 @@ export const onOrderPaid = (callback) => {
   return bindEvents(["orderpaid", "OrderPaid"], handler);
 };
 
+export const onOrderCreatedForPayment = (callback) => {
+  const shouldProcessEvent = createEventDeduper("order:created-for-payment");
+  const handler = (order) => {
+    if (!order) return;
+    if (!shouldProcessEvent(order)) return;
+    callback?.(order);
+  };
+
+  return bindEvents(["ordercreatedforpayment", "OrderCreatedForPayment"], handler);
+};
+
 export const onStockUpdated = (callback) => {
   const shouldProcessEvent = createEventDeduper("stock:updated");
   const handler = (data, stock) => {
