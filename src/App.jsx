@@ -5,6 +5,7 @@ import ViewErrorBoundary from "./components/common/ViewErrorBoundary";
 import RoleProtectedRoute from "./routes/RoleProtectedRoute";
 
 import {
+  hasSignalRToken,
   onOrderCancelled,
   onOrderDelivered,
   onOrderPreparing,
@@ -13,7 +14,6 @@ import {
   restartConnection,
   startConnection,
 } from "./services/signalrService";
-import { getAuthValue } from "./services/authStorage";
 import { startAutoRefreshSession } from "./services/authService";
 
 let signalRInitialized = false;
@@ -37,9 +37,8 @@ const ScreenLoading = () => (
 function App() {
   useEffect(() => {
     const init = async (forceRestart = false) => {
-      const token = getAuthValue("token");
       const isLoginRoute = window.location.pathname === "/login";
-      if (!token || signalRInitialized || isLoginRoute) return;
+      if (!hasSignalRToken() || signalRInitialized || isLoginRoute) return;
 
       try {
         signalRInitialized = true;
