@@ -280,7 +280,7 @@ const formatOrderTime = (value) => {
 
 export default function WaiterView() {
   const navigate = useNavigate();
-  const { isConnected } = useSignalRConnection();
+  const { isConnected } = useSignalRConnection("waiter");
   const { settings } = useKdsSettings();
   const { products } = useProducts();
   const { tables } = useTables();
@@ -424,9 +424,14 @@ export default function WaiterView() {
     () => enrichedServiceTables.filter((table) => Number(table.number) > 0),
     [enrichedServiceTables],
   );
+  const selectableAssignedDiningTables = useMemo(
+    () => assignedDiningTables.filter((table) => !table.cleaning),
+    [assignedDiningTables],
+  );
 
   const isTakeout = Number(tableId) === 0;
   const assignedPartySize = currentTable?.currentPartySize ?? 0;
+  const isCurrentTableCleaning = Boolean(currentTable?.cleaning);
 
   const loadWaiterData = useCallback(async () => {
     try {
@@ -597,8 +602,8 @@ export default function WaiterView() {
     if (Number(tableId) === 0) return;
 
     if (!selectedTableStillAvailable) {
-      if (assignedDiningTables.length > 0) {
-        setTable(assignedDiningTables[0].number);
+      if (selectableAssignedDiningTables.length > 0) {
+        setTable(selectableAssignedDiningTables[0].number);
         return;
       }
 
@@ -608,10 +613,24 @@ export default function WaiterView() {
       return;
     }
 
-    if ((tableId === null || tableId === undefined || tableId === "") && assignedDiningTables.length > 0) {
-      setTable(assignedDiningTables[0].number);
+    if (currentTable?.cleaning && selectableAssignedDiningTables.length > 0) {
+      const fallbackTable = selectableAssignedDiningTables.find(
+        (table) => Number(table.number) !== Number(currentTable.number),
+      );
+
+      if (fallbackTable) {
+        setTable(fallbackTable.number);
+        return;
+      }
+
+      setTable(0);
+      return;
     }
-  }, [assignedDiningTables, enrichedServiceTables, serviceTables, setTable, tableId]);
+
+    if ((tableId === null || tableId === undefined || tableId === "") && selectableAssignedDiningTables.length > 0) {
+      setTable(selectableAssignedDiningTables[0].number);
+    }
+  }, [currentTable, enrichedServiceTables, selectableAssignedDiningTables, serviceTables, setTable, tableId]);
 
   useEffect(() => {
     if (isTakeout) {
@@ -793,9 +812,9 @@ export default function WaiterView() {
                         Cliente pide para llevar
                       </button>
                     )}
-                    {isTakeout && assignedDiningTables.length > 0 && (
+                    {isTakeout && selectableAssignedDiningTables.length > 0 && (
                       <button
-                        onClick={() => setTable(assignedDiningTables[0].number)}
+                        onClick={() => setTable(selectableAssignedDiningTables[0].number)}
                         className="hidden sm:inline-flex items-center gap-2 px-4 py-3 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 text-cyan-200 font-black uppercase text-[10px] tracking-[0.2em] hover:bg-cyan-400 hover:text-slate-950 transition-all"
                       >
                         <ChevronLeft className="w-4 h-4" />
@@ -814,6 +833,16 @@ export default function WaiterView() {
                       tables={enrichedServiceTables}
                       allowOccupiedAssigned
                     />
+                    {isCurrentTableCleaning && (
+                      <div className="mt-4 rounded-[1.2rem] border border-rose-400/20 bg-rose-400/10 p-4">
+                        <p className="text-[9px] font-black uppercase tracking-[0.18em] text-rose-200">
+                          Mesa en limpieza
+                        </p>
+                        <p className="mt-2 text-[10px] font-black uppercase tracking-[0.16em] text-slate-200">
+                          Esta mesa no acepta nuevas ordenes hasta que termine la limpieza.
+                        </p>
+                      </div>
+                    )}
                     {currentTable?.number > 0 && (
                       <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
                         <div className="rounded-[1.2rem] border border-fuchsia-500/20 bg-fuchsia-500/10 p-3">
@@ -842,10 +871,10 @@ export default function WaiterView() {
                         </div>
                         <div className="rounded-[1.2rem] border border-emerald-500/20 bg-emerald-500/10 p-3">
                           <p className="text-[8px] font-black uppercase tracking-[0.16em] text-emerald-300">
-                            Ya pediste
+                            Listas
                           </p>
-                          <p className="mt-2 text-sm font-black uppercase text-emerald-200">
-                            {(currentTable.orderSummary?.totalOrdersToday || 0) > 0 ? "Si" : "No"}
+                          <p className="mt-2 text-lg font-black text-emerald-200">
+                            {currentTable.orderSummary?.readyOrders || 0}
                           </p>
                         </div>
                       </div>
@@ -862,27 +891,40 @@ export default function WaiterView() {
                   </div>
                   <div className="px-4 py-2 rounded-2xl bg-slate-950 border border-slate-800 text-[10px] font-black uppercase tracking-widest text-cyan-300">{filteredProducts.length} items</div>
                 </div>
-                <div className="grid gap-4 mb-8 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
-                  {(activeCategory === "Todas" ? visualCategories : activeCategoryCard ? [activeCategoryCard] : []).map((category) => {
-                    const isActive = activeCategory === category.id;
-                    return (
-                      <button key={category.id} onClick={() => setActiveCategory(isActive ? "Todas" : category.id)} className={`group relative overflow-hidden rounded-[1.5rem] border transition-all ${isActive ? "border-cyan-400/50 bg-slate-950 p-4" : "border-slate-800 bg-slate-950/50 flex flex-col w-full"}`}>
-                        {isActive ? (
-                          <div className="flex items-center gap-4">
-                            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-cyan-400 text-slate-950"><ChevronLeft className="w-6 h-6 stroke-[3px]" /></div>
-                            <div className="text-left"><p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-400">Volver</p><p className="text-sm font-black uppercase text-white">{category.label}</p></div>
-                          </div>
-                        ) : (
-                          <>
-                            <div className="relative w-full h-24 overflow-hidden">{category.image ? <img src={category.image} alt={category.label} className="h-full w-full object-cover" /> : <div className="h-full w-full bg-slate-800" />}</div>
-                            <div className="p-4 text-left"><p className="text-xs font-black uppercase tracking-widest text-white">{category.label}</p><p className="text-[9px] font-bold text-slate-500 uppercase mt-0.5">{category.total} productos</p></div>
-                          </>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-                <ProductList products={filteredProducts} />
+                {isCurrentTableCleaning ? (
+                  <div className="rounded-[1.8rem] border border-rose-400/20 bg-rose-400/10 p-8 text-center">
+                    <p className="text-[10px] font-black uppercase tracking-[0.24em] text-rose-200">
+                      Mesa en limpieza
+                    </p>
+                    <p className="mt-3 text-sm font-black uppercase tracking-[0.14em] text-slate-100">
+                      No se pueden agregar mas productos hasta liberar la mesa.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid gap-4 mb-8 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
+                      {(activeCategory === "Todas" ? visualCategories : activeCategoryCard ? [activeCategoryCard] : []).map((category) => {
+                        const isActive = activeCategory === category.id;
+                        return (
+                          <button key={category.id} onClick={() => setActiveCategory(isActive ? "Todas" : category.id)} className={`group relative overflow-hidden rounded-[1.5rem] border transition-all ${isActive ? "border-cyan-400/50 bg-slate-950 p-4" : "border-slate-800 bg-slate-950/50 flex flex-col w-full"}`}>
+                            {isActive ? (
+                              <div className="flex items-center gap-4">
+                                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-cyan-400 text-slate-950"><ChevronLeft className="w-6 h-6 stroke-[3px]" /></div>
+                                <div className="text-left"><p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-400">Volver</p><p className="text-sm font-black uppercase text-white">{category.label}</p></div>
+                              </div>
+                            ) : (
+                              <>
+                                <div className="relative w-full h-24 overflow-hidden">{category.image ? <img src={category.image} alt={category.label} className="h-full w-full object-cover" /> : <div className="h-full w-full bg-slate-800" />}</div>
+                                <div className="p-4 text-left"><p className="text-xs font-black uppercase tracking-widest text-white">{category.label}</p><p className="text-[9px] font-bold text-slate-500 uppercase mt-0.5">{category.total} productos</p></div>
+                              </>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <ProductList products={filteredProducts} />
+                  </>
+                )}
               </section>
             </div>
 
@@ -904,12 +946,25 @@ export default function WaiterView() {
                     <ChevronRight className="h-4 w-4" />
                   </button>
                   <div className="min-h-0 flex-1">
-                    <OrderPanel
-                      key={`desktop-order-panel-${tableId ?? "none"}`}
-                      pax={pax}
-                      tableId={tableId}
-                      onOrderSent={() => setIsCartOpen(false)}
-                    />
+                    {isCurrentTableCleaning ? (
+                      <div className="flex h-full items-center justify-center rounded-[1.8rem] border border-rose-400/20 bg-rose-400/10 p-6 text-center">
+                        <div>
+                          <p className="text-[10px] font-black uppercase tracking-[0.22em] text-rose-200">
+                            Pedido bloqueado
+                          </p>
+                          <p className="mt-3 text-sm font-black uppercase text-slate-100">
+                            La mesa seleccionada se esta limpiando.
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <OrderPanel
+                        key={`desktop-order-panel-${tableId ?? "none"}`}
+                        pax={pax}
+                        tableId={tableId}
+                        onOrderSent={() => setIsCartOpen(false)}
+                      />
+                    )}
                   </div>
                 </div>
               ) : (
@@ -1027,12 +1082,6 @@ export default function WaiterView() {
                   <EmptyState title="Sin actividad hoy" subtitle="Todavia no tienes ordenes registradas en este turno." />
                 ) : (
                   <div className="space-y-4">
-                    <div className="grid grid-cols-3 gap-3">
-                      <MiniMetricCard label="Activas" value={activityActiveOrders.length} accent="text-cyan-300" />
-                      <MiniMetricCard label="Entregadas" value={activityDeliveredOrders.length} accent="text-emerald-300" />
-                      <MiniMetricCard label="Canceladas" value={activityCancelledOrders.length} accent="text-red-300" />
-                    </div>
-
                     <div className="space-y-3 max-h-[680px] overflow-y-auto pr-1">
                       {todayOrdersSorted.map((order) => (
                         <OrderActivityCard key={`history-${order.id}`} order={order} compact />
@@ -1048,7 +1097,7 @@ export default function WaiterView() {
 
       {activeTab === "ordenar" && items.length > 0 && !isCartOpen && <button onClick={() => setIsCartOpen(true)} className="xl:hidden fixed bottom-4 right-3 z-40 flex w-[min(92vw,320px)] items-center justify-between rounded-[1.25rem] bg-cyan-400 px-4 py-3 text-slate-950 shadow-2xl shadow-cyan-950/40"><div className="flex items-center gap-2.5"><PackageCheck className="h-4 w-4" /><div className="text-left"><p className="text-[9px] font-black uppercase">Orden actual</p><p className="text-[10px] font-black uppercase">{items.length} items</p></div></div><div className="text-right"><p className="text-base font-black">${cartTotal.toFixed(2)}</p><p className="text-[9px] font-black uppercase">Abrir</p></div></button>}
       {activeTab === "ordenar" && isCartOpen && <div className="fixed inset-0 bg-slate-950/40 z-40 xl:hidden" onClick={() => setIsCartOpen(false)} />}
-      {activeTab === "ordenar" && <aside className={`xl:hidden fixed inset-y-0 right-0 z-50 w-[84vw] max-w-[380px] bg-slate-950 border-l border-slate-800 transition-transform ${isCartOpen ? "translate-x-0" : "translate-x-full"}`}><div className="h-full overflow-y-auto p-2.5 sm:p-3"><div className="flex items-center justify-between mb-2 sm:mb-3 px-1"><div><p className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Orden actual</p><p className="text-xs sm:text-sm font-black uppercase text-white mt-1">Panel de confirmacion</p></div><button onClick={() => setIsCartOpen(false)} className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-2xl bg-slate-900 border border-slate-800 text-slate-300 text-[9px] sm:text-[10px] font-black uppercase tracking-[0.18em]"><X className="w-4 h-4" />Cerrar</button></div><OrderPanel key={`mobile-order-panel-${tableId ?? "none"}`} pax={pax} tableId={tableId} onOrderSent={() => setIsCartOpen(false)} /></div></aside>}
+      {activeTab === "ordenar" && <aside className={`xl:hidden fixed inset-y-0 right-0 z-50 w-[84vw] max-w-[380px] bg-slate-950 border-l border-slate-800 transition-transform ${isCartOpen ? "translate-x-0" : "translate-x-full"}`}><div className="h-full overflow-y-auto p-2.5 sm:p-3"><div className="flex items-center justify-between mb-2 sm:mb-3 px-1"><div><p className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Orden actual</p><p className="text-xs sm:text-sm font-black uppercase text-white mt-1">Panel de confirmacion</p></div><button onClick={() => setIsCartOpen(false)} className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-2xl bg-slate-900 border border-slate-800 text-slate-300 text-[9px] sm:text-[10px] font-black uppercase tracking-[0.18em]"><X className="w-4 h-4" />Cerrar</button></div>{isCurrentTableCleaning ? <div className="flex min-h-[240px] items-center justify-center rounded-[1.6rem] border border-rose-400/20 bg-rose-400/10 p-5 text-center"><div><p className="text-[9px] font-black uppercase tracking-[0.2em] text-rose-200">Pedido bloqueado</p><p className="mt-3 text-xs font-black uppercase text-slate-100">La mesa seleccionada se esta limpiando.</p></div></div> : <OrderPanel key={`mobile-order-panel-${tableId ?? "none"}`} pax={pax} tableId={tableId} onOrderSent={() => setIsCartOpen(false)} />}</div></aside>}
       {showProfile && <WaiterProfile user={currentUser} onClose={() => setShowProfile(false)} />}
     </div>
   );
@@ -1058,13 +1107,6 @@ const MetricCard = ({ label, value, accent }) => (
   <div className="rounded-[1.5rem] border border-slate-800 bg-slate-950/75 p-4">
     <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">{label}</p>
     <p className={`text-2xl sm:text-3xl font-black mt-3 ${accent}`}>{value}</p>
-  </div>
-);
-
-const MiniMetricCard = ({ label, value, accent }) => (
-  <div className="rounded-[1.3rem] border border-slate-800 bg-slate-950/70 p-3">
-    <p className="text-[8px] font-black uppercase tracking-[0.18em] text-slate-500">{label}</p>
-    <p className={`mt-2 text-xl font-black ${accent}`}>{value}</p>
   </div>
 );
 
