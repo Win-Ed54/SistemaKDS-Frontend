@@ -119,13 +119,12 @@ const compareTablesByArrival = (a, b) => {
 
 const sortTablesByBestFit = (tables, partySize) =>
   [...tables].sort((a, b) => {
-    const normalizedPartySize = Number(partySize) || 0;
+    const normalizedPartySize = Math.max(1, Number(partySize) || 0);
     const aFit = Math.max(0, (a.capacity || 0) - normalizedPartySize);
     const bFit = Math.max(0, (b.capacity || 0) - normalizedPartySize);
 
-    if (a.capacity >= normalizedPartySize && b.capacity < normalizedPartySize) return -1;
-    if (b.capacity >= normalizedPartySize && a.capacity < normalizedPartySize) return 1;
     if (aFit !== bFit) return aFit - bFit;
+    if ((a.capacity || 0) !== (b.capacity || 0)) return (a.capacity || 0) - (b.capacity || 0);
     return a.number - b.number;
   });
 
@@ -155,7 +154,7 @@ const normalizeWaiter = (waiter) => {
 
 const HostView = () => {
   const navigate = useNavigate();
-  const { isConnected } = useSignalRConnection();
+  const { isConnected } = useSignalRConnection("host");
   const { tables } = useTables();
   const { settings } = useKdsSettings();
   const { showToast } = useToast();
@@ -306,16 +305,28 @@ const HostView = () => {
     [hostTableStates],
   );
 
-  const suggestedTables = useMemo(() => {
-    return sortTablesByBestFit(availableTables, seatingPartySize);
+  const fittingAvailableTables = useMemo(() => {
+    const normalizedPartySize = Math.max(1, Number(seatingPartySize) || 0);
+    return availableTables.filter(
+      (table) => !table.capacity || Number(table.capacity) >= normalizedPartySize,
+    );
   }, [availableTables, seatingPartySize]);
+
+  const suggestedTables = useMemo(
+    () => sortTablesByBestFit(fittingAvailableTables, seatingPartySize),
+    [fittingAvailableTables, seatingPartySize],
+  );
 
   const nextTableToFree = useMemo(
     () =>
       hostTableStates
-        .filter((table) => table.status !== "free")
+        .filter((table) => {
+          if (table.status === "free") return false;
+          const normalizedPartySize = Math.max(1, Number(seatingPartySize) || 0);
+          return !table.capacity || Number(table.capacity) >= normalizedPartySize;
+        })
         .sort((a, b) => a.availableAt - b.availableAt)[0],
-    [hostTableStates],
+    [hostTableStates, seatingPartySize],
   );
 
   const diningTablesCount = useMemo(
@@ -626,7 +637,7 @@ const HostView = () => {
         <SurfaceHeader
           eyebrow="Recepcion"
           title="Sala de espera y asignacion de mesas"
-          badge={`${availableTables.length} libres`}
+          badge={`${waiters.length} meseros`}
         />
 
         <section className="rounded-[1.5rem] border border-slate-800 bg-slate-900/60 p-3 shadow-xl space-y-3">
@@ -789,7 +800,7 @@ const HostView = () => {
               <p className="text-lg font-black text-white mt-2">
                 {suggestedTables[0]
                   ? `Mesa ${suggestedTables[0].number} · ${suggestedTables[0].capacity} pax`
-                  : "Sin mesas libres"}
+                  : `Sin mesa libre para ${Math.max(1, Number(seatingPartySize) || 0)} pax`}
               </p>
               <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-300 mt-2">
                 Estadia esperada: {formatMinutes(estimateStayMinutes(seatingPartySize))}
@@ -842,10 +853,10 @@ const HostView = () => {
               </div>
             )}
 
-            {availableTables.length === 0 && nextTableToFree && (
+            {!suggestedTables[0] && nextTableToFree && (
               <div className="rounded-[1.8rem] border border-amber-400/20 bg-amber-400/10 p-4">
                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-300">
-                  Sala llena
+                  Proxima opcion compatible
                 </p>
                 <p className="text-lg font-black text-white mt-2">
                   Mesa {nextTableToFree.number} sera la proxima
