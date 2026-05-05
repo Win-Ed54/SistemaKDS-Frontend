@@ -6,7 +6,7 @@ import ProductCard from "./ProductCard";
 
 const ProductList = ({ products: initialProducts }) => {
   const [localProducts, setLocalProducts] = useState(initialProducts);
-  const { connection } = useSignalRConnection();
+  const { connection } = useSignalRConnection("waiter");
   const { addItem } = useOrderBuilder();
   const { showToast } = useToast();
 
