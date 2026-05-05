@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import {
   getConnectionState,
+  hasSignalRToken,
   restartConnection,
   startConnection,
   subscribeConnectionStatus,
 } from "../services/signalrService";
-import { getAuthValue } from "../services/authStorage";
 
-export default function useSignalRConnection() {
+export default function useSignalRConnection(preferredRole = "") {
   const [isConnected, setIsConnected] = useState(getConnectionState());
   const [connection, setConnection] = useState(null);
 
@@ -15,15 +15,15 @@ export default function useSignalRConnection() {
     const unsubscribe = subscribeConnectionStatus(setIsConnected);
 
     const syncConnection = async (forceRestart = false) => {
-      if (!getAuthValue("token")) {
+      if (!hasSignalRToken(preferredRole)) {
         setConnection(null);
         setIsConnected(false);
         return;
       }
 
       const conn = forceRestart
-        ? await restartConnection()
-        : await startConnection();
+        ? await restartConnection(preferredRole)
+        : await startConnection(preferredRole);
 
       setConnection(conn);
       setIsConnected(getConnectionState());
@@ -34,7 +34,7 @@ export default function useSignalRConnection() {
     };
 
     const handleWindowFocus = () => {
-      if (!getConnectionState()) {
+      if (!getConnectionState() && hasSignalRToken(preferredRole)) {
         void syncConnection(true);
       }
     };
@@ -48,7 +48,7 @@ export default function useSignalRConnection() {
       window.removeEventListener("auth-changed", handleAuthChanged);
       window.removeEventListener("focus", handleWindowFocus);
     };
-  }, []);
+  }, [preferredRole]);
 
   return { connection, isConnected };
 }
