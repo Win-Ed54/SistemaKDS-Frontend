@@ -298,6 +298,7 @@ export default function WaiterView() {
   const [myActiveOrders, setMyActiveOrders] = useState([]);
   const [todayOrders, setTodayOrders] = useState([]);
   const [cleaningTables, setCleaningTables] = useState({});
+  const [startingCleaningTables, setStartingCleaningTables] = useState({});
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isDesktopCartOpen, setIsDesktopCartOpen] = useState(true);
   const [now, setNow] = useState(() => Date.now());
@@ -686,10 +687,15 @@ export default function WaiterView() {
 
   const handleStartCleaning = async (tableNumber) => {
     try {
+      setStartingCleaningTables((prev) => ({ ...prev, [tableNumber]: true }));
       await startTableCleaning(tableNumber, { estimatedCleaningMinutes: defaultCleaningMinutes });
+      window.dispatchEvent(new Event("kds-sync-tables"));
+      scheduleWaiterRefresh();
       showToast(`Limpieza iniciada en mesa ${tableNumber}`, "success");
     } catch (error) {
       console.error("Error al iniciar limpieza:", error);
+      window.dispatchEvent(new Event("kds-sync-tables"));
+      scheduleWaiterRefresh();
       const errorMessage =
         typeof error?.message === "string" && error.message !== "[object Object]"
           ? error.message
@@ -697,6 +703,8 @@ export default function WaiterView() {
             error?.response?.data?.message ||
             `No se pudo iniciar la limpieza de la mesa ${tableNumber}`;
       showToast(errorMessage, "error");
+    } finally {
+      setStartingCleaningTables((prev) => ({ ...prev, [tableNumber]: false }));
     }
   };
 
@@ -704,10 +712,13 @@ export default function WaiterView() {
     try {
       setCleaningTables((prev) => ({ ...prev, [tableNumber]: true }));
       await closeTable(tableNumber);
+      window.dispatchEvent(new Event("kds-sync-tables"));
       await loadWaiterData();
       showToast(`Mesa ${tableNumber} lista para nuevos comensales`, "success");
     } catch (error) {
       console.error("Error al liberar mesa:", error);
+      window.dispatchEvent(new Event("kds-sync-tables"));
+      scheduleWaiterRefresh();
       const errorMessage =
         typeof error?.message === "string" && error.message !== "[object Object]"
           ? error.message
@@ -1015,7 +1026,7 @@ export default function WaiterView() {
                         {cleaning ? (
                           <button onClick={() => handleCloseTable(order.tableNumber)} disabled={cleaningTables[order.tableNumber]} className="w-full py-4 rounded-[1.4rem] bg-emerald-400 text-slate-950 font-black uppercase text-[11px] tracking-[0.2em] disabled:opacity-50">{cleaningTables[order.tableNumber] ? "Liberando..." : "Termine de limpiar"}</button>
                         ) : (
-                          <button onClick={() => handleStartCleaning(order.tableNumber)} className="w-full py-4 rounded-[1.4rem] bg-cyan-400 text-slate-950 font-black uppercase text-[11px] tracking-[0.2em]">Iniciar limpieza</button>
+                          <button onClick={() => handleStartCleaning(order.tableNumber)} disabled={startingCleaningTables[order.tableNumber]} className="w-full py-4 rounded-[1.4rem] bg-cyan-400 text-slate-950 font-black uppercase text-[11px] tracking-[0.2em] disabled:opacity-50">{startingCleaningTables[order.tableNumber] ? "Iniciando..." : "Iniciar limpieza"}</button>
                         )}
                       </div>
                     </div>

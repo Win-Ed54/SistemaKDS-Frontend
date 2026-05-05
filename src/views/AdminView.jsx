@@ -163,9 +163,11 @@ const AdminView = () => {
         );
       }
 
+      scheduleSilentLoad();
       showToast(`Mesa ${tableNumber} liberada correctamente`, "success");
       setPendingTableRelease(null);
     } catch (error) {
+      scheduleSilentLoad();
       showToast(error?.message || "Error al liberar la mesa", "error");
     } finally {
       setReleasingTable(false);
