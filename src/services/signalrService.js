@@ -13,11 +13,11 @@ const ROLE_TOKEN_MAP = {
 
 if (!HUB_URL) throw new Error("VITE_HUB_URL no definido");
 
-const getSignalRToken = () => {
-  const role = String(getAuthValue("role") || "").trim().toLowerCase();
-  const scopedTokenKey = ROLE_TOKEN_MAP[role];
-  const scopedToken = scopedTokenKey ? getAuthValue(scopedTokenKey) : null;
-  if (scopedToken) return scopedToken;
+export const getSignalRToken = (preferredRole = "") => {
+  const normalizedPreferredRole = String(preferredRole || "").trim().toLowerCase();
+  const preferredTokenKey = ROLE_TOKEN_MAP[normalizedPreferredRole];
+  const preferredToken = preferredTokenKey ? getAuthValue(preferredTokenKey) : null;
+  if (preferredToken) return preferredToken;
 
   const path = window.location.pathname;
 
@@ -27,12 +27,19 @@ const getSignalRToken = () => {
   if (path.includes("panel")) return getAuthValue("admin_token");
   if (path.includes("caja")) return getAuthValue("cashier_token");
 
+  const role = String(getAuthValue("role") || "").trim().toLowerCase();
+  const scopedTokenKey = ROLE_TOKEN_MAP[role];
+  const scopedToken = scopedTokenKey ? getAuthValue(scopedTokenKey) : null;
+  if (scopedToken) return scopedToken;
+
   return getAuthValue("token");
 };
 
+export const hasSignalRToken = (preferredRole = "") => Boolean(getSignalRToken(preferredRole));
+
 const connection = new signalR.HubConnectionBuilder()
   .withUrl(HUB_URL, {
-    accessTokenFactory: () => getSignalRToken(),
+    accessTokenFactory: () => getSignalRToken(activePreferredRole),
   })
   .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
   .configureLogging(signalR.LogLevel.None)
@@ -43,6 +50,7 @@ let listeners = [];
 let statusHandlersRegistered = false;
 let startPromise = null;
 let reconnectTimeoutId = null;
+let activePreferredRole = "";
 const EVENT_DEDUPE_MS = 1500;
 
 const getPayloadId = (payload) => {
@@ -104,7 +112,12 @@ const notifyStatus = (status) => {
 
 export const getConnectionState = () => isConnected;
 
-export const startConnection = async () => {
+export const startConnection = async (preferredRole = "") => {
+  const normalizedPreferredRole = String(preferredRole || "").trim().toLowerCase();
+  if (normalizedPreferredRole) {
+    activePreferredRole = normalizedPreferredRole;
+  }
+
   if (!statusHandlersRegistered) {
     statusHandlersRegistered = true;
 
@@ -165,13 +178,18 @@ export const startConnection = async () => {
   return startPromise;
 };
 
-export const restartConnection = async () => {
+export const restartConnection = async (preferredRole = "") => {
+  const normalizedPreferredRole = String(preferredRole || "").trim().toLowerCase();
+  if (normalizedPreferredRole) {
+    activePreferredRole = normalizedPreferredRole;
+  }
+
   if (reconnectTimeoutId) {
     clearTimeout(reconnectTimeoutId);
     reconnectTimeoutId = null;
   }
 
-  if (!getSignalRToken()) {
+  if (!getSignalRToken(activePreferredRole)) {
     notifyStatus(false);
     return connection;
   }
@@ -193,7 +211,7 @@ export const restartConnection = async () => {
   }
 
   notifyStatus(false);
-  return startConnection();
+  return startConnection(activePreferredRole);
 };
 
 const removeHandler = (eventName, handler) => connection.off(eventName, handler);
