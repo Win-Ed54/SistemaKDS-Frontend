@@ -559,14 +559,14 @@ const AdminView = () => {
           </section>
         )}
 
-        {(activeSection === "overview" || activeSection === "operations" || activeSection === "inventory" || activeSection === "settings" || activeSection === "audit") && (
+        {(activeSection === "operations" || activeSection === "inventory" || activeSection === "settings" || activeSection === "audit") && (
           <section className="grid grid-cols-1 lg:grid-cols-3 gap-5">
             <ControlInsightCard
-              eyebrow="Ordenes"
-              title="Operacion en tiempo real"
-              value={orders.length}
-              helper="Pedidos activos monitoreados desde admin."
-              accent="text-cyan-300"
+              eyebrow="Alertas"
+              title="Incidencias activas"
+              value={incidents.total}
+              helper="Casos que requieren seguimiento inmediato."
+              accent="text-rose-300"
             />
             <ControlInsightCard
               eyebrow="Inventario"
@@ -577,10 +577,10 @@ const AdminView = () => {
             />
             <ControlInsightCard
               eyebrow="Mesas"
-              title="Mesas libres"
-              value={quickStats.availableTables}
-              helper="Disponibilidad efectiva considerando ordenes activas."
-              accent="text-emerald-300"
+              title="Mesas por limpiar"
+              value={incidents.cleanupPending.length}
+              helper="Mesas pagadas pendientes de liberacion."
+              accent="text-cyan-300"
             />
           </section>
         )}
