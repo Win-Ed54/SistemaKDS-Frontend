@@ -335,10 +335,10 @@ const CashierView = () => {
     setRecentCharges((prev) => [entry, ...prev].slice(0, 6));
   };
 
-  const handleCharge = async (order) => {
+  const handleCharge = async (order, formKey = order.id) => {
     try {
       setChargingOrders((prev) => ({ ...prev, [order.id]: true }));
-      const form = paymentForms[order.id] || {};
+      const form = paymentForms[formKey] || {};
       await payOrder(order.id, {
         paymentMethod: form.paymentMethod || "efectivo",
         receiptNumber: form.receiptNumber || "",
@@ -364,7 +364,7 @@ const CashierView = () => {
     }
   };
 
-  const handleChargeSelected = async (order) => {
+  const handleChargeSelected = async (order, formKey = order.id) => {
     const itemPayments = getSelectedPaymentsForOrder(order);
 
     if (itemPayments.length === 0) {
@@ -374,7 +374,7 @@ const CashierView = () => {
 
     try {
       setChargingOrders((prev) => ({ ...prev, [order.id]: true }));
-      const form = paymentForms[order.id] || {};
+      const form = paymentForms[formKey] || {};
       const selectedTotal = getSelectedOrderTotal(order);
       await payOrder(order.id, {
         paymentMethod: form.paymentMethod || "efectivo",
@@ -761,7 +761,7 @@ const GroupedPaymentsView = ({
               <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Ubicacion</p>
               <p className="text-4xl font-black text-white mt-1">{group.locationLabel}</p>
               <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 mt-2">
-                {group.orders.length} {group.orders.length === 1 ? "orden" : "ordenes"} pendientes
+                {pendingSummary.totalPendingLines} {pendingSummary.totalPendingLines === 1 ? "linea pendiente" : "lineas pendientes"}
               </p>
             </div>
             <div className="text-right">
@@ -772,15 +772,7 @@ const GroupedPaymentsView = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div className="rounded-[1.3rem] border border-slate-800 bg-slate-900/70 p-4">
-              <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">
-                Total pendiente
-              </p>
-              <p className="text-2xl font-black text-emerald-300 mt-2">
-                {formatCurrency(getGroupTotal(group.orders))}
-              </p>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="rounded-[1.3rem] border border-slate-800 bg-slate-900/70 p-4">
               <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">
                 Pedidos por cobrar
@@ -947,7 +939,7 @@ const GroupedPaymentsView = ({
                 </div>
 
                 <button
-                  onClick={() => handleChargeSelected(order)}
+                  onClick={() => handleChargeSelected(order, group.groupKey)}
                   disabled={chargingOrders[order.id] || getSelectedOrderTotal(order) <= 0}
                   className="w-full py-3 rounded-[1.2rem] border border-cyan-400/30 bg-cyan-400/10 text-cyan-300 font-black uppercase tracking-[0.2em] text-[10px] hover:bg-cyan-400 hover:text-slate-950 transition-all disabled:opacity-50 inline-flex items-center justify-center gap-3"
                 >
@@ -958,7 +950,7 @@ const GroupedPaymentsView = ({
                 </button>
 
                 <button
-                  onClick={() => handleCharge(order)}
+                  onClick={() => handleCharge(order, group.groupKey)}
                   disabled={chargingOrders[order.id]}
                   className="w-full py-3 rounded-[1.2rem] border border-emerald-400/30 bg-emerald-400/10 text-emerald-300 font-black uppercase tracking-[0.2em] text-[10px] hover:bg-emerald-400 hover:text-slate-950 transition-all disabled:opacity-50 inline-flex items-center justify-center gap-3"
                 >
