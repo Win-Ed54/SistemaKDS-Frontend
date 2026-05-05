@@ -3,8 +3,10 @@ import react from '@vitejs/plugin-react'
 
 /* global process */
 const devApiTarget = process.env.VITE_DEV_API_TARGET || 'http://localhost:5162'
+const base = process.env.VITE_BASE_PATH || '/'
 
 export default defineConfig({
+  base,
   plugins: [react()],
   server: {
     host: true,
