@@ -19,12 +19,50 @@ import { startAutoRefreshSession } from "./services/authService";
 let signalRInitialized = false;
 let signalRCleanup = [];
 
-const Login = lazy(() => import("./pages/Login"));
-const AdminView = lazy(() => import("./views/AdminView"));
-const CashierView = lazy(() => import("./views/CashierView"));
-const HostView = lazy(() => import("./views/HostView"));
-const KitchenDisplay = lazy(() => import("./views/KitchenDisplay"));
-const WaiterView = lazy(() => import("./views/WaiterView"));
+const CHUNK_RETRY_PREFIX = "kds-chunk-retry";
+
+const isRecoverableChunkError = (error) => {
+  const message = String(error?.message || error || "");
+
+  return (
+    message.includes("Failed to fetch dynamically imported module") ||
+    message.includes("Importing a module script failed") ||
+    message.includes("Loading chunk")
+  );
+};
+
+const lazyRetry = async (importer, retryKey) => {
+  try {
+    const module = await importer();
+    sessionStorage.removeItem(`${CHUNK_RETRY_PREFIX}:${retryKey}`);
+    return module;
+  } catch (error) {
+    if (!isRecoverableChunkError(error)) {
+      throw error;
+    }
+
+    const storageKey = `${CHUNK_RETRY_PREFIX}:${retryKey}`;
+    const alreadyRetried = sessionStorage.getItem(storageKey) === "1";
+
+    if (!alreadyRetried) {
+      sessionStorage.setItem(storageKey, "1");
+      window.location.reload();
+      return new Promise(() => {});
+    }
+
+    sessionStorage.removeItem(storageKey);
+    throw error;
+  }
+};
+
+const lazyView = (importer, retryKey) => lazy(() => lazyRetry(importer, retryKey));
+
+const Login = lazyView(() => import("./pages/Login"), "login");
+const AdminView = lazyView(() => import("./views/AdminView"), "admin");
+const CashierView = lazyView(() => import("./views/CashierView"), "cashier");
+const HostView = lazyView(() => import("./views/HostView"), "host");
+const KitchenDisplay = lazyView(() => import("./views/KitchenDisplay"), "kitchen");
+const WaiterView = lazyView(() => import("./views/WaiterView"), "waiter");
 
 const ScreenLoading = () => (
   <div className="min-h-screen bg-[#020617] text-cyan-100 flex items-center justify-center">

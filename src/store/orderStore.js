@@ -1,5 +1,4 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
 
 const getId = (o) => o?.id || o?._id || o?.Id;
 
@@ -17,53 +16,55 @@ const normalizeOrder = (o) => ({
 });
 
 const useOrderStore = create(
-  persist(
-    (set) => ({
-      orders: [],
+  (set) => ({
+    orders: [],
 
-      addOrder: (order) =>
-        set((state) => {
-          const normalized = normalizeOrder(order);
-          if (!normalized.id) return state;
-          if (state.orders.some((o) => getId(o) === normalized.id)) return state;
-          return { orders: [normalized, ...state.orders] };
-        }),
+    addOrder: (order) =>
+      set((state) => {
+        const normalized = normalizeOrder(order);
+        if (!normalized.id) return state;
+        if (state.orders.some((o) => getId(o) === normalized.id)) return state;
+        return { orders: [normalized, ...state.orders] };
+      }),
 
-      updateOrder: (order) =>
-        set((state) => {
-          const normalized = normalizeOrder(order);
-          const exists = state.orders.some((o) => getId(o) === normalized.id);
+    updateOrder: (order) =>
+      set((state) => {
+        const normalized = normalizeOrder(order);
+        const exists = state.orders.some((o) => getId(o) === normalized.id);
 
-          if (!exists) {
-            return {
-              orders: [normalized, ...state.orders],
-            };
-          }
-
+        if (!exists) {
           return {
-            orders: state.orders.map((o) =>
-              getId(o) === normalized.id ? { ...o, ...normalized } : o
-            ),
+            orders: [normalized, ...state.orders],
           };
-        }),
+        }
 
-      removeOrder: (id) =>
-        set((state) => ({
-          orders: state.orders.filter((o) => getId(o) !== id),
-        })),
+        return {
+          orders: state.orders.map((o) =>
+            getId(o) === normalized.id ? { ...o, ...normalized } : o
+          ),
+        };
+      }),
 
-      setOrders: (incoming) =>
-        set(() => ({
-          orders: (incoming ?? []).map(normalizeOrder),
-        })),
+    removeOrder: (id) =>
+      set((state) => ({
+        orders: state.orders.filter((o) => getId(o) !== id),
+      })),
 
-      purgeInactive: () =>
-        set((state) => ({
-          orders: state.orders.filter((o) => toStatusNumber(o.status) <= 2),
-        })),
-    }),
-    { name: "kds-orders" }
-  )
+    setOrders: (incoming) =>
+      set(() => ({
+        orders: (incoming ?? []).map(normalizeOrder),
+      })),
+
+    clearOrders: () =>
+      set(() => ({
+        orders: [],
+      })),
+
+    purgeInactive: () =>
+      set((state) => ({
+        orders: state.orders.filter((o) => toStatusNumber(o.status) <= 2),
+      })),
+  })
 );
 
 export default useOrderStore;

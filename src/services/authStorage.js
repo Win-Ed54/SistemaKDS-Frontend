@@ -2,6 +2,7 @@ const AUTH_KEYS = [
   "token",
   "role",
   "refresh_token",
+  "user_name",
   "admin_token",
   "waiter_token",
   "host_token",

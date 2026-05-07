@@ -14,7 +14,7 @@ const BAR_COLORS = [
   { bar: "#EF4444", glow: "rgba(239,68,68,0.3)", text: "text-red-400" },
 ];
 
-const TopProductsReport = () => {
+const TopProductsReport = ({ data: refreshSource = [] }) => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [limit, setLimit] = useState(10);
@@ -37,6 +37,10 @@ const TopProductsReport = () => {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    void load();
+  }, [load, refreshSource]);
 
   useEffect(() => {
     const intervalId = window.setInterval(() => {

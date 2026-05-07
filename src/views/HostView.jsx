@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Armchair,
@@ -11,6 +11,7 @@ import {
 
 import { logout } from "../services/authService";
 import { useToast } from "../context/ToastContext";
+import { getAuthValue } from "../services/authStorage";
 import {
   getWaiters,
   seatTable,
@@ -172,7 +173,7 @@ const HostView = () => {
   const [activeStatusFilter, setActiveStatusFilter] = useState("all");
   const [now, setNow] = useState(() => Date.now());
 
-  const hostName = localStorage.getItem("user_name") || "Host de Turno";
+  const hostName = getAuthValue("user_name") || "Host de Turno";
   const maxHostPartySize = Number(settings?.maxPartySize) > 0 ? Number(settings.maxPartySize) : 10;
   const defaultCleaningMinutes =
     Number(settings?.defaultCleaningMinutes) > 0
@@ -184,28 +185,54 @@ const HostView = () => {
     return () => window.clearInterval(timer);
   }, []);
 
+  const loadWaiters = useCallback(async () => {
+    try {
+      const data = await getWaiters();
+      const waiterList = (Array.isArray(data) ? data : [])
+        .map(normalizeWaiter)
+        .filter(Boolean)
+        .sort((a, b) => a.username.localeCompare(b.username));
+      setWaiters(waiterList);
+      setSelectedWaiterId((current) =>
+        waiterList.some((waiter) => waiter.id === current)
+          ? current
+          : "",
+      );
+    } catch (error) {
+      console.error("Error al cargar meseros:", error);
+      showToast("No se pudo cargar la lista de meseros", "error");
+    }
+  }, [showToast]);
+
   useEffect(() => {
-    const loadWaiters = async () => {
-      try {
-        const data = await getWaiters();
-        const waiterList = (Array.isArray(data) ? data : [])
-          .map(normalizeWaiter)
-          .filter(Boolean)
-          .sort((a, b) => a.username.localeCompare(b.username));
-        setWaiters(waiterList);
-        setSelectedWaiterId((current) =>
-          waiterList.some((waiter) => waiter.id === current)
-            ? current
-            : waiterList[0]?.id || "",
-        );
-      } catch (error) {
-        console.error("Error al cargar meseros:", error);
-        showToast("No se pudo cargar la lista de meseros", "error");
+    void loadWaiters();
+  }, [loadWaiters]);
+
+  useEffect(() => {
+    const handleWindowFocus = () => {
+      void loadWaiters();
+    };
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        void loadWaiters();
       }
     };
 
-    loadWaiters();
-  }, [showToast]);
+    window.addEventListener("focus", handleWindowFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener("focus", handleWindowFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [loadWaiters]);
+
+  useEffect(() => {
+    if (isConnected) {
+      void loadWaiters();
+    }
+  }, [isConnected, loadWaiters]);
 
   const normalizedTables = useMemo(
     () =>
@@ -252,7 +279,7 @@ const HostView = () => {
           };
         }
 
-        if (table.isOccupied || assignment) {
+        if (table.isOccupied) {
           const partySize = Number(assignment?.partySize) || table.capacity || 4;
           const estimatedDurationMinutes =
             Number(assignment?.estimatedDurationMinutes) ||

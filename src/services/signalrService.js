@@ -163,7 +163,6 @@ export const startConnection = async (preferredRole = "") => {
 
       if (err?.message?.includes("401")) {
         clearAuthStorage();
-        localStorage.removeItem("user_name");
         window.location.href = "/login";
         return connection;
       }

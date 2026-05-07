@@ -1,6 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { getMyWaiterOrdersToday, getWaiterSummary } from "../../services/api.service";
 import { logout } from "../../services/authService";
+import {
+  onOrderCancelled,
+  onOrderDelivered,
+  onOrderPaid,
+  onOrderPreparing,
+  onOrderReady,
+  subscribeConnectionStatus,
+} from "../../services/signalrService";
 
 const getLocationLabel = (order) =>
   Number(order?.tableNumber) > 0 ? `Mesa ${order.tableNumber}` : "Para llevar";
@@ -29,6 +37,57 @@ const WaiterProfile = ({ user, onClose }) => {
 
   useEffect(() => {
     fetchOrders();
+  }, [fetchOrders]);
+
+  useEffect(() => {
+    let refreshTimeoutId = null;
+
+    const scheduleRefresh = () => {
+      if (refreshTimeoutId) return;
+
+      refreshTimeoutId = window.setTimeout(() => {
+        refreshTimeoutId = null;
+        void fetchOrders();
+      }, 250);
+    };
+
+    const unsubscribePreparing = onOrderPreparing(() => {
+      scheduleRefresh();
+    });
+
+    const unsubscribeReady = onOrderReady(() => {
+      scheduleRefresh();
+    });
+
+    const unsubscribeDelivered = onOrderDelivered(() => {
+      scheduleRefresh();
+    });
+
+    const unsubscribePaid = onOrderPaid(() => {
+      scheduleRefresh();
+    });
+
+    const unsubscribeCancelled = onOrderCancelled(() => {
+      scheduleRefresh();
+    });
+
+    const unsubscribeConnection = subscribeConnectionStatus((connected) => {
+      if (connected) {
+        scheduleRefresh();
+      }
+    });
+
+    return () => {
+      if (refreshTimeoutId) {
+        clearTimeout(refreshTimeoutId);
+      }
+      unsubscribePreparing?.();
+      unsubscribeReady?.();
+      unsubscribeDelivered?.();
+      unsubscribePaid?.();
+      unsubscribeCancelled?.();
+      unsubscribeConnection?.();
+    };
   }, [fetchOrders]);
 
   const stats = useMemo(() => {

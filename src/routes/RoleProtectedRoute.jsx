@@ -24,7 +24,6 @@ const RoleProtectedRoute = ({ children, role }) => {
         <button
           onClick={() => {
             clearAuthStorage();
-            localStorage.removeItem("user_name");
             window.location.href = "/login";
           }}
         >

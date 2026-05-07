@@ -287,6 +287,7 @@ export default function WaiterView() {
   const { tableId, items, setTable } = useOrderBuilder();
   const ordersFromStore = useOrderStore((state) => state.orders);
   const setOrderStore = useOrderStore((state) => state.setOrders);
+  const clearOrderStore = useOrderStore((state) => state.clearOrders);
   const { showToast } = useToast();
 
   const [showProfile, setShowProfile] = useState(false);
@@ -306,7 +307,7 @@ export default function WaiterView() {
   const knownAssignedTableAlertIdsRef = useRef(new Set());
   const refreshTimeoutRef = useRef(null);
 
-  const waiterName = localStorage.getItem("user_name") || "Mesero de Turno";
+  const waiterName = getAuthValue("user_name") || "Mesero de Turno";
   const waiterId = getCurrentUserId();
   const currentUser = { username: waiterName, role: "waiter" };
   const defaultCleaningMinutes =
@@ -566,6 +567,7 @@ export default function WaiterView() {
   }, []);
 
   useEffect(() => {
+    clearOrderStore();
     void loadWaiterData();
 
     const unsubReady = onOrderReady((order) => {
@@ -585,11 +587,12 @@ export default function WaiterView() {
         clearTimeout(refreshTimeoutRef.current);
         refreshTimeoutRef.current = null;
       }
+      clearOrderStore();
       unsubReady?.();
       unsubDelivered?.();
       unsubPaid?.();
     };
-  }, [loadWaiterData, scheduleWaiterRefresh, showToast]);
+  }, [clearOrderStore, loadWaiterData, scheduleWaiterRefresh, showToast]);
 
   useEffect(() => {
     if (isConnected) scheduleWaiterRefresh();

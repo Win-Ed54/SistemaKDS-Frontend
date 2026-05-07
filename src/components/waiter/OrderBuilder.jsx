@@ -6,6 +6,7 @@ import { createOrder } from "../../services/api.service";
 import { useToast } from "../../context/ToastContext";
 import { validateOrderLimits } from "../../constants/orderLimits";
 import { getCurrentKdsSettings } from "../../store/kdsSettingsStore";
+import { getAuthValue } from "../../services/authStorage";
 
 const MAX_NOTE_LENGTH = 160;
 
@@ -154,7 +155,7 @@ const OrderBuilder = ({
 
     const order = {
       tableNumber: Number.parseInt(tableId, 10),
-      waiterName: localStorage.getItem("user_name") || "Mesero",
+      waiterName: getAuthValue("user_name") || "Mesero",
       customerName: normalizedCustomerName || "GENERAL",
       takeoutDestination: isTakeout ? normalizedTakeoutDestination : "",
       pax: isTakeout ? 0 : normalizedPax,

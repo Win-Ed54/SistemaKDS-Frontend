@@ -27,7 +27,6 @@ const refreshAccessToken = async () => {
 
   if (!res.ok) {
     clearAuthStorage();
-    localStorage.removeItem("user_name");
     window.location.href = "/login";
     throw new Error("Session expired");
   }

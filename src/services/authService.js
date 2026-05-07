@@ -113,8 +113,8 @@ export const login = async (username, password) => {
   });
 
   applySessionTokens(data);
+  setAuthValue("user_name", username);
   startAutoRefreshSession();
-  localStorage.setItem("user_name", username);
   window.dispatchEvent(new Event("auth-changed"));
 
   return data;
@@ -144,6 +144,5 @@ export { getRoleRoute as getRouteForRole };
 export const logout = () => {
   clearRefreshTimeout();
   clearAuthStorage();
-  localStorage.removeItem("user_name");
   window.dispatchEvent(new Event("auth-changed"));
 };

@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import { BellRing, MapPin, PackageCheck } from "lucide-react";
 import { finishOrder } from "../../services/api.service";
 import { useToast } from "../../context/ToastContext";
+import { getAuthValue } from "../../services/authStorage";
 import useOrderStore from "../../store/orderStore";
 
 const getTakeoutDestination = (order) =>
@@ -40,7 +41,7 @@ const belongsToWaiter = (order, waiterId, waiterName) => {
 const ReadyOrdersView = ({ variant = "floating", waiterId = "" }) => {
   const { showToast } = useToast();
   const ordersFromStore = useOrderStore((state) => state.orders);
-  const waiterName = localStorage.getItem("user_name") || "";
+  const waiterName = getAuthValue("user_name") || "";
 
   const readyOrders = useMemo(
     () =>
