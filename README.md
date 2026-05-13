@@ -63,6 +63,7 @@ Esta aplicacion consume la API del proyecto y mantiene sincronizados pedidos, me
 - los pedidos para llevar quedan ligados al mesero que los creo
 - ve solo sus ordenes listas
 - recibe notificaciones de sus propios pedidos
+- cuando cocina marca una orden como lista, la terminal del mesero la refleja de inmediato y luego resincroniza en segundo plano
 - no puede seguir pidiendo en mesas que ya entraron en limpieza
 - puede iniciar limpieza y liberar mesa con resincronizacion automatica
 
@@ -78,6 +79,7 @@ Esta aplicacion consume la API del proyecto y mantiene sincronizados pedidos, me
 - gestiona cobros de ordenes entregadas
 - cuando el prepago para llevar esta activo, cobra primero y la orden entra a cocina despues del pago completo
 - refresca cuando aparece una nueva orden pendiente de prepago
+- cuando el prepago para llevar esta activo, evita mostrar como cobro pendiente normal los pedidos para llevar que ya pertenecen a ese flujo
 - soporta cobros individuales, agrupados y seguimiento de pendientes
 
 ### Host
@@ -118,7 +120,7 @@ Cada pantalla recibe solo lo que necesita:
 
 - Cocina: ordenes nuevas y cambios de estado de cocina.
 - Caja: cobros, pagos y ordenes pendientes de prepago.
-- Mesero: eventos de sus propias ordenes.
+- Mesero: eventos de sus propias ordenes, con actualizacion inmediata cuando una orden pasa a lista.
 - Host: cambios de mesas y configuracion relacionada.
 - Admin: eventos operativos amplios para monitoreo.
 
@@ -221,4 +223,5 @@ Salida:
 
 - Las rutas principales se cargan bajo demanda para reducir el JavaScript inicial.
 - En el build puede aparecer una advertencia conocida de Rollup con `@microsoft/signalr`; no bloquea la compilacion.
+- La vista de caja separa el flujo de prepago para llevar del cobro normal de ordenes entregadas para reducir falsos pendientes visuales.
 - La documentacion evita publicar secretos, credenciales o configuraciones internas sensibles.
