@@ -47,7 +47,11 @@ const getOrderLocationLabel = (order) => {
 const isTakeoutPrepaymentOrder = (order, settings) =>
   Boolean(settings?.takeoutRequirePrepayment) &&
   Number(order?.tableNumber) === 0 &&
-  !order?.isPaid;
+  !order?.isPaid &&
+  !(
+    (typeof order?.status === "string" && order.status.toLowerCase() === "delivered") ||
+    order?.status === 3
+  );
 
 const getRemainingItemQuantity = (item) => {
   const fallbackRemaining =
@@ -195,11 +199,17 @@ const CashierView = () => {
       .filter((order) => {
         const status = typeof order.status === "string" ? order.status.toLowerCase() : order.status;
         const isDelivered = status === 3 || status === "delivered";
+        const isTakeout = Number(order?.tableNumber) === 0;
         const isTakeoutPendingPrepayment =
           Boolean(settings?.takeoutRequirePrepayment) &&
-          Number(order?.tableNumber) === 0 &&
+          isTakeout &&
           !order.isPaid;
-        return (isDelivered && !order.isPaid) || isTakeoutPendingPrepayment;
+        const isDeliveredPendingPayment =
+          isDelivered &&
+          !order.isPaid &&
+          !(Boolean(settings?.takeoutRequirePrepayment) && isTakeout);
+
+        return isDeliveredPendingPayment || isTakeoutPendingPrepayment;
       })
       .sort((a, b) => new Date(b.deliveredAt || b.createdAt) - new Date(a.deliveredAt || a.createdAt));
   }, [history, settings?.takeoutRequirePrepayment]);
