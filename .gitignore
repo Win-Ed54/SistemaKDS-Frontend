@@ -1,10 +1,11 @@
-# --- DEPENDENCIAS Y COMPILACIÓN (Fundamentales) ---
+# --- Dependencies and build output ---
 node_modules/
 dist/
 dist-ssr/
+.pnpm-store/
 *.local
 
-# --- REGISTROS Y LOGS ---
+# --- Logs ---
 logs
 *.log
 npm-debug.log*
@@ -13,22 +14,20 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# --- VARIABLES DE ENTORNO (Seguridad) ---
+# --- Environment files ---
 .env
 .env.local
 .env.*.local
 
-# --- CONFIGURACIÓN DE EDITORES ---
+# --- Editors and OS files ---
 .vscode/*
 !.vscode/extensions.json
 .idea
 .DS_Store
+Thumbs.db
+desktop.ini
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
-
-# --- ARCHIVOS TEMPORALES DE WINDOWS/MAC ---
-Thumbs.db
-desktop.ini
