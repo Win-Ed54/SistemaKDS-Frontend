@@ -153,12 +153,23 @@ Comportamiento esperado:
 ## Scripts
 
 ```powershell
-npm install
-npm run dev
-npm run build
-npm run preview
-npm run lint
+corepack pnpm install
+corepack pnpm run dev
+corepack pnpm run build
+corepack pnpm run preview
+corepack pnpm run lint
 ```
+
+Lockfile y gestor:
+
+- `packageManager`: `pnpm@11.1.1`
+- lockfile principal: `pnpm-lock.yaml`
+- el proyecto ya no usa `package-lock.json`
+
+Motivo del cambio:
+
+- Se migro de `npm` a `pnpm` para tener instalaciones mas reproducibles, mejor control sobre scripts de dependencias y un flujo Docker alineado con un lockfile unico.
+- Durante la migracion se evitaron upgrades mayores riesgosos para no romper el frontend ni el build del contenedor.
 
 ## Ejecucion local
 
@@ -169,8 +180,8 @@ Ubicacion:
 Pasos:
 
 ```powershell
-npm install
-npm run dev
+corepack pnpm install
+corepack pnpm run dev
 ```
 
 Acceso:
@@ -185,13 +196,13 @@ Si necesitas cambiar el destino:
 
 ```powershell
 $env:VITE_DEV_API_TARGET="http://TU_HOST:5162"
-npm run dev
+corepack pnpm run dev
 ```
 
 ## Build
 
 ```powershell
-npm run build
+corepack pnpm run build
 ```
 
 Salida:
@@ -203,6 +214,8 @@ Salida:
 - El despliegue Docker incluido esta pensado para servir el frontend en la raiz del sitio.
 - Si se publica en una subruta, se debe compilar con `VITE_BASE_PATH` apuntando a esa ruta.
 - `nginx.conf` protege `/assets/*` para evitar que el fallback del SPA responda `index.html` donde el navegador espera modulos JavaScript.
+- El `Dockerfile` instala dependencias con `pnpm install --frozen-lockfile` y luego ejecuta `pnpm run build`.
+- Si se reconstruye desde `docker compose`, no hace falta reinstalar dependencias manualmente dentro del contenedor.
 
 ## Notas
 
