@@ -223,6 +223,32 @@ const getOrderStatusNumber = (status) => {
   return statusMap[String(status || "").toLowerCase()] ?? -1;
 };
 
+const getOrderId = (order) => order?.id ?? order?._id ?? order?.Id;
+
+const mergeActiveOrdersPreservingLatestStatus = (incomingOrders, currentOrders) => {
+  const currentById = new Map(
+    (Array.isArray(currentOrders) ? currentOrders : [])
+      .map((order) => [getOrderId(order), order])
+      .filter(([id]) => Boolean(id)),
+  );
+
+  return (Array.isArray(incomingOrders) ? incomingOrders : []).map((order) => {
+    const id = getOrderId(order);
+    const current = id ? currentById.get(id) : null;
+
+    if (!current) return order;
+
+    const incomingStatus = getOrderStatusNumber(order?.status);
+    const currentStatus = getOrderStatusNumber(current?.status);
+
+    if (currentStatus > incomingStatus) {
+      return { ...order, ...current, status: currentStatus };
+    }
+
+    return order;
+  });
+};
+
 const getOrderStatusConfig = (status) => {
   const statusNumber = getOrderStatusNumber(status);
 
@@ -287,6 +313,7 @@ export default function WaiterView() {
   const { tableId, items, setTable } = useOrderBuilder();
   const ordersFromStore = useOrderStore((state) => state.orders);
   const setOrderStore = useOrderStore((state) => state.setOrders);
+  const updateOrderStore = useOrderStore((state) => state.updateOrder);
   const clearOrderStore = useOrderStore((state) => state.clearOrders);
   const { showToast } = useToast();
 
@@ -449,10 +476,11 @@ export default function WaiterView() {
         ? summary.pendingCleanupOrders
         : [];
       const active = Array.isArray(summary?.myActiveOrders) ? summary.myActiveOrders : [];
+      const mergedActive = mergeActiveOrdersPreservingLatestStatus(active, useOrderStore.getState().orders);
       setCleanupOrders(cleanup);
       setMyActiveOrders(active);
       setTodayOrders(Array.isArray(todayOrdersResponse) ? todayOrdersResponse : []);
-      setOrderStore(active);
+      setOrderStore(mergedActive);
     } catch (error) {
       console.error("Error al sincronizar datos:", error);
     }
@@ -503,12 +531,6 @@ export default function WaiterView() {
   const activityDeliveredOrders = useMemo(
     () =>
       todayOrdersSorted.filter((order) => getOrderStatusNumber(order?.status) === 3),
-    [todayOrdersSorted],
-  );
-
-  const activityCancelledOrders = useMemo(
-    () =>
-      todayOrdersSorted.filter((order) => getOrderStatusNumber(order?.status) === 4),
     [todayOrdersSorted],
   );
 
@@ -571,6 +593,22 @@ export default function WaiterView() {
     void loadWaiterData();
 
     const unsubReady = onOrderReady((order) => {
+      if (order) {
+        updateOrderStore(order);
+        setTodayOrders((prev) => {
+          const current = Array.isArray(prev) ? prev : [];
+          const orderId = getOrderId(order);
+          const exists = current.some((item) => getOrderId(item) === orderId);
+
+          if (!exists) {
+            return [order, ...current];
+          }
+
+          return current.map((item) =>
+            getOrderId(item) === orderId ? { ...item, ...order } : item,
+          );
+        });
+      }
       showToast(`${getOrderLocationLabel(order)} esta LISTA`, "success");
       scheduleWaiterRefresh();
     });
@@ -592,7 +630,7 @@ export default function WaiterView() {
       unsubDelivered?.();
       unsubPaid?.();
     };
-  }, [clearOrderStore, loadWaiterData, scheduleWaiterRefresh, showToast]);
+  }, [clearOrderStore, loadWaiterData, scheduleWaiterRefresh, showToast, updateOrderStore]);
 
   useEffect(() => {
     if (isConnected) scheduleWaiterRefresh();
