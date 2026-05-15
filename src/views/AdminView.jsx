@@ -480,7 +480,10 @@ const AdminView = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <StatsCard
             title="Recaudacion Hoy"
-            value={`$${stats.totalSales.toFixed(2)}`}
+            value={`$${new Intl.NumberFormat("es-SV", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            }).format(stats.totalSales)}`}
             color="text-[#39FF14]"
           />
           <StatsCard title="Eficiencia KDS" value={`${stats.avg} min`} color="text-cyan-400" />
