@@ -1,5 +1,6 @@
 import { Navigate } from "react-router-dom";
 import { clearAuthStorage, getAuthValue } from "../services/authStorage";
+import { getAppPath } from "../config/appPaths";
 
 const RoleProtectedRoute = ({ children, role }) => {
   const token = getAuthValue("token");
@@ -18,13 +19,13 @@ const RoleProtectedRoute = ({ children, role }) => {
         <p>
           Tu rol es <b>{normalizedUserRole || "desconocido"}</b>, pero esta pagina requiere ser <b>{requiredRole}</b>.
         </p>
-        <button onClick={() => (window.location.href = "/login")}>Volver al Inicio</button>
+        <button onClick={() => (window.location.href = getAppPath("/login"))}>Volver al Inicio</button>
         <br />
         <br />
         <button
           onClick={() => {
             clearAuthStorage();
-            window.location.href = "/login";
+            window.location.href = getAppPath("/login");
           }}
         >
           Cerrar Sesion

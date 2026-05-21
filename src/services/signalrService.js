@@ -1,8 +1,8 @@
 import * as signalR from "@microsoft/signalr";
 import useOrderStore from "../store/orderStore";
 import { clearAuthStorage, getAuthValue } from "./authStorage";
-
-const HUB_URL = import.meta.env.VITE_HUB_URL;
+import { getAppPath, getCurrentAppPath } from "../config/appPaths";
+import { hubUrl } from "../config/runtime";
 const ROLE_TOKEN_MAP = {
   kitchen: "kitchen_token",
   host: "host_token",
@@ -11,15 +11,13 @@ const ROLE_TOKEN_MAP = {
   cashier: "cashier_token",
 };
 
-if (!HUB_URL) throw new Error("VITE_HUB_URL no definido");
-
 export const getSignalRToken = (preferredRole = "") => {
   const normalizedPreferredRole = String(preferredRole || "").trim().toLowerCase();
   const preferredTokenKey = ROLE_TOKEN_MAP[normalizedPreferredRole];
   const preferredToken = preferredTokenKey ? getAuthValue(preferredTokenKey) : null;
   if (preferredToken) return preferredToken;
 
-  const path = window.location.pathname;
+  const path = getCurrentAppPath();
 
   if (path.includes("cocina")) return getAuthValue("kitchen_token");
   if (path.includes("host")) return getAuthValue("host_token");
@@ -38,7 +36,7 @@ export const getSignalRToken = (preferredRole = "") => {
 export const hasSignalRToken = (preferredRole = "") => Boolean(getSignalRToken(preferredRole));
 
 const connection = new signalR.HubConnectionBuilder()
-  .withUrl(HUB_URL, {
+  .withUrl(hubUrl, {
     accessTokenFactory: () => getSignalRToken(activePreferredRole),
   })
   .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
@@ -163,7 +161,7 @@ export const startConnection = async (preferredRole = "") => {
 
       if (err?.message?.includes("401")) {
         clearAuthStorage();
-        window.location.href = "/login";
+        window.location.href = getAppPath("/login");
         return connection;
       }
 

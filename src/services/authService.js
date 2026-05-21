@@ -5,8 +5,7 @@ import {
   getRoleRoute,
   setAuthValue,
 } from "./authStorage";
-
-const API_URL = "/api";
+import { buildApiUrl } from "../config/runtime";
 const REFRESH_BUFFER_MS = 5 * 60 * 1000;
 const MIN_REFRESH_DELAY_MS = 30 * 1000;
 
@@ -74,7 +73,7 @@ export const refreshSessionToken = async () => {
     throw new Error("No refresh token");
   }
 
-  refreshInFlight = fetch(`${API_URL}/auth/refresh`, {
+  refreshInFlight = fetch(buildApiUrl("/auth/refresh"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ refreshToken }),

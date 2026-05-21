@@ -8,6 +8,7 @@ import {
 } from "../../services/api.service";
 import { useToast } from "../../context/ToastContext";
 import ConfirmDialog from "../common/ConfirmDialog";
+import { resolveAssetUrl } from "../../config/runtime";
 
 const CATEGORIES = ["Hamburguesas", "Pollo", "Acompanamientos", "Postres", "Bebidas", "Ensaladas", "Desayunos", "Combos de Wendy"];
 const EMPTY_FORM = { name: "", description: "", price: "", stock: "", category: "", imageUrl: "" };
@@ -173,7 +174,7 @@ const ProductModal = ({ product, onClose, onSaved }) => {
           {form.imageUrl ? (
             <div className="mt-2 h-24 overflow-hidden rounded-xl border border-slate-700 bg-slate-800">
               <img
-                src={form.imageUrl}
+                src={resolveAssetUrl(form.imageUrl)}
                 alt="preview"
                 className="h-full w-full object-cover"
                 onError={(event) => {
@@ -419,7 +420,7 @@ const InventoryManager = ({ products, refresh }) => {
                       <div className="flex items-center gap-3">
                         {product.imageUrl ? (
                           <img
-                            src={product.imageUrl}
+                            src={resolveAssetUrl(product.imageUrl)}
                             alt={product.name}
                             className="h-10 w-10 shrink-0 rounded-lg border border-slate-700 object-cover"
                           />

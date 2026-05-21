@@ -1,9 +1,9 @@
 import { clearAuthStorage, getAuthValue, setAuthValue } from "./authStorage";
-
-const API_URL = "/api";
+import { getAppPath, getCurrentAppPath } from "../config/appPaths";
+import { buildApiUrl } from "../config/runtime";
 
 const getToken = () => {
-  const path = window.location.pathname;
+  const path = getCurrentAppPath();
   if (path.includes("cocina")) return getAuthValue("kitchen_token");
   if (path.includes("host")) return getAuthValue("host_token");
   if (path.includes("terminal")) return getAuthValue("waiter_token");
@@ -19,7 +19,7 @@ const refreshAccessToken = async () => {
   const refreshToken = getAuthValue("refresh_token");
   if (!refreshToken) throw new Error("No refresh token");
 
-  const res = await fetch(`${API_URL}/auth/refresh`, {
+  const res = await fetch(buildApiUrl("/auth/refresh"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ refreshToken }),
@@ -27,7 +27,7 @@ const refreshAccessToken = async () => {
 
   if (!res.ok) {
     clearAuthStorage();
-    window.location.href = "/login";
+    window.location.href = getAppPath("/login");
     throw new Error("Session expired");
   }
 
@@ -46,7 +46,7 @@ const request = async (endpoint, options = {}, retry = true) => {
   if (token) headers.Authorization = `Bearer ${token}`;
 
   const cleanEndpoint = endpoint.startsWith("/") ? endpoint.slice(1) : endpoint;
-  const response = await fetch(`${API_URL}/${cleanEndpoint}`, { ...options, headers });
+  const response = await fetch(buildApiUrl(cleanEndpoint), { ...options, headers });
   const isAuthRoute = cleanEndpoint.startsWith("auth/login");
 
   if (response.status === 401 && retry && !isAuthRoute) {

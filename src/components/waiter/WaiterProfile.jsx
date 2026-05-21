@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { getMyWaiterOrdersToday, getWaiterSummary } from "../../services/api.service";
 import { logout } from "../../services/authService";
+import { getAppPath } from "../../config/appPaths";
 import {
   onOrderCancelled,
   onOrderDelivered,
@@ -185,7 +186,7 @@ const WaiterProfile = ({ user, onClose }) => {
           <button
             onClick={() => {
               logout();
-              window.location.href = "/login";
+              window.location.href = getAppPath("/login");
             }}
             className="w-full py-4 rounded-2xl bg-red-600/10 border border-red-600/20 text-red-500 font-black uppercase text-[10px] tracking-widest hover:bg-red-600 hover:text-white transition-all"
           >

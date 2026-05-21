@@ -1,11 +1,12 @@
 import React from "react";
 import { LogOut, ShieldCheck } from "lucide-react";
 import { logout } from "../../services/authService";
+import { getAppPath } from "../../config/appPaths";
 
 const AdminHeader = ({ isConnected, lastUpdate, loading = false }) => {
   const handleLogout = () => {
     logout();
-    window.location.href = "/login";
+    window.location.href = getAppPath("/login");
   };
 
   return (

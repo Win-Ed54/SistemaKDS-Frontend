@@ -141,6 +141,8 @@ En frontend ya se considera:
 
 Variables usadas por el frontend:
 
+- `VITE_API_URL`
+- `VITE_BACKEND_URL`
 - `VITE_HUB_URL`
 - `VITE_DEV_API_TARGET`
 - `VITE_BASE_PATH`
@@ -149,6 +151,9 @@ Comportamiento esperado:
 
 - Vite corre en `5173`
 - el proxy de desarrollo redirige `/api`, `/images` y `/ordersHub`
+- en produccion `VITE_API_URL` debe apuntar a tu API de Railway, por ejemplo `https://tu-backend.up.railway.app/api`
+- en produccion `VITE_BACKEND_URL` debe apuntar al origen del backend, por ejemplo `https://tu-backend.up.railway.app`
+- si no defines `VITE_HUB_URL`, el frontend lo deriva desde `VITE_BACKEND_URL` o `VITE_API_URL`
 - `VITE_DEV_API_TARGET` apunta al backend local
 - `VITE_BASE_PATH` debe ajustarse si el frontend se publica en una subruta
 
@@ -215,9 +220,19 @@ Salida:
 
 - El despliegue Docker incluido esta pensado para servir el frontend en la raiz del sitio.
 - Si se publica en una subruta, se debe compilar con `VITE_BASE_PATH` apuntando a esa ruta.
+- Para Vercel se incluye `vercel.json` con fallback SPA para que rutas como `/panel` o `/cocina` no fallen al recargar.
 - `nginx.conf` protege `/assets/*` para evitar que el fallback del SPA responda `index.html` donde el navegador espera modulos JavaScript.
 - El `Dockerfile` instala dependencias con `pnpm install --frozen-lockfile` y luego ejecuta `pnpm run build`.
 - Si se reconstruye desde `docker compose`, no hace falta reinstalar dependencias manualmente dentro del contenedor.
+
+## Variables Para Vercel
+
+Configura estas variables en el proyecto del frontend:
+
+- `VITE_API_URL=https://TU-BACKEND.up.railway.app/api`
+- `VITE_BACKEND_URL=https://TU-BACKEND.up.railway.app`
+- `VITE_HUB_URL=https://TU-BACKEND.up.railway.app/ordersHub`
+- `VITE_BASE_PATH=/`
 
 ## Notas
 

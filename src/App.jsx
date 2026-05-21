@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { appBasePath, getCurrentAppPath } from "./config/appPaths";
 
 import ViewErrorBoundary from "./components/common/ViewErrorBoundary";
 import RoleProtectedRoute from "./routes/RoleProtectedRoute";
@@ -75,7 +76,7 @@ const ScreenLoading = () => (
 function App() {
   useEffect(() => {
     const init = async (forceRestart = false) => {
-      const isLoginRoute = window.location.pathname === "/login";
+      const isLoginRoute = getCurrentAppPath() === "/login";
       if (!hasSignalRToken() || signalRInitialized || isLoginRoute) return;
 
       try {
@@ -116,7 +117,7 @@ function App() {
   }, []);
 
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={appBasePath || undefined}>
       <Suspense fallback={<ScreenLoading />}>
         <Routes>
           <Route path="/" element={<Navigate to="/login" replace />} />

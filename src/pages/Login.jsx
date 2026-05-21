@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getRouteForRole, getSession, login, logout } from "../services/authService";
+import { buildApiUrl } from "../config/runtime";
 
 export default function Login() {
   const [username, setUsername] = useState("");
@@ -37,7 +38,7 @@ export default function Login() {
       }
 
       try {
-        const response = await fetch("/api/auth/health", { cache: "no-store" });
+        const response = await fetch(buildApiUrl("/auth/health"), { cache: "no-store" });
         if (cancelled) return;
 
         if (response.ok) {
@@ -99,7 +100,7 @@ export default function Login() {
     setHealthMessage("Verificando conexion con el servidor...");
 
     try {
-      const response = await fetch("/api/auth/health", { cache: "no-store" });
+      const response = await fetch(buildApiUrl("/auth/health"), { cache: "no-store" });
       if (response.ok) {
         setHealthState("ok");
         setHealthMessage("Servidor activo");

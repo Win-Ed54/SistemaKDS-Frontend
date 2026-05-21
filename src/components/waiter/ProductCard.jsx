@@ -1,5 +1,6 @@
 import React from "react";
 import useOrderBuilder from "../../hooks/useOrderBuilder";
+import { resolveAssetUrl } from "../../config/runtime";
 
 const ProductCard = ({ product, onAdd }) => {
   const { items } = useOrderBuilder();
@@ -9,7 +10,7 @@ const ProductCard = ({ product, onAdd }) => {
   const productPrice = Number(product.price ?? product.Price ?? 0);
   const productName = product.name || product.Name || "Producto";
   const productDescription = product.description || product.Description || "";
-  const productImageUrl = product.imageUrl || product.ImageUrl || "";
+  const productImageUrl = resolveAssetUrl(product.imageUrl || product.ImageUrl || "");
 
   const productItems = items.filter((item) => item.productId === productId);
   const quantityInCart = productItems.reduce((sum, item) => sum + item.quantity, 0);
