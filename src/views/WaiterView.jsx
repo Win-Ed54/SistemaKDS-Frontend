@@ -27,7 +27,13 @@ import useOrderBuilder from "../hooks/useOrderBuilder";
 import useProducts from "../hooks/useProducts";
 import useSignalRConnection from "../hooks/useSignalRConnection";
 import useTables from "../hooks/useTables";
-import { onOrderDelivered, onOrderPaid, onOrderReady } from "../services/signalrService";
+import {
+  onOrderCancelled,
+  onOrderDelivered,
+  onOrderPaid,
+  onOrderPreparing,
+  onOrderReady,
+} from "../services/signalrService";
 import useOrderStore from "../store/orderStore";
 import OrderPanel from "../components/waiter/OrderPanel";
 import ProductList from "../components/waiter/ProductList";
@@ -592,6 +598,9 @@ export default function WaiterView() {
     clearOrderStore();
     void loadWaiterData();
 
+    const unsubPreparing = onOrderPreparing(() => {
+      scheduleWaiterRefresh();
+    });
     const unsubReady = onOrderReady((order) => {
       if (order) {
         updateOrderStore(order);
@@ -613,6 +622,7 @@ export default function WaiterView() {
       scheduleWaiterRefresh();
     });
     const unsubDelivered = onOrderDelivered(() => scheduleWaiterRefresh());
+    const unsubCancelled = onOrderCancelled(() => scheduleWaiterRefresh());
     const unsubPaid = onOrderPaid((order) => {
       if (Number(order?.tableNumber) > 0) {
         showToast(`${getOrderLocationLabel(order)} pagada, lista para limpieza`, "success");
@@ -626,8 +636,10 @@ export default function WaiterView() {
         refreshTimeoutRef.current = null;
       }
       clearOrderStore();
+      unsubPreparing?.();
       unsubReady?.();
       unsubDelivered?.();
+      unsubCancelled?.();
       unsubPaid?.();
     };
   }, [clearOrderStore, loadWaiterData, scheduleWaiterRefresh, showToast, updateOrderStore]);

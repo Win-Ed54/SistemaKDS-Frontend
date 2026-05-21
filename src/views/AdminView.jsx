@@ -194,20 +194,31 @@ const AdminView = () => {
     const handleReload = () => scheduleSilentLoad();
     const reloadEvents = [
       "receiveorder",
+      "OrderCreated",
       "orderready",
+      "OrderReady",
       "orderpreparing",
+      "OrderPreparing",
       "orderdelivered",
+      "OrderDelivered",
       "orderpaid",
+      "OrderPaid",
       "ordercancelled",
+      "OrderCancelled",
       "tablesupdated",
+      "TableUpdated",
+      "productupdated",
+      "ProductUpdated",
     ];
 
     reloadEvents.forEach((eventName) => connection.on(eventName, handleReload));
     connection.on("stockupdated", handleStockUpdate);
+    connection.on("StockUpdated", handleStockUpdate);
 
     return () => {
       reloadEvents.forEach((eventName) => connection.off(eventName, handleReload));
       connection.off("stockupdated", handleStockUpdate);
+      connection.off("StockUpdated", handleStockUpdate);
     };
   }, [connection, scheduleSilentLoad]);
 

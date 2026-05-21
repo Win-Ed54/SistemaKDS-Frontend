@@ -42,7 +42,11 @@ const refreshAccessToken = async () => {
 
 const request = async (endpoint, options = {}, retry = true) => {
   const token = getToken();
-  const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
+  const headers = { ...(options.headers || {}) };
+  const isFormData = options.body instanceof FormData;
+  if (!isFormData && headers["Content-Type"] === undefined) {
+    headers["Content-Type"] = "application/json";
+  }
   if (token) headers.Authorization = `Bearer ${token}`;
 
   const cleanEndpoint = endpoint.startsWith("/") ? endpoint.slice(1) : endpoint;
@@ -108,6 +112,11 @@ export const createProduct = (data) =>
   request("/products", { method: "POST", body: JSON.stringify(data) });
 export const updateProduct = (id, data) =>
   request(`/products/${id}`, { method: "PUT", body: JSON.stringify(data) });
+export const uploadProductImage = (file) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  return request("/products/upload-image", { method: "POST", body: formData });
+};
 export const deleteProduct = (id) => request(`/products/${id}`, { method: "DELETE" });
 export const getWaiterOrdersToday = (waiterName) => request(`/orders/waiter/${waiterName}/today`);
 export const getMyWaiterOrdersToday = () => request("/waiter/today");

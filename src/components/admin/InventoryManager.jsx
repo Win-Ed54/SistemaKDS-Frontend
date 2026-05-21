@@ -1,17 +1,103 @@
-import React, { useMemo, useState } from "react";
-import { Plus, Search } from "lucide-react";
+import React, { useEffect, useMemo, useState } from "react";
+import { ImagePlus, Plus, Search, Upload, X } from "lucide-react";
 import {
   createProduct,
   deleteProduct,
   updateProduct,
   updateProductStock,
+  uploadProductImage,
 } from "../../services/api.service";
 import { useToast } from "../../context/ToastContext";
 import ConfirmDialog from "../common/ConfirmDialog";
 import { resolveAssetUrl } from "../../config/runtime";
 
-const CATEGORIES = ["Hamburguesas", "Pollo", "Acompanamientos", "Postres", "Bebidas", "Ensaladas", "Desayunos", "Combos de Wendy"];
+const CATEGORIES = [
+  "Entradas",
+  "Sopas y cremas",
+  "Ensaladas",
+  "Hamburguesas",
+  "Pollo",
+  "Carnes",
+  "Mariscos",
+  "Pastas",
+  "Pizzas",
+  "Tacos y wraps",
+  "Acompanamientos",
+  "Desayunos",
+  "Menu infantil",
+  "Postres",
+  "Bebidas",
+  "Cafe y te",
+  "Combos",
+  "Especialidades de la casa",
+];
 const EMPTY_FORM = { name: "", description: "", price: "", stock: "", category: "", imageUrl: "" };
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
+
+const fileToImageElement = (file) =>
+  new Promise((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file);
+    const image = new Image();
+
+    image.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(image);
+    };
+
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error("No se pudo leer la imagen seleccionada."));
+    };
+
+    image.src = objectUrl;
+  });
+
+const canvasToBlob = (canvas, type, quality) =>
+  new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) {
+          reject(new Error("No se pudo procesar la imagen."));
+          return;
+        }
+        resolve(blob);
+      },
+      type,
+      quality,
+    );
+  });
+
+const normalizeFileName = (name) =>
+  String(name || "producto")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9-_]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .toLowerCase() || "producto";
+
+const convertImageToWebp = async (file) => {
+  if (file.type === "image/webp") return file;
+
+  const image = await fileToImageElement(file);
+  const canvas = document.createElement("canvas");
+  canvas.width = image.naturalWidth || image.width;
+  canvas.height = image.naturalHeight || image.height;
+
+  const context = canvas.getContext("2d");
+  if (!context) {
+    throw new Error("Tu navegador no pudo preparar la conversion de la imagen.");
+  }
+
+  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+  const blob = await canvasToBlob(canvas, "image/webp", 0.9);
+  const baseName = normalizeFileName(file.name.replace(/\.[^.]+$/, ""));
+
+  return new File([blob], `${baseName}.webp`, {
+    type: "image/webp",
+    lastModified: Date.now(),
+  });
+};
 
 const ProductModal = ({ product, onClose, onSaved }) => {
   const isEdit = !!product?.id;
@@ -29,9 +115,56 @@ const ProductModal = ({ product, onClose, onSaved }) => {
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(product?.imageUrl ? resolveAssetUrl(product.imageUrl) : "");
+
+  useEffect(
+    () => () => {
+      if (previewUrl?.startsWith("blob:")) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    },
+    [previewUrl],
+  );
 
   const handleChange = (event) =>
     setForm((prev) => ({ ...prev, [event.target.name]: event.target.value }));
+
+  const clearSelectedImage = () => {
+    if (previewUrl?.startsWith("blob:")) {
+      URL.revokeObjectURL(previewUrl);
+    }
+    setSelectedImage(null);
+    setPreviewUrl(form.imageUrl ? resolveAssetUrl(form.imageUrl) : "");
+  };
+
+  const handleImageChange = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file) return;
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+      setError("Solo se permiten imagenes JPG, PNG o WEBP.");
+      return;
+    }
+    if (file.size > MAX_IMAGE_SIZE_BYTES) {
+      setError("La imagen no puede superar 5 MB.");
+      return;
+    }
+
+    setError(null);
+
+    try {
+      const preparedFile = await convertImageToWebp(file);
+      if (previewUrl?.startsWith("blob:")) {
+        URL.revokeObjectURL(previewUrl);
+      }
+      setSelectedImage(preparedFile);
+      setPreviewUrl(URL.createObjectURL(preparedFile));
+    } catch (err) {
+      setError(err.message || "No se pudo preparar la imagen.");
+    }
+  };
 
   const handleSubmit = async () => {
     if (!form.name.trim()) return setError("El nombre es obligatorio.");
@@ -54,11 +187,14 @@ const ProductModal = ({ product, onClose, onSaved }) => {
       category: form.category,
     };
 
-    if (form.imageUrl && form.imageUrl.trim() !== "") {
-      payload.imageUrl = form.imageUrl.trim();
-    }
-
     try {
+      if (selectedImage) {
+        const uploadResult = await uploadProductImage(selectedImage);
+        payload.imageUrl = uploadResult?.imageUrl || "";
+      } else if (form.imageUrl && form.imageUrl.trim() !== "") {
+        payload.imageUrl = form.imageUrl.trim();
+      }
+
       if (isEdit) {
         await updateProduct(product.id, payload);
       } else {
@@ -161,20 +297,42 @@ const ProductModal = ({ product, onClose, onSaved }) => {
             </select>
           </Field>
 
-          <Field label="URL de imagen">
-            <input
-              name="imageUrl"
-              value={form.imageUrl}
-              onChange={handleChange}
-              placeholder="https://..."
-              className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm font-bold text-white outline-none transition-all placeholder:text-slate-700 focus:border-orange-500"
-            />
+          <Field label="Imagen del producto">
+            <div className="mt-1 rounded-2xl border border-dashed border-slate-700 bg-slate-950/80 p-4">
+              <div className="flex flex-wrap items-center gap-3">
+                <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-cyan-500/40 bg-cyan-500/10 px-4 py-3 text-[11px] font-black uppercase tracking-[0.18em] text-cyan-300 transition-all hover:bg-cyan-500/20">
+                  <Upload className="h-4 w-4" />
+                  Agregar imagen
+                  <input
+                    type="file"
+                    accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                    onChange={handleImageChange}
+                    className="hidden"
+                  />
+                </label>
+
+                {(selectedImage || form.imageUrl) ? (
+                  <button
+                    type="button"
+                    onClick={clearSelectedImage}
+                    className="inline-flex items-center gap-2 rounded-xl border border-slate-700 px-4 py-3 text-[11px] font-black uppercase tracking-[0.18em] text-slate-300 transition-all hover:border-red-400/50 hover:text-red-300"
+                  >
+                    <X className="h-4 w-4" />
+                    Quitar
+                  </button>
+                ) : null}
+              </div>
+
+              <p className="mt-3 text-[11px] font-bold text-slate-500">
+                Se permiten archivos JPG, PNG o WEBP. Si subes JPG o PNG, se convierte a WEBP antes de guardarse.
+              </p>
+            </div>
           </Field>
 
-          {form.imageUrl ? (
+          {previewUrl ? (
             <div className="mt-2 h-24 overflow-hidden rounded-xl border border-slate-700 bg-slate-800">
               <img
-                src={resolveAssetUrl(form.imageUrl)}
+                src={previewUrl}
                 alt="preview"
                 className="h-full w-full object-cover"
                 onError={(event) => {
@@ -182,7 +340,11 @@ const ProductModal = ({ product, onClose, onSaved }) => {
                 }}
               />
             </div>
-          ) : null}
+          ) : (
+            <div className="mt-2 flex h-24 items-center justify-center rounded-xl border border-slate-800 bg-slate-950 text-slate-600">
+              <ImagePlus className="h-5 w-5" />
+            </div>
+          )}
 
           {error ? (
             <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-[11px] font-black uppercase text-red-400">
