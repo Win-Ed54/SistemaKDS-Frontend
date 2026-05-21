@@ -30,6 +30,7 @@ Esta aplicacion consume la API del proyecto y mantiene sincronizados pedidos, me
 - `admin`
 - `host`
 
+
 ## Funcionalidad actual
 
 - login por rol
