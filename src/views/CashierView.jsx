@@ -14,6 +14,7 @@ import { useToast } from "../context/ToastContext";
 import useKdsSettings from "../hooks/useKdsSettings";
 import useSignalRConnection from "../hooks/useSignalRConnection";
 import { logout } from "../services/authService";
+import { getAuthValue } from "../services/authStorage";
 import { getOrderHistory, payOrder } from "../services/api.service";
 import {
   onOrderCancelled,
@@ -22,6 +23,7 @@ import {
   onOrderPaid,
   subscribeConnectionStatus,
 } from "../services/signalrService";
+import { readViewState, writeViewState } from "../utils/viewStateStorage";
 
 const formatCurrency = (value) =>
   new Intl.NumberFormat("es-SV", {
@@ -115,6 +117,27 @@ const createChargeSummaryEntry = ({ type, label, amount, detail, paymentMethod }
   createdAt: Date.now(),
 });
 
+const MAX_RECENT_CHARGES = 6;
+
+const getRecentChargesStorageKey = (cashierName) =>
+  `kds.cashier.recentCharges.${String(cashierName || "default").trim().toLowerCase()}`;
+
+const loadStoredRecentCharges = (cashierName) => {
+  try {
+    const rawValue = localStorage.getItem(getRecentChargesStorageKey(cashierName));
+    if (!rawValue) return [];
+
+    const parsed = JSON.parse(rawValue);
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed
+      .filter((entry) => entry && typeof entry === "object")
+      .slice(0, MAX_RECENT_CHARGES);
+  } catch {
+    return [];
+  }
+};
+
 const getLatestChargeTime = (recentCharges) => {
   if (!Array.isArray(recentCharges) || recentCharges.length === 0) return "Sin cobros aun";
   return formatTime(recentCharges[0]?.createdAt || Date.now());
@@ -122,14 +145,17 @@ const getLatestChargeTime = (recentCharges) => {
 
 const CashierView = () => {
   const navigate = useNavigate();
+  const cashierName = getAuthValue("user_name") || "caja";
   const [history, setHistory] = useState([]);
   const [chargingOrders, setChargingOrders] = useState({});
   const [paymentForms, setPaymentForms] = useState({});
   const [loading, setLoading] = useState(false);
   const [tableSearch, setTableSearch] = useState("");
-  const [groupMode, setGroupMode] = useState("grouped");
+  const [groupMode, setGroupMode] = useState(() =>
+    readViewState("cashier", cashierName, "groupMode", "grouped"),
+  );
   const [selectedItemPayments, setSelectedItemPayments] = useState({});
-  const [recentCharges, setRecentCharges] = useState([]);
+  const [recentCharges, setRecentCharges] = useState(() => loadStoredRecentCharges(cashierName));
   const refreshTimeoutRef = useRef(null);
 
   const { isConnected } = useSignalRConnection("cashier");
@@ -149,6 +175,25 @@ const CashierView = () => {
       setLoading(false);
     }
   }, [showToast]);
+
+  useEffect(() => {
+    setRecentCharges(loadStoredRecentCharges(cashierName));
+  }, [cashierName]);
+
+  useEffect(() => {
+    writeViewState("cashier", cashierName, "groupMode", groupMode);
+  }, [cashierName, groupMode]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        getRecentChargesStorageKey(cashierName),
+        JSON.stringify(recentCharges.slice(0, MAX_RECENT_CHARGES)),
+      );
+    } catch {
+      // Si el navegador bloquea almacenamiento, la caja sigue funcionando sin persistencia.
+    }
+  }, [cashierName, recentCharges]);
 
   useEffect(() => {
     const scheduleRefresh = () => {
@@ -354,7 +399,7 @@ const CashierView = () => {
   };
 
   const registerChargeSummary = (entry) => {
-    setRecentCharges((prev) => [entry, ...prev].slice(0, 6));
+    setRecentCharges((prev) => [entry, ...prev].slice(0, MAX_RECENT_CHARGES));
   };
 
   const handleCharge = async (order, formKey = order.id) => {
@@ -675,7 +720,7 @@ const CashierView = () => {
           {recentCharges.length === 0 ? (
             <div className="mt-4 rounded-[1.6rem] border border-dashed border-slate-800 bg-slate-950/50 p-8 text-center">
               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
-                Aun no hay cobros registrados en esta sesion
+                Aun no hay cobros recientes guardados
               </p>
             </div>
           ) : (

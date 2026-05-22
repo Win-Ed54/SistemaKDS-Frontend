@@ -40,6 +40,7 @@ import ProductList from "../components/waiter/ProductList";
 import ReadyOrdersView from "../components/waiter/ReadyOrdersView";
 import TableSelector from "../components/waiter/TableSelector";
 import WaiterProfile from "../components/waiter/WaiterProfile";
+import { readViewState, writeViewState } from "../utils/viewStateStorage";
 
 const TABS = [
   { id: "ordenar", label: "Nueva orden", icon: ReceiptText },
@@ -315,17 +316,22 @@ export default function WaiterView() {
   const { isConnected } = useSignalRConnection("waiter");
   const { settings } = useKdsSettings();
   const { products } = useProducts();
-  const { tables } = useTables();
+  const { tables, refetch: refetchTables } = useTables();
   const { tableId, items, setTable } = useOrderBuilder();
   const ordersFromStore = useOrderStore((state) => state.orders);
   const setOrderStore = useOrderStore((state) => state.setOrders);
   const updateOrderStore = useOrderStore((state) => state.updateOrder);
   const clearOrderStore = useOrderStore((state) => state.clearOrders);
   const { showToast } = useToast();
+  const waiterName = getAuthValue("user_name") || "Mesero de Turno";
 
   const [showProfile, setShowProfile] = useState(false);
-  const [activeCategory, setActiveCategory] = useState("Todas");
-  const [activeTab, setActiveTab] = useState("ordenar");
+  const [activeCategory, setActiveCategory] = useState(() =>
+    readViewState("waiter", waiterName, "activeCategory", "Todas"),
+  );
+  const [activeTab, setActiveTab] = useState(() =>
+    readViewState("waiter", waiterName, "activeTab", "ordenar"),
+  );
   const [pax, setPax] = useState("");
   const [stats, setStats] = useState({ created: 0, delivered: 0 });
   const [cleanupOrders, setCleanupOrders] = useState([]);
@@ -334,13 +340,15 @@ export default function WaiterView() {
   const [cleaningTables, setCleaningTables] = useState({});
   const [startingCleaningTables, setStartingCleaningTables] = useState({});
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [isDesktopCartOpen, setIsDesktopCartOpen] = useState(true);
+  const [isDesktopCartOpen, setIsDesktopCartOpen] = useState(() =>
+    readViewState("waiter", waiterName, "isDesktopCartOpen", true),
+  );
+  const [expandedOrderIds, setExpandedOrderIds] = useState({});
   const [now, setNow] = useState(() => Date.now());
   const [lastAssignedTableAlert, setLastAssignedTableAlert] = useState(null);
   const knownAssignedTableAlertIdsRef = useRef(new Set());
   const refreshTimeoutRef = useRef(null);
 
-  const waiterName = getAuthValue("user_name") || "Mesero de Turno";
   const waiterId = getCurrentUserId();
   const currentUser = { username: waiterName, role: "waiter" };
   const defaultCleaningMinutes =
@@ -595,6 +603,18 @@ export default function WaiterView() {
   }, []);
 
   useEffect(() => {
+    writeViewState("waiter", waiterName, "activeCategory", activeCategory);
+  }, [activeCategory, waiterName]);
+
+  useEffect(() => {
+    writeViewState("waiter", waiterName, "activeTab", activeTab);
+  }, [activeTab, waiterName]);
+
+  useEffect(() => {
+    writeViewState("waiter", waiterName, "isDesktopCartOpen", isDesktopCartOpen);
+  }, [isDesktopCartOpen, waiterName]);
+
+  useEffect(() => {
     clearOrderStore();
     void loadWaiterData();
 
@@ -647,6 +667,12 @@ export default function WaiterView() {
   useEffect(() => {
     if (isConnected) scheduleWaiterRefresh();
   }, [isConnected, scheduleWaiterRefresh]);
+
+  useEffect(() => {
+    if (isConnected) {
+      void refetchTables();
+    }
+  }, [isConnected, refetchTables]);
 
   useEffect(() => {
     const selectedTableStillAvailable = serviceTables.some(
@@ -784,6 +810,15 @@ export default function WaiterView() {
     }
   };
 
+  const toggleOrderExpanded = useCallback((orderId) => {
+    if (!orderId) return;
+
+    setExpandedOrderIds((prev) => ({
+      ...prev,
+      [orderId]: !prev[orderId],
+    }));
+  }, []);
+
   const handleLogout = () => {
     logout();
     navigate("/login");
@@ -834,8 +869,8 @@ export default function WaiterView() {
         </div>
       </header>
 
-      <main className="max-w-[1600px] mx-auto px-3 pb-32 pt-3 lg:px-5 lg:pb-10 space-y-5">
-        <section className="sticky top-[94px] z-30 rounded-[2rem] border border-slate-800 bg-slate-900/90 p-2 shadow-xl overflow-x-auto no-scrollbar xl:static">
+      <main className="max-w-[1600px] mx-auto px-3 pb-32 pt-4 lg:px-5 lg:pb-10 lg:pt-3 space-y-5">
+        <section className="sticky top-[104px] z-30 mt-1 rounded-[2rem] border border-slate-800/90 bg-slate-900/95 p-2.5 shadow-[0_20px_45px_rgba(2,6,23,0.34)] backdrop-blur-md overflow-x-auto no-scrollbar sm:top-[110px] xl:static xl:mt-0 xl:p-2">
           <div className="flex gap-2 min-w-max">
             {TABS.map((tab) => {
               const Icon = tab.icon;
@@ -1121,7 +1156,12 @@ export default function WaiterView() {
                 ) : (
                   <div className="space-y-3">
                     {activityActiveOrders.map((order) => (
-                      <OrderActivityCard key={order.id} order={order} />
+                      <OrderActivityCard
+                        key={order.id}
+                        order={order}
+                        expanded={Boolean(expandedOrderIds[getOrderId(order)])}
+                        onToggle={() => toggleOrderExpanded(getOrderId(order))}
+                      />
                     ))}
                   </div>
                 )}
@@ -1148,7 +1188,13 @@ export default function WaiterView() {
                   <div className="space-y-4">
                     <div className="space-y-3 max-h-[680px] overflow-y-auto pr-1">
                       {todayOrdersSorted.map((order) => (
-                        <OrderActivityCard key={`history-${order.id}`} order={order} compact />
+                        <OrderActivityCard
+                          key={`history-${order.id}`}
+                          order={order}
+                          compact
+                          expanded={Boolean(expandedOrderIds[getOrderId(order)])}
+                          onToggle={() => toggleOrderExpanded(getOrderId(order))}
+                        />
                       ))}
                     </div>
                   </div>
@@ -1174,8 +1220,14 @@ const MetricCard = ({ label, value, accent }) => (
   </div>
 );
 
-const OrderActivityCard = ({ order, compact = false }) => {
+const OrderActivityCard = ({
+  order,
+  compact = false,
+  expanded = false,
+  onToggle = () => {},
+}) => {
   const status = getOrderStatusConfig(order?.status);
+  const orderId = getOrderId(order);
   const itemCount = Array.isArray(order?.items)
     ? order.items.reduce((acc, item) => acc + Number(item?.quantity || 0), 0)
     : 0;
@@ -1189,7 +1241,13 @@ const OrderActivityCard = ({ order, compact = false }) => {
 
   return (
     <article className={`rounded-[1.6rem] border border-slate-800 bg-slate-950/75 ${compact ? "p-4" : "p-5"}`}>
-      <div className="flex items-start justify-between gap-4">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-start justify-between gap-4 text-left"
+        aria-expanded={expanded}
+        aria-controls={orderId ? `order-${orderId}` : undefined}
+      >
         <div className="min-w-0">
           <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">
             {getOrderLocationLabel(order)}
@@ -1200,6 +1258,9 @@ const OrderActivityCard = ({ order, compact = false }) => {
           <p className="mt-2 text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
             Cliente: {order?.customerName || "General"}
           </p>
+          <p className="mt-2 text-[10px] font-black uppercase tracking-[0.16em] text-cyan-200">
+            Vista previa: {formatOrderTime(statusTime)} · {itemCount} productos
+          </p>
           {Number(order?.tableNumber) === 0 && getTakeoutDestination(order) && (
             <p className="mt-2 text-[10px] font-black uppercase tracking-[0.16em] text-amber-200">
               Destino: {getTakeoutDestination(order)}
@@ -1207,10 +1268,15 @@ const OrderActivityCard = ({ order, compact = false }) => {
           )}
         </div>
 
-        <span className={`shrink-0 rounded-full border px-3 py-2 text-[9px] font-black uppercase tracking-[0.16em] ${status.badge}`}>
-          {status.label}
-        </span>
-      </div>
+        <div className="shrink-0 flex flex-col items-end gap-2">
+          <span className={`rounded-full border px-3 py-2 text-[9px] font-black uppercase tracking-[0.16em] ${status.badge}`}>
+            {status.label}
+          </span>
+          <span className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-500">
+            {expanded ? "Ocultar detalle" : "Ver detalle"}
+          </span>
+        </div>
+      </button>
 
       <div className={`mt-4 grid ${compact ? "grid-cols-2" : "grid-cols-2 lg:grid-cols-4"} gap-3`}>
         <InfoPill label="Hora" value={formatOrderTime(statusTime)} accent={status.accent} />
@@ -1225,28 +1291,42 @@ const OrderActivityCard = ({ order, compact = false }) => {
         )}
       </div>
 
-      {!compact && Array.isArray(order?.items) && order.items.length > 0 && (
-        <div className="mt-4 rounded-[1.2rem] border border-slate-800 bg-slate-900/70 p-4">
-          <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">
-            Resumen de pedido
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {order.items.map((item, index) => (
-              <div
-                key={`${order?.id}-${index}`}
-                className="rounded-[1rem] border border-slate-800 bg-slate-950/80 px-3 py-2"
-              >
-                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-200">
-                  {item?.quantity}x {item?.productName}
-                </p>
-                {item?.notes && (
-                  <p className="mt-1 text-[9px] font-black uppercase tracking-[0.12em] text-amber-300">
-                    {item.notes}
-                  </p>
-                )}
+      {expanded && (
+        <div id={orderId ? `order-${orderId}` : undefined} className="mt-4 space-y-4">
+          {order?.deliveryAddress && (
+            <div className="rounded-[1.2rem] border border-cyan-500/20 bg-cyan-500/10 p-4">
+              <p className="text-[9px] font-black uppercase tracking-[0.18em] text-cyan-200">
+                Direccion delivery
+              </p>
+              <p className="mt-2 text-[10px] font-black uppercase tracking-[0.14em] text-white">
+                {order.deliveryAddress}
+              </p>
+            </div>
+          )}
+          {Array.isArray(order?.items) && order.items.length > 0 && (
+            <div className="rounded-[1.2rem] border border-slate-800 bg-slate-900/70 p-4">
+              <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">
+                Resumen de pedido
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {order.items.map((item, index) => (
+                  <div
+                    key={`${order?.id}-${index}`}
+                    className="rounded-[1rem] border border-slate-800 bg-slate-950/80 px-3 py-2"
+                  >
+                    <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-200">
+                      {item?.quantity}x {item?.productName}
+                    </p>
+                    {item?.notes && (
+                      <p className="mt-1 text-[9px] font-black uppercase tracking-[0.12em] text-amber-300">
+                        {item.notes}
+                      </p>
+                    )}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </div>
+          )}
         </div>
       )}
     </article>

@@ -5,6 +5,12 @@ import useOrderBuilderStore from "../../store/orderBuilderStore";
 
 const TAKEOUT_DESTINATIONS = ["Mostrador", "Autoservicio", "Delivery"];
 
+const normalizeDeliveryAddress = (value) =>
+  String(value || "")
+    .replace(/\s+/g, " ")
+    .replace(/[<>]/g, "")
+    .slice(0, 180);
+
 const normalizeCustomerName = (value) =>
   value
     .replace(/[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s]/g, "")
@@ -15,11 +21,13 @@ const OrderPanel = ({ pax, tableId, onOrderSent }) => {
   const customerName = useOrderBuilderStore((state) => state.customerName);
   const setCustomer = useOrderBuilderStore((state) => state.setCustomer);
   const [takeoutDestination, setTakeoutDestination] = useState(TAKEOUT_DESTINATIONS[0]);
+  const [deliveryAddress, setDeliveryAddress] = useState("");
   const [serviceMode, setServiceMode] = useState(
     Number(tableId) === 0 ? "takeout" : "dine-in",
   );
   const isAssignedTakeout = Number(tableId) === 0;
   const isTakeout = isAssignedTakeout || serviceMode === "takeout";
+  const isDeliverySelected = isTakeout && takeoutDestination === "Delivery";
   const takeoutDestinations =
     Number(tableId) > 0
       ? [`Mesa ${tableId}`, ...TAKEOUT_DESTINATIONS]
@@ -29,11 +37,13 @@ const OrderPanel = ({ pax, tableId, onOrderSent }) => {
     queueMicrotask(() => {
       setServiceMode(Number(tableId) === 0 ? "takeout" : "dine-in");
       setTakeoutDestination(TAKEOUT_DESTINATIONS[0]);
+      setDeliveryAddress("");
     });
   }, [tableId]);
 
   const handleOrderSent = () => {
     setTakeoutDestination(TAKEOUT_DESTINATIONS[0]);
+    setDeliveryAddress("");
     onOrderSent?.();
   };
 
@@ -93,6 +103,27 @@ const OrderPanel = ({ pax, tableId, onOrderSent }) => {
                   </button>
                 ))}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isDeliverySelected && (
+        <div className="mb-4 shrink-0 xl:mb-3">
+          <div className="bg-slate-950 border border-cyan-400/20 p-3 rounded-[1.2rem] sm:rounded-2xl flex items-start gap-3 focus-within:border-cyan-400/60 transition-colors">
+            <MapPin className="w-4 h-4 text-cyan-300 mt-1" />
+            <div className="flex-1">
+              <p className="text-[8px] font-black text-cyan-200/70 uppercase tracking-tighter">
+                Direccion de delivery
+              </p>
+              <textarea
+                value={deliveryAddress}
+                onChange={(event) => setDeliveryAddress(normalizeDeliveryAddress(event.target.value))}
+                rows={3}
+                placeholder="CALLE, COLONIA, REFERENCIAS..."
+                maxLength={180}
+                className="mt-2 w-full resize-none rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-white outline-none placeholder:text-slate-600 focus:border-cyan-400/50"
+              />
             </div>
           </div>
         </div>
@@ -165,6 +196,7 @@ const OrderPanel = ({ pax, tableId, onOrderSent }) => {
           serviceMode={isTakeout ? "takeout" : "dine-in"}
           sourceTableId={Number(tableId) > 0 ? tableId : null}
           takeoutDestination={takeoutDestination}
+          deliveryAddress={deliveryAddress}
         />
       </div>
 

@@ -59,6 +59,7 @@ const OrderBuilder = ({
   serviceMode = "dine-in",
   sourceTableId = null,
   takeoutDestination = "",
+  deliveryAddress = "",
 }) => {
   const {
     items,
@@ -123,6 +124,7 @@ const OrderBuilder = ({
     const normalizedTakeoutDestination = normalizeTakeoutDestination(
       takeoutDestination || (Number(sourceTableId) > 0 ? `Mesa ${sourceTableId}` : ""),
     );
+    const normalizedDeliveryAddress = String(deliveryAddress || "").trim();
     const normalizedPax = Number.parseInt(pax, 10);
 
     if (normalizedCustomerName && !/^[A-ZÁÉÍÓÚÜÑ\s]+$/u.test(normalizedCustomerName)) {
@@ -145,6 +147,11 @@ const OrderBuilder = ({
       return;
     }
 
+    if (isTakeout && normalizedTakeoutDestination === "DELIVERY" && !normalizedDeliveryAddress) {
+      showToast("La direccion es obligatoria para delivery", "error");
+      return;
+    }
+
     const limitValidation = validateOrderLimits(items, settings);
     if (!limitValidation.ok) {
       showToast(limitValidation.message, "error");
@@ -158,6 +165,7 @@ const OrderBuilder = ({
       waiterName: getAuthValue("user_name") || "Mesero",
       customerName: normalizedCustomerName || "GENERAL",
       takeoutDestination: isTakeout ? normalizedTakeoutDestination : "",
+      deliveryAddress: isTakeout ? normalizedDeliveryAddress : "",
       pax: isTakeout ? 0 : normalizedPax,
       items,
       status: 0,

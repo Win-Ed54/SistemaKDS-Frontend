@@ -22,6 +22,7 @@ import ConfirmDialog from "../components/common/ConfirmDialog";
 import useKdsSettings from "../hooks/useKdsSettings";
 import useSignalRConnection from "../hooks/useSignalRConnection";
 import useTables from "../hooks/useTables";
+import { readViewState, writeViewState } from "../utils/viewStateStorage";
 
 const DEFAULT_CLEANING_MINUTES = 8;
 
@@ -156,24 +157,29 @@ const normalizeWaiter = (waiter) => {
 const HostView = () => {
   const navigate = useNavigate();
   const { isConnected } = useSignalRConnection("host");
-  const { tables } = useTables();
+  const { tables, refetch: refetchTables } = useTables();
   const { settings } = useKdsSettings();
   const { showToast } = useToast();
 
-  const [seatingPartySize, setSeatingPartySize] = useState("2");
+  const hostName = getAuthValue("user_name") || "Host de Turno";
+  const [seatingPartySize, setSeatingPartySize] = useState(() =>
+    readViewState("host", hostName, "seatingPartySize", "2"),
+  );
   const [seatingNotes, setSeatingNotes] = useState("");
   const [waiters, setWaiters] = useState([]);
-  const [selectedWaiterId, setSelectedWaiterId] = useState("");
+  const [selectedWaiterId, setSelectedWaiterId] = useState(() =>
+    readViewState("host", hostName, "selectedWaiterId", ""),
+  );
   const [assigningTable, setAssigningTable] = useState(null);
   const [cancellingTable, setCancellingTable] = useState(null);
   const [pendingCancelTable, setPendingCancelTable] = useState(null);
   const [reassigningTable, setReassigningTable] = useState(null);
   const [transferSourceTableNumber, setTransferSourceTableNumber] = useState(null);
   const [pendingTransferTarget, setPendingTransferTarget] = useState(null);
-  const [activeStatusFilter, setActiveStatusFilter] = useState("all");
+  const [activeStatusFilter, setActiveStatusFilter] = useState(() =>
+    readViewState("host", hostName, "activeStatusFilter", "all"),
+  );
   const [now, setNow] = useState(() => Date.now());
-
-  const hostName = getAuthValue("user_name") || "Host de Turno";
   const maxHostPartySize = Number(settings?.maxPartySize) > 0 ? Number(settings.maxPartySize) : 10;
   const defaultCleaningMinutes =
     Number(settings?.defaultCleaningMinutes) > 0
@@ -184,6 +190,18 @@ const HostView = () => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    writeViewState("host", hostName, "seatingPartySize", seatingPartySize);
+  }, [hostName, seatingPartySize]);
+
+  useEffect(() => {
+    writeViewState("host", hostName, "selectedWaiterId", selectedWaiterId);
+  }, [hostName, selectedWaiterId]);
+
+  useEffect(() => {
+    writeViewState("host", hostName, "activeStatusFilter", activeStatusFilter);
+  }, [activeStatusFilter, hostName]);
 
   const loadWaiters = useCallback(async () => {
     try {
@@ -476,6 +494,8 @@ const HostView = () => {
         assignedWaiterId: assignedWaiter.id,
         assignedWaiterName: assignedWaiter.username,
       });
+      window.dispatchEvent(new Event("kds-sync-tables"));
+      await refetchTables();
       showToast(
         `Mesa ${table.number} asignada a ${assignedWaiter.username}.`,
         "success",
@@ -502,6 +522,8 @@ const HostView = () => {
     try {
       setCancellingTable(table.number);
       await unseatTable(table.number);
+      window.dispatchEvent(new Event("kds-sync-tables"));
+      await refetchTables();
       if (transferSourceTableNumber === table.number) {
         setTransferSourceTableNumber(null);
       }
@@ -540,6 +562,8 @@ const HostView = () => {
     try {
       setReassigningTable(targetTable.number);
       await transferTableAssignment(transferSourceTableNumber, targetTable.number);
+      window.dispatchEvent(new Event("kds-sync-tables"));
+      await refetchTables();
       showToast(
         `Mesa ${transferSourceTableNumber} movida a mesa ${targetTable.number}.`,
         "success",

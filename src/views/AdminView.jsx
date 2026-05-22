@@ -12,6 +12,8 @@ import {
 import { useToast } from "../context/ToastContext";
 import { subscribeConnectionStatus } from "../services/signalrService";
 import useKdsSettings from "../hooks/useKdsSettings";
+import { getAuthValue } from "../services/authStorage";
+import { readViewState, writeViewState } from "../utils/viewStateStorage";
 
 import AdminHeader from "../components/admin/AdminHeader";
 import AdministrativeLog from "../components/admin/AdministrativeLog";
@@ -59,13 +61,16 @@ const getMinutesSince = (value, reference = Date.now()) => {
 };
 
 const AdminView = () => {
+  const adminUserName = getAuthValue("user_name") || "admin";
   const [orders, setOrders] = useState([]);
   const [tables, setTables] = useState([]);
   const [products, setProducts] = useState([]);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(false);
   const [lastUpdate, setLastUpdate] = useState(new Date().toLocaleTimeString());
-  const [activeSection, setActiveSection] = useState("overview");
+  const [activeSection, setActiveSection] = useState(() =>
+    readViewState("admin", adminUserName, "activeSection", "overview"),
+  );
   const [pendingTableRelease, setPendingTableRelease] = useState(null);
   const [releasingTable, setReleasingTable] = useState(false);
   const refreshTimeoutRef = useRef(null);
@@ -179,6 +184,10 @@ const AdminView = () => {
       loadData();
     });
   }, [loadData]);
+
+  useEffect(() => {
+    writeViewState("admin", adminUserName, "activeSection", activeSection);
+  }, [activeSection, adminUserName]);
 
   useEffect(() => {
     if (!connection) return;
