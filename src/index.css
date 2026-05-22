@@ -1,5 +1,19 @@
 @import "tailwindcss";
 
+html {
+  min-height: 100%;
+  background-color: #020617;
+  color-scheme: dark;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  background: radial-gradient(circle at top, rgba(34, 211, 238, 0.10), transparent 28%), linear-gradient(180deg, #020617 0%, #0f172a 100%);
+  color: white;
+  overscroll-behavior-y: contain;
+}
+
 /* ============================= */
 /* AUTO GRID PARA KDS */
 /* ============================= */
