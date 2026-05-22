@@ -9,6 +9,7 @@ import {
   Sparkles,
   User,
   X,
+  ArrowUp,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -382,6 +383,7 @@ export default function WaiterView() {
   const [cleaningTables, setCleaningTables] = useState({});
   const [startingCleaningTables, setStartingCleaningTables] = useState({});
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [showBackToTop, setShowBackToTop] = useState(false);
   const [isDesktopCartOpen, setIsDesktopCartOpen] = useState(() =>
     readViewState("waiter", waiterName, "isDesktopCartOpen", true),
   );
@@ -922,6 +924,21 @@ export default function WaiterView() {
     scheduleWaiterRefresh();
   }, [scheduleWaiterRefresh, updateOrderStore]);
 
+  const scrollToTop = useCallback(() => {
+    if (typeof window === "undefined") return;
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const updateVisibility = () => setShowBackToTop(window.scrollY > 260);
+    updateVisibility();
+    window.addEventListener("scroll", updateVisibility, { passive: true });
+
+    return () => window.removeEventListener("scroll", updateVisibility);
+  }, []);
+
   const handleLogout = () => {
     logout();
     navigate("/login");
@@ -976,7 +993,7 @@ export default function WaiterView() {
       </header>
 
       <main className="max-w-[1600px] mx-auto px-3 pb-32 pt-4 lg:px-5 lg:pb-10 lg:pt-3 space-y-5">
-        <section className="sticky top-[104px] z-30 mt-1 rounded-[2rem] border border-slate-800/90 bg-slate-900/95 p-2.5 shadow-[0_20px_45px_rgba(2,6,23,0.34)] backdrop-blur-md overflow-x-auto no-scrollbar sm:top-[110px] xl:static xl:mt-0 xl:p-2">
+        <section className="xl:sticky xl:top-[104px] z-30 mt-1 rounded-[2rem] border border-slate-800/90 bg-slate-900/95 p-2.5 shadow-[0_20px_45px_rgba(2,6,23,0.34)] backdrop-blur-md overflow-x-auto no-scrollbar xl:mt-0 xl:p-2">
           <div className="flex gap-2 min-w-max">
             {TABS.map((tab) => {
               const Icon = tab.icon;
@@ -1332,7 +1349,37 @@ export default function WaiterView() {
         )}
       </main>
 
-      {activeTab === "ordenar" && items.length > 0 && !isCartOpen && <button onClick={() => setIsCartOpen(true)} className="xl:hidden fixed bottom-4 right-3 z-40 flex w-[min(92vw,320px)] items-center justify-between rounded-[1.25rem] bg-cyan-400 px-4 py-3 text-slate-950 shadow-2xl shadow-cyan-950/40"><div className="flex items-center gap-2.5"><PackageCheck className="h-4 w-4" /><div className="text-left"><p className="text-[9px] font-black uppercase">Orden actual</p><p className="text-[10px] font-black uppercase">{items.length} items</p></div></div><div className="text-right"><p className="text-base font-black">${cartTotal.toFixed(2)}</p><p className="text-[9px] font-black uppercase">Abrir</p></div></button>}
+      <div className="xl:hidden fixed inset-x-4 bottom-4 z-40 flex items-end justify-between gap-3">
+        {activeTab === "ordenar" && items.length > 0 && !isCartOpen && (
+          <button
+            onClick={() => setIsCartOpen(true)}
+            className="flex-1 min-w-0 items-center justify-between rounded-[1.25rem] bg-cyan-400 px-4 py-3 text-slate-950 shadow-2xl shadow-cyan-950/40"
+          >
+            <div className="flex items-center gap-2.5">
+              <PackageCheck className="h-4 w-4" />
+              <div className="text-left min-w-0">
+                <p className="text-[9px] font-black uppercase">Orden actual</p>
+                <p className="text-[10px] font-black uppercase truncate">{items.length} items</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-base font-black">${cartTotal.toFixed(2)}</p>
+              <p className="text-[9px] font-black uppercase">Abrir</p>
+            </div>
+          </button>
+        )}
+
+        {showBackToTop && (
+          <button
+            type="button"
+            onClick={scrollToTop}
+            className="inline-flex h-12 w-12 items-center justify-center rounded-[1.25rem] border border-slate-800 bg-slate-950/90 text-cyan-300 shadow-2xl shadow-cyan-950/40"
+            aria-label="Subir arriba"
+          >
+            <ArrowUp className="h-5 w-5" />
+          </button>
+        )}
+      </div>
       {activeTab === "ordenar" && isCartOpen && <div className="fixed inset-0 bg-slate-950/40 z-40 xl:hidden" onClick={() => setIsCartOpen(false)} />}
       {activeTab === "ordenar" && <aside className={`xl:hidden fixed inset-y-0 right-0 z-50 w-[84vw] max-w-[380px] bg-slate-950 border-l border-slate-800 transition-transform ${isCartOpen ? "translate-x-0" : "translate-x-full"}`}><div className="h-full overflow-y-auto p-2.5 sm:p-3"><div className="flex items-center justify-between mb-2 sm:mb-3 px-1"><div><p className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Orden actual</p><p className="text-xs sm:text-sm font-black uppercase text-white mt-1">Panel de confirmacion</p></div><button onClick={() => setIsCartOpen(false)} className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-2xl bg-slate-900 border border-slate-800 text-slate-300 text-[9px] sm:text-[10px] font-black uppercase tracking-[0.18em]"><X className="w-4 h-4" />Cerrar</button></div>{isCurrentTableCleaning ? <div className="flex min-h-[240px] items-center justify-center rounded-[1.6rem] border border-rose-400/20 bg-rose-400/10 p-5 text-center"><div><p className="text-[9px] font-black uppercase tracking-[0.2em] text-rose-200">Pedido bloqueado</p><p className="mt-3 text-xs font-black uppercase text-slate-100">La mesa seleccionada se esta limpiando.</p></div></div> : <OrderPanel key={`mobile-order-panel-${tableId ?? "none"}`} pax={pax} tableId={tableId} onOrderSent={(createdOrder) => { setIsCartOpen(false); handleOrderCreated(createdOrder); }} canHandleTakeout={canHandleTableTakeout} canHandleDining={canHandleDining} />}</div></aside>}
       {showProfile && <WaiterProfile user={currentUser} onClose={() => setShowProfile(false)} />}
