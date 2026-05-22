@@ -28,6 +28,8 @@ const getTableTone = (table, isSelected) => {
 const TableSelector = ({
   tables,
   allowOccupiedAssigned = false,
+  allowTakeout = true,
+  emptyDiningMessage = "Sin mesas asignadas por ahora",
 }) => {
   const { setTable, tableId } = useOrderBuilder();
   const tableList = Array.isArray(tables) ? tables : [];
@@ -48,24 +50,26 @@ const TableSelector = ({
 
   return (
     <div className="space-y-3">
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={() => setTable(0)}
-          className={`rounded-[1rem] border px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.18em] transition-all ${
-            isTakeoutSelected
-              ? "border-cyan-300 bg-cyan-400 text-slate-950 shadow-[0_0_20px_rgba(34,211,238,0.28)]"
-              : "border-cyan-400/20 bg-cyan-400/10 text-cyan-200 hover:border-cyan-300/40"
-          }`}
-        >
-          Para llevar
-        </button>
-      </div>
+      {allowTakeout && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => setTable(0)}
+            className={`rounded-[1rem] border px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.18em] transition-all ${
+              isTakeoutSelected
+                ? "border-cyan-300 bg-cyan-400 text-slate-950 shadow-[0_0_20px_rgba(34,211,238,0.28)]"
+                : "border-cyan-400/20 bg-cyan-400/10 text-cyan-200 hover:border-cyan-300/40"
+            }`}
+          >
+            Para llevar
+          </button>
+        </div>
+      )}
 
       {diningTables.length === 0 ? (
         <div className="rounded-[1.4rem] border border-dashed border-slate-800 bg-slate-900/35 p-5 text-center">
           <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
-            Sin mesas asignadas por ahora
+            {emptyDiningMessage}
           </p>
         </div>
       ) : (

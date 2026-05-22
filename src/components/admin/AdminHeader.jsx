@@ -31,7 +31,7 @@ const AdminHeader = ({ isConnected, lastUpdate, loading = false }) => {
             Sync {lastUpdate || "--:--"}
           </span>
           <span className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-3 py-2 text-[8px] font-black uppercase tracking-[0.16em] text-cyan-300">
-            5 areas
+            6 areas
           </span>
           <div
             className={`flex items-center gap-2 rounded-full border px-3 py-2 ${

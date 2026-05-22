@@ -3,6 +3,7 @@ const AUTH_KEYS = [
   "role",
   "refresh_token",
   "user_name",
+  "service_scope",
   "admin_token",
   "waiter_token",
   "host_token",

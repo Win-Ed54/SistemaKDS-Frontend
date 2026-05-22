@@ -35,15 +35,17 @@ const getTokenExpirationMs = (token) => {
   }
 };
 
-const applySessionTokens = ({ token, role, refreshToken }) => {
+const applySessionTokens = ({ token, role, refreshToken, serviceScope }) => {
   if (!token || !role || !refreshToken) {
     throw new Error("No se recibieron credenciales completas");
   }
 
   const normalizedRole = String(role).trim().toLowerCase();
+  const normalizedServiceScope = String(serviceScope || "hybrid").trim().toLowerCase();
 
   setAuthValue("token", token);
   setAuthValue("role", normalizedRole);
+  setAuthValue("service_scope", normalizedServiceScope);
   setAuthValue("refresh_token", refreshToken);
   setAuthValue(`${normalizedRole}_token`, token);
 };

@@ -33,10 +33,12 @@ const refreshAccessToken = async () => {
 
   const data = await res.json();
   const normalizedRole = String(data.role || "").trim().toLowerCase();
+  const normalizedServiceScope = String(data.serviceScope || "hybrid").trim().toLowerCase();
   setAuthValue("token", data.token);
   setAuthValue("refresh_token", data.refreshToken);
   setAuthValue(`${normalizedRole}_token`, data.token);
   setAuthValue("role", normalizedRole);
+  setAuthValue("service_scope", normalizedServiceScope);
   return data.token;
 };
 
@@ -138,3 +140,9 @@ export const transferTableAssignment = (tableNumber, targetTableNumber) =>
 export const startTableCleaning = (tableNumber, data) =>
   request(`/tables/${tableNumber}/start-cleaning`, { method: "PATCH", body: JSON.stringify(data || {}) });
 export const getWaiters = () => request("/users/waiters");
+export const getStaff = () => request("/users/staff");
+export const updateUserServiceScope = (userId, serviceScope) =>
+  request(`/users/${userId}/service-scope`, {
+    method: "PATCH",
+    body: JSON.stringify({ serviceScope }),
+  });

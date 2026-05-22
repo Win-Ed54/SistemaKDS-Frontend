@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import useSignalRConnection from "../hooks/useSignalRConnection";
-import { BarChart3, Boxes, ClipboardList, LayoutDashboard, Settings2 } from "lucide-react";
+import { BarChart3, Boxes, ClipboardList, LayoutDashboard, Settings2, Users } from "lucide-react";
 import {
   closeTable,
   getActiveOrders,
   getOrderHistory,
   getProducts,
+  getStaff,
   getTables,
   unseatTable,
 } from "../services/api.service";
@@ -21,6 +22,7 @@ import InventoryManager from "../components/admin/InventoryManager";
 import KdsSettingsPanel from "../components/admin/KdsSettingsPanel";
 import OrdersSummary from "../components/admin/OrdersSummary";
 import StatsCard from "../components/admin/StatsCard";
+import StaffAssignmentsPanel from "../components/admin/StaffAssignmentsPanel";
 import TableStatus from "../components/admin/TableStatus";
 import TopProductsReport from "../components/admin/TopProductsReport";
 import ConfirmDialog from "../components/common/ConfirmDialog";
@@ -66,6 +68,7 @@ const AdminView = () => {
   const [tables, setTables] = useState([]);
   const [products, setProducts] = useState([]);
   const [history, setHistory] = useState([]);
+  const [staff, setStaff] = useState([]);
   const [loading, setLoading] = useState(false);
   const [lastUpdate, setLastUpdate] = useState(new Date().toLocaleTimeString());
   const [activeSection, setActiveSection] = useState(() =>
@@ -84,16 +87,18 @@ const AdminView = () => {
     if (!silent) setLoading(true);
 
     try {
-      const [ordersRes, tablesRes, productsRes, historyRes] = await Promise.all([
+      const [ordersRes, tablesRes, productsRes, historyRes, staffRes] = await Promise.all([
         getActiveOrders(),
         getTables(),
         getProducts(),
         getOrderHistory(),
+        getStaff(),
       ]);
 
       setOrders(Array.isArray(ordersRes) ? ordersRes : []);
       setTables(Array.isArray(tablesRes) ? tablesRes : []);
       setHistory(Array.isArray(historyRes) ? historyRes : []);
+      setStaff(Array.isArray(staffRes) ? staffRes : []);
 
       setProducts((currentProducts) => {
         if (!Array.isArray(productsRes)) return [];
@@ -434,6 +439,7 @@ const AdminView = () => {
     { id: "overview", label: "Resumen", icon: LayoutDashboard },
     { id: "operations", label: "Operacion", icon: ClipboardList },
     { id: "inventory", label: "Inventario", icon: Boxes },
+    { id: "team", label: "Equipo", icon: Users },
     { id: "settings", label: "Configuracion", icon: Settings2 },
     { id: "audit", label: "Auditoria", icon: BarChart3 },
   ];
@@ -584,7 +590,7 @@ const AdminView = () => {
           </section>
         )}
 
-        {(activeSection === "operations" || activeSection === "inventory" || activeSection === "settings" || activeSection === "audit") && (
+        {(activeSection === "operations" || activeSection === "inventory" || activeSection === "team" || activeSection === "settings" || activeSection === "audit") && (
           <section className="grid grid-cols-1 lg:grid-cols-3 gap-5">
             <ControlInsightCard
               eyebrow="Alertas"
@@ -631,6 +637,15 @@ const AdminView = () => {
               <TopProductsReport data={history} totalSales={stats.totalSales} />
             </div>
           </div>
+        )}
+
+        {(activeSection === "overview" || activeSection === "team") && (
+          <StaffAssignmentsPanel
+            users={staff}
+            onUpdated={() => {
+              void loadData(true);
+            }}
+          />
         )}
 
         {(activeSection === "overview" || activeSection === "settings") && (

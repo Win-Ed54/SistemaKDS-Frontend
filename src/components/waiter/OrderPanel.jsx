@@ -17,7 +17,13 @@ const normalizeCustomerName = (value) =>
     .replace(/\s+/g, " ")
     .slice(0, 60);
 
-const OrderPanel = ({ pax, tableId, onOrderSent }) => {
+const OrderPanel = ({
+  pax,
+  tableId,
+  onOrderSent,
+  canHandleTakeout = true,
+  canHandleDining = true,
+}) => {
   const customerName = useOrderBuilderStore((state) => state.customerName);
   const setCustomer = useOrderBuilderStore((state) => state.setCustomer);
   const [takeoutDestination, setTakeoutDestination] = useState(TAKEOUT_DESTINATIONS[0]);
@@ -35,11 +41,17 @@ const OrderPanel = ({ pax, tableId, onOrderSent }) => {
 
   useEffect(() => {
     queueMicrotask(() => {
-      setServiceMode(Number(tableId) === 0 ? "takeout" : "dine-in");
+      setServiceMode(Number(tableId) === 0 || !canHandleDining ? "takeout" : "dine-in");
       setTakeoutDestination(TAKEOUT_DESTINATIONS[0]);
       setDeliveryAddress("");
     });
-  }, [tableId]);
+  }, [canHandleDining, tableId]);
+
+  useEffect(() => {
+    if (!canHandleTakeout && serviceMode === "takeout") {
+      setServiceMode("dine-in");
+    }
+  }, [canHandleTakeout, serviceMode]);
 
   const handleOrderSent = () => {
     setTakeoutDestination(TAKEOUT_DESTINATIONS[0]);
@@ -130,7 +142,7 @@ const OrderPanel = ({ pax, tableId, onOrderSent }) => {
       )}
 
       <div className="mb-4 shrink-0 xl:mb-3">
-        {!isAssignedTakeout && Number(tableId) > 0 && (
+        {!isAssignedTakeout && canHandleTakeout && canHandleDining && Number(tableId) > 0 && (
           <div className="mb-3 grid grid-cols-2 gap-2">
             <button
               type="button"

@@ -173,11 +173,11 @@ const OrderBuilder = ({
 
     try {
       setIsSending(true);
-      await createOrder(order);
+      const createdOrder = await createOrder(order);
       window.dispatchEvent(new Event("kds-sync-products"));
       window.dispatchEvent(new Event("kds-sync-tables"));
       resetAfterOrder();
-      onOrderSent?.();
+      onOrderSent?.(createdOrder || order);
       showToast(
         isTakeout && Number(sourceTableId) > 0
           ? `Orden para llevar enviada desde mesa ${sourceTableId}`
