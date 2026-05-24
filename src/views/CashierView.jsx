@@ -803,6 +803,58 @@ const PaymentFormFields = ({ formKey, paymentForms, updatePaymentForm, placehold
   </div>
 );
 
+const PendingProductsPreview = ({ groupKey, products = [] }) => {
+  const [expanded, setExpanded] = useState(false);
+  const visibleProducts = expanded ? products : products.slice(0, 4);
+
+  return (
+    <div className="rounded-[1.5rem] border border-slate-800 bg-slate-900/50 p-4 space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">
+            Resumen para caja
+          </p>
+          <p className="text-sm font-black text-slate-100 mt-1">
+            Productos pendientes agrupados
+          </p>
+        </div>
+        <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-2 text-[9px] font-black uppercase tracking-[0.16em] text-cyan-300">
+          {products.length} productos distintos
+        </span>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {visibleProducts.map((product) => (
+          <div
+            key={`${groupKey}-${product.productName}`}
+            className="rounded-[1rem] border border-slate-800 bg-slate-950/80 px-3 py-2"
+          >
+            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-200">
+              {product.productName}
+            </p>
+            <p className="text-[9px] font-black uppercase tracking-[0.14em] text-amber-300 mt-1">
+              Pendiente: {product.quantity}
+            </p>
+            <p className="text-[10px] font-black text-emerald-300 mt-1">
+              {formatCurrency(product.amount)}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      {products.length > 4 ? (
+        <button
+          type="button"
+          onClick={() => setExpanded((current) => !current)}
+          className="rounded-full border border-slate-700 bg-slate-950/80 px-4 py-2 text-[9px] font-black uppercase tracking-[0.16em] text-cyan-300 transition-all hover:border-cyan-400/40 hover:text-cyan-200"
+        >
+          {expanded ? "Ver menos" : `Ver ${products.length - 4} mas`}
+        </button>
+      ) : null}
+    </div>
+  );
+};
+
 const GroupedPaymentsView = ({
   groupedPendingPayments,
   paymentForms,
@@ -858,40 +910,10 @@ const GroupedPaymentsView = ({
             </div>
           </div>
 
-          <div className="rounded-[1.5rem] border border-slate-800 bg-slate-900/50 p-4 space-y-3">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">
-                  Resumen para caja
-                </p>
-                <p className="text-sm font-black text-slate-100 mt-1">
-                  {group.locationLabel} tiene {pendingSummary.totalPendingLines} lineas pendientes
-                </p>
-              </div>
-              <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-2 text-[9px] font-black uppercase tracking-[0.16em] text-cyan-300">
-                {pendingSummary.products.length} productos distintos
-              </span>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              {pendingSummary.products.map((product) => (
-                <div
-                  key={`${group.groupKey}-${product.productName}`}
-                  className="rounded-[1rem] border border-slate-800 bg-slate-950/80 px-3 py-2"
-                >
-                  <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-200">
-                    {product.productName}
-                  </p>
-                  <p className="text-[9px] font-black uppercase tracking-[0.14em] text-amber-300 mt-1">
-                    Pendiente: {product.quantity}
-                  </p>
-                  <p className="text-[10px] font-black text-emerald-300 mt-1">
-                    {formatCurrency(product.amount)}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
+          <PendingProductsPreview
+            groupKey={group.groupKey}
+            products={pendingSummary.products}
+          />
 
           <div className="space-y-3">
             {group.orders.map((order) => {

@@ -93,6 +93,7 @@ const request = async (endpoint, options = {}, retry = true) => {
 };
 
 export default request;
+export const makeAuthenticatedRequest = request;
 
 export const createOrder = (data) =>
   request("/orders", { method: "POST", body: JSON.stringify(data) });

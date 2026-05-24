@@ -140,6 +140,28 @@ const getServiceScopeSubtitle = (serviceScope) => {
   return "Puede atender mesas y para llevar";
 };
 
+const getSelectionStepTitle = ({
+  canHandleDining,
+  canHandleStandaloneTakeout,
+  isTakeout,
+}) => {
+  if (isTakeout && canHandleDining) return "Cambia entre mesas y para llevar";
+  if (canHandleDining && canHandleStandaloneTakeout) return "Selecciona mesa o para llevar";
+  if (canHandleDining) return "Selecciona tu mesa asignada";
+  return "Gestiona tu pedido para llevar";
+};
+
+const getSelectionStepSubtitle = ({
+  canHandleDining,
+  canHandleStandaloneTakeout,
+  isTakeout,
+}) => {
+  if (isTakeout && canHandleDining) return "Puedes volver a una mesa asignada cuando quieras";
+  if (canHandleDining && canHandleStandaloneTakeout) return "Usa el acceso rapido segun el tipo de servicio";
+  if (canHandleDining) return "Solo aparecen las mesas asignadas por host";
+  return "Tu terminal trabaja sin mesas asignadas";
+};
+
 const waiterMatchesAssignment = ({
   assignedWaiterId,
   assignedWaiterName,
@@ -400,7 +422,6 @@ export default function WaiterView() {
     waiterServiceScope === "takeout" ||
     (waiterServiceScope === "hybrid" && !hasDedicatedTakeoutWaiter);
   const canHandleTableTakeout = canHandleDining;
-  const canHandleTakeout = canHandleStandaloneTakeout || canHandleTableTakeout;
   const defaultCleaningMinutes =
     Number(settings?.defaultCleaningMinutes) > 0
       ? Number(settings.defaultCleaningMinutes)
@@ -993,7 +1014,7 @@ export default function WaiterView() {
       </header>
 
       <main className="max-w-[1600px] mx-auto px-3 pb-32 pt-4 lg:px-5 lg:pb-10 lg:pt-3 space-y-5">
-        <section className="xl:sticky xl:top-[104px] z-30 mt-1 rounded-[2rem] border border-slate-800/90 bg-slate-900/95 p-2.5 shadow-[0_20px_45px_rgba(2,6,23,0.34)] backdrop-blur-md overflow-x-auto no-scrollbar xl:mt-0 xl:p-2">
+        <section className="sticky top-[88px] z-40 mt-2 rounded-[1.7rem] border border-slate-700/80 bg-[linear-gradient(180deg,_rgba(15,23,42,0.96)_0%,_rgba(2,6,23,0.92)_100%)] p-2 shadow-[0_18px_35px_rgba(2,6,23,0.32)] backdrop-blur-md overflow-x-auto no-scrollbar sm:top-[94px] xl:top-[104px] xl:mt-0 xl:rounded-[2rem] xl:p-2.5">
           <div className="flex gap-2 min-w-max">
             {TABS.map((tab) => {
               const Icon = tab.icon;
@@ -1033,7 +1054,7 @@ export default function WaiterView() {
                               ? "Esperando mesa asignada"
                               : "Preparando pedido para llevar"}
                     </h2>
-                    <p className="mt-2 text-[10px] font-black uppercase tracking-[0.18em] text-cyan-300/80">
+                    <p className="mt-3 inline-flex rounded-full border border-slate-700 bg-slate-950/80 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.16em] text-slate-300">
                       {getServiceScopeSubtitle(waiterServiceScope)}
                     </p>
                   </div>
@@ -1062,7 +1083,16 @@ export default function WaiterView() {
                 <div className="grid grid-cols-1 gap-4">
                     <StepCard
                       step="1"
-                      title={canHandleDining && canHandleStandaloneTakeout ? "Mesa asignada o para llevar" : canHandleDining ? "Mesa asignada" : "Pedido para llevar"}
+                      title={getSelectionStepTitle({
+                        canHandleDining,
+                        canHandleStandaloneTakeout,
+                        isTakeout,
+                      })}
+                      subtitle={getSelectionStepSubtitle({
+                        canHandleDining,
+                        canHandleStandaloneTakeout,
+                        isTakeout,
+                      })}
                     >
                     <TableSelector
                       tables={enrichedServiceTables}
@@ -1446,7 +1476,7 @@ const OrderActivityCard = ({
           <span className={`rounded-full border px-3 py-2 text-[9px] font-black uppercase tracking-[0.16em] ${status.badge}`}>
             {status.label}
           </span>
-          <span className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-500">
+          <span className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.16em] text-cyan-200">
             {expanded ? "Ocultar detalle" : "Ver detalle"}
           </span>
         </div>
@@ -1520,7 +1550,11 @@ const StepCard = ({ step, title, subtitle, children }) => (
       <div className="w-10 h-10 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 text-sm font-black flex items-center justify-center shrink-0">{step}</div>
       <div>
         <h3 className="text-sm font-black uppercase tracking-[0.18em] text-white">{title}</h3>
-        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 mt-1">{subtitle}</p>
+        {subtitle ? (
+          <p className="mt-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
+            {subtitle}
+          </p>
+        ) : null}
       </div>
     </div>
     {children}

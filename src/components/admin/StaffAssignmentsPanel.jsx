@@ -22,6 +22,9 @@ const normalizeServiceScope = (value) => {
   return SERVICE_SCOPE_OPTIONS.some((option) => option.value === normalized) ? normalized : "hybrid";
 };
 
+const getServiceScopeLabel = (value) =>
+  SERVICE_SCOPE_OPTIONS.find((option) => option.value === normalizeServiceScope(value))?.label || "Mixto";
+
 const StaffAssignmentsPanel = ({ users = [], onUpdated }) => {
   const { showToast } = useToast();
   const [savingUsers, setSavingUsers] = useState({});
@@ -104,7 +107,7 @@ const StaffAssignmentsPanel = ({ users = [], onUpdated }) => {
                       </div>
                       {role === "waiter" && (
                         <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.16em] text-emerald-300">
-                          {normalizeServiceScope(user.serviceScope)}
+                          {getServiceScopeLabel(user.serviceScope)}
                         </span>
                       )}
                     </div>

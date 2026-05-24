@@ -14,6 +14,7 @@ import {
   onReceiveOrder,
   restartConnection,
   startConnection,
+  stopConnection,
 } from "./services/signalrService";
 import { startAutoRefreshSession } from "./services/authService";
 
@@ -100,10 +101,14 @@ function App() {
       }
     };
 
-    const handleAuthChanged = () => {
+    const handleAuthChanged = async () => {
       signalRInitialized = false;
       signalRCleanup.forEach((cleanup) => cleanup?.());
       signalRCleanup = [];
+      if (!hasSignalRToken()) {
+        await stopConnection();
+        return;
+      }
       void init(true);
     };
 

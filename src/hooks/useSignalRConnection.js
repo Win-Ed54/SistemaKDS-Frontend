@@ -39,14 +39,31 @@ export default function useSignalRConnection(preferredRole = "") {
       }
     };
 
+    const handleVisibilityChange = () => {
+      if (document.visibilityState !== "visible") return;
+      if (!getConnectionState() && hasSignalRToken(preferredRole)) {
+        void syncConnection(true);
+      }
+    };
+
+    const handleOnline = () => {
+      if (hasSignalRToken(preferredRole)) {
+        void syncConnection(true);
+      }
+    };
+
     void syncConnection();
     window.addEventListener("auth-changed", handleAuthChanged);
     window.addEventListener("focus", handleWindowFocus);
+    window.addEventListener("online", handleOnline);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
       unsubscribe();
       window.removeEventListener("auth-changed", handleAuthChanged);
       window.removeEventListener("focus", handleWindowFocus);
+      window.removeEventListener("online", handleOnline);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [preferredRole]);
 

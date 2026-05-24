@@ -43,12 +43,16 @@ const connection = new signalR.HubConnectionBuilder()
   .configureLogging(signalR.LogLevel.None)
   .build();
 
+connection.serverTimeoutInMilliseconds = 60000;
+connection.keepAliveIntervalInMilliseconds = 15000;
+
 let isConnected = false;
 let listeners = [];
 let statusHandlersRegistered = false;
 let startPromise = null;
 let reconnectTimeoutId = null;
 let activePreferredRole = "";
+let isManualStopRequested = false;
 const EVENT_DEDUPE_MS = 1500;
 
 const getPayloadId = (payload) => {
@@ -87,6 +91,7 @@ const createEventDeduper = (scope) => {
 };
 
 const scheduleReconnect = () => {
+  if (typeof navigator !== "undefined" && navigator.onLine === false) return;
   if (reconnectTimeoutId) return;
 
   reconnectTimeoutId = window.setTimeout(() => {
@@ -110,11 +115,40 @@ const notifyStatus = (status) => {
 
 export const getConnectionState = () => isConnected;
 
+export const stopConnection = async ({ clearPreferredRole = true } = {}) => {
+  isManualStopRequested = true;
+
+  if (reconnectTimeoutId) {
+    clearTimeout(reconnectTimeoutId);
+    reconnectTimeoutId = null;
+  }
+
+  if (clearPreferredRole) {
+    activePreferredRole = "";
+  }
+
+  if (
+    connection.state === signalR.HubConnectionState.Connected ||
+    connection.state === signalR.HubConnectionState.Connecting ||
+    connection.state === signalR.HubConnectionState.Reconnecting
+  ) {
+    try {
+      await connection.stop();
+    } catch {
+      // If stop fails, the connection status will be retried on the next init.
+    }
+  }
+
+  notifyStatus(false);
+  startPromise = null;
+};
+
 export const startConnection = async (preferredRole = "") => {
   const normalizedPreferredRole = String(preferredRole || "").trim().toLowerCase();
   if (normalizedPreferredRole) {
     activePreferredRole = normalizedPreferredRole;
   }
+  isManualStopRequested = false;
 
   if (!statusHandlersRegistered) {
     statusHandlersRegistered = true;
@@ -129,6 +163,10 @@ export const startConnection = async (preferredRole = "") => {
 
     connection.onclose(() => {
       notifyStatus(false);
+      if (isManualStopRequested) {
+        isManualStopRequested = false;
+        return;
+      }
       scheduleReconnect();
     });
   }
@@ -180,6 +218,7 @@ export const restartConnection = async (preferredRole = "") => {
   if (normalizedPreferredRole) {
     activePreferredRole = normalizedPreferredRole;
   }
+  isManualStopRequested = false;
 
   if (reconnectTimeoutId) {
     clearTimeout(reconnectTimeoutId);
@@ -264,7 +303,7 @@ export const onOrderDelivered = (callback) => {
 
   const objectHandler = (order) => {
     if (!shouldProcessEvent(order)) return;
-    useOrderStore.getState().removeOrder(order?.id);
+    useOrderStore.getState().removeOrder(order?.id ?? order?._id ?? order?.Id);
     callback?.(order);
   };
 

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import useSignalRConnection from "../hooks/useSignalRConnection";
-import { BarChart3, Boxes, ClipboardList, LayoutDashboard, Settings2, Users } from "lucide-react";
+import { BarChart3, Boxes, ClipboardList, LayoutDashboard, Settings2, Users, TrendingUp } from "lucide-react";
 import {
   closeTable,
   getActiveOrders,
@@ -21,6 +21,7 @@ import AdministrativeLog from "../components/admin/AdministrativeLog";
 import InventoryManager from "../components/admin/InventoryManager";
 import KdsSettingsPanel from "../components/admin/KdsSettingsPanel";
 import OrdersSummary from "../components/admin/OrdersSummary";
+import RevenueAnalytics from "../components/admin/RevenueAnalytics";
 import StatsCard from "../components/admin/StatsCard";
 import StaffAssignmentsPanel from "../components/admin/StaffAssignmentsPanel";
 import TableStatus from "../components/admin/TableStatus";
@@ -437,6 +438,7 @@ const AdminView = () => {
 
   const sectionTabs = [
     { id: "overview", label: "Resumen", icon: LayoutDashboard },
+    { id: "earnings", label: "Ganancias", icon: TrendingUp },
     { id: "operations", label: "Operacion", icon: ClipboardList },
     { id: "inventory", label: "Inventario", icon: Boxes },
     { id: "team", label: "Equipo", icon: Users },
@@ -522,31 +524,31 @@ const AdminView = () => {
         </div>
 
         {(activeSection === "overview" || activeSection === "operations") && (
-          <section className="rounded-[1.5rem] border border-red-500/20 bg-[linear-gradient(135deg,_rgba(239,68,68,0.08)_0%,_rgba(15,23,42,0.96)_42%,_rgba(2,6,23,0.98)_100%)] p-3 shadow-xl">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <section className="rounded-[2rem] border border-slate-800 bg-slate-900/70 p-5 shadow-xl">
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
               <div>
-                <p className="text-[8px] font-black uppercase tracking-[0.18em] text-red-200/80">
-                  Incidencias automaticas
+                <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500">
+                  Seguimiento operativo
                 </p>
-                <h2 className="mt-1 text-sm font-black uppercase tracking-[0.12em] text-white">
-                  Alertas operativas detectadas por el sistema
+                <h2 className="mt-2 text-lg font-black uppercase tracking-[0.16em] text-white">
+                  Solo lo necesario para reaccionar rapido
                 </h2>
-                <p className="mt-1 text-[8px] font-black uppercase tracking-[0.12em] text-slate-500">
-                  Ordenes listas sin entregar, cobros pendientes, limpiezas atrasadas y productos agotados.
+                <p className="mt-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">
+                  Si hace falta contexto extra, puedes ampliarlo sin saturar el panel principal.
                 </p>
               </div>
 
-              <div className="rounded-full border border-red-400/20 bg-red-400/10 px-3 py-1.5 text-[8px] font-black uppercase tracking-[0.16em] text-red-200">
-                {incidents.total} incidencia{incidents.total === 1 ? "" : "s"} activas
+              <div className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-4 py-2 text-[10px] font-black uppercase tracking-[0.16em] text-cyan-300">
+                {incidents.total} incidencia{incidents.total === 1 ? "" : "s"} activa{incidents.total === 1 ? "" : "s"}
               </div>
             </div>
 
-            <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2 2xl:grid-cols-4">
+            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 2xl:grid-cols-4">
               <IncidentCard
                 tone="red"
-                title="Pedidos listos sin entregar"
+                title="Pedidos listos"
                 count={incidents.readyOrders.length}
-                helper={`Mas de ${READY_INCIDENT_MINUTES} min esperando mesero.`}
+                helper={`Mas de ${READY_INCIDENT_MINUTES} min sin entregar.`}
                 items={incidents.readyOrders.slice(0, 3).map((order) => ({
                   id: order.id,
                   label: `${order.correlativeCode || order.id} · ${Number(order?.tableNumber) > 0 ? `Mesa ${order.tableNumber}` : "Para llevar"}`,
@@ -555,7 +557,7 @@ const AdminView = () => {
               />
               <IncidentCard
                 tone="amber"
-                title="Cobros pendientes en caja"
+                title="Cobros pendientes"
                 count={incidents.pendingPayments.length}
                 helper={`Mas de ${PAYMENT_INCIDENT_MINUTES} min desde la entrega.`}
                 items={incidents.pendingPayments.slice(0, 3).map((order) => ({
@@ -566,9 +568,9 @@ const AdminView = () => {
               />
               <IncidentCard
                 tone="cyan"
-                title="Mesas pendientes de limpieza"
+                title="Mesas por limpiar"
                 count={incidents.cleanupPending.length}
-                helper="Mesas pagadas que aun no se liberan."
+                helper="Mesas pagadas pendientes de liberacion."
                 items={incidents.cleanupPending.slice(0, 3).map((entry) => ({
                   id: `${entry.tableNumber}`,
                   label: `Mesa ${entry.tableNumber}`,
@@ -577,7 +579,7 @@ const AdminView = () => {
               />
               <IncidentCard
                 tone="slate"
-                title="Productos agotados"
+                title="Agotados"
                 count={incidents.outOfStockProducts.length}
                 helper="Conviene ocultarlos o reponer stock."
                 items={incidents.outOfStockProducts.slice(0, 3).map((product) => ({
@@ -590,30 +592,8 @@ const AdminView = () => {
           </section>
         )}
 
-        {(activeSection === "operations" || activeSection === "inventory" || activeSection === "team" || activeSection === "settings" || activeSection === "audit") && (
-          <section className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-            <ControlInsightCard
-              eyebrow="Alertas"
-              title="Incidencias activas"
-              value={incidents.total}
-              helper="Casos que requieren seguimiento inmediato."
-              accent="text-rose-300"
-            />
-            <ControlInsightCard
-              eyebrow="Inventario"
-              title="Productos con stock bajo"
-              value={quickStats.lowStockProducts}
-              helper={`${quickStats.outOfStockProducts} productos agotados actualmente.`}
-              accent="text-amber-300"
-            />
-            <ControlInsightCard
-              eyebrow="Mesas"
-              title="Mesas por limpiar"
-              value={incidents.cleanupPending.length}
-              helper="Mesas pagadas pendientes de liberacion."
-              accent="text-cyan-300"
-            />
-          </section>
+        {activeSection === "earnings" && (
+          <RevenueAnalytics />
         )}
 
         {(activeSection === "overview" || activeSection === "operations") && (
@@ -666,16 +646,8 @@ const AdminView = () => {
   );
 };
 
-const ControlInsightCard = ({ eyebrow, title, value, helper, accent }) => (
-  <div className="rounded-[1.8rem] border border-slate-800 bg-slate-900/75 p-5 shadow-xl">
-    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">{eyebrow}</p>
-    <h3 className="mt-3 text-sm font-black uppercase tracking-[0.16em] text-white">{title}</h3>
-    <p className={`mt-4 text-4xl font-black tracking-tighter ${accent}`}>{value}</p>
-    <p className="mt-3 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">{helper}</p>
-  </div>
-);
-
 const IncidentCard = ({ tone = "red", title, count, helper, items }) => {
+  const [expanded, setExpanded] = useState(false);
   const toneMap = {
     red: {
       accent: "text-red-300",
@@ -698,13 +670,13 @@ const IncidentCard = ({ tone = "red", title, count, helper, items }) => {
   const currentTone = toneMap[tone] || toneMap.red;
 
   return (
-    <article className="rounded-[1.2rem] border border-slate-800 bg-slate-950/70 p-3 shadow-xl">
+    <article className="rounded-[1.4rem] border border-slate-800 bg-slate-950/70 p-4 shadow-xl">
       <div className="flex items-start justify-between gap-2">
         <div>
-          <p className="text-[7px] font-black uppercase tracking-[0.14em] text-slate-500">
+          <p className="text-[8px] font-black uppercase tracking-[0.14em] text-slate-500">
             Incidencia
           </p>
-          <h3 className="mt-1 text-[10px] font-black uppercase tracking-[0.12em] text-white">
+          <h3 className="mt-2 text-[11px] font-black uppercase tracking-[0.12em] text-white">
             {title}
           </h3>
         </div>
@@ -713,10 +685,21 @@ const IncidentCard = ({ tone = "red", title, count, helper, items }) => {
         </span>
       </div>
 
-      <p className={`mt-2 text-xl font-black tracking-tighter ${currentTone.accent}`}>{count}</p>
-      <p className="mt-1 text-[8px] font-black uppercase tracking-[0.12em] text-slate-500">{helper}</p>
+      <p className={`mt-3 text-3xl font-black tracking-tighter ${currentTone.accent}`}>{count}</p>
+      <p className="mt-2 text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">{helper}</p>
 
-      <div className="mt-2 space-y-1.5">
+      {count > 0 ? (
+        <button
+          type="button"
+          onClick={() => setExpanded((current) => !current)}
+          className={`mt-3 inline-flex rounded-full border px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.14em] transition-all ${currentTone.badge}`}
+        >
+          {expanded ? "Ocultar detalle" : "Ver detalle"}
+        </button>
+      ) : null}
+
+      {expanded || count === 0 ? (
+      <div className="mt-3 space-y-1.5">
         {count === 0 ? (
           <div className="rounded-[0.9rem] border border-dashed border-slate-800 bg-slate-900/40 p-2.5 text-center">
             <p className="text-[8px] font-black uppercase tracking-[0.12em] text-slate-500">
@@ -739,6 +722,7 @@ const IncidentCard = ({ tone = "red", title, count, helper, items }) => {
           ))
         )}
       </div>
+      ) : null}
     </article>
   );
 };

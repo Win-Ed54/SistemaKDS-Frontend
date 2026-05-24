@@ -30,7 +30,10 @@ const QUICK_NOTES = {
 const GENERIC_QUICK_NOTES = ["Sin cebolla", "Sin salsa", "Para llevar", "Sin hielo"];
 
 const normalizeCustomerName = (value) =>
-  value
+  String(value || "")
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .replace(/[^\p{L}\s]/gu, "")
     .replace(/\s+/g, " ")
     .trim()
     .toUpperCase();

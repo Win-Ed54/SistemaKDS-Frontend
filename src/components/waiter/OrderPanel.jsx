@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { ReceiptText, MapPin, User } from "lucide-react";
+import { ReceiptText, MapPin, User, ChevronDown } from "lucide-react";
 import OrderBuilder from "./OrderBuilder";
 import useOrderBuilderStore from "../../store/orderBuilderStore";
 
@@ -12,8 +12,8 @@ const normalizeDeliveryAddress = (value) =>
     .slice(0, 180);
 
 const normalizeCustomerName = (value) =>
-  value
-    .replace(/[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s]/g, "")
+  String(value || "")
+    .replace(/[^\p{L}\s]/gu, "")
     .replace(/\s+/g, " ")
     .slice(0, 60);
 
@@ -28,6 +28,7 @@ const OrderPanel = ({
   const setCustomer = useOrderBuilderStore((state) => state.setCustomer);
   const [takeoutDestination, setTakeoutDestination] = useState(TAKEOUT_DESTINATIONS[0]);
   const [deliveryAddress, setDeliveryAddress] = useState("");
+  const [showServiceDetails, setShowServiceDetails] = useState(false);
   const [serviceMode, setServiceMode] = useState(
     Number(tableId) === 0 ? "takeout" : "dine-in",
   );
@@ -44,139 +45,83 @@ const OrderPanel = ({
       setServiceMode(Number(tableId) === 0 || !canHandleDining ? "takeout" : "dine-in");
       setTakeoutDestination(TAKEOUT_DESTINATIONS[0]);
       setDeliveryAddress("");
+      setShowServiceDetails(Number(tableId) === 0 || !canHandleDining);
     });
   }, [canHandleDining, tableId]);
 
   useEffect(() => {
     if (!canHandleTakeout && serviceMode === "takeout") {
-      setServiceMode("dine-in");
+      queueMicrotask(() => {
+        setServiceMode("dine-in");
+      });
     }
   }, [canHandleTakeout, serviceMode]);
 
-  const handleOrderSent = () => {
+  const handleOrderSent = (createdOrder) => {
     setTakeoutDestination(TAKEOUT_DESTINATIONS[0]);
     setDeliveryAddress("");
-    onOrderSent?.();
+    setShowServiceDetails(Number(tableId) === 0 || !canHandleDining);
+    onOrderSent?.(createdOrder);
   };
 
   return (
     <div className="flex h-full min-h-0 flex-col rounded-[2rem] border border-slate-800 bg-slate-900/80 p-4 shadow-2xl backdrop-blur-xl sm:rounded-[2.5rem] sm:p-5 xl:p-4">
       <div className="mb-4 flex shrink-0 items-center justify-between xl:mb-3">
         <div className="flex items-center gap-3">
-          <div className="w-1.5 h-6 bg-[#39FF14] rounded-full shadow-[0_0_15px_#39FF14]" />
-          <h2 className="text-[11px] sm:text-sm font-black uppercase tracking-[0.26em] sm:tracking-[0.3em] text-slate-400">
+          <div className="h-6 w-1.5 rounded-full bg-[#39FF14] shadow-[0_0_15px_#39FF14]" />
+          <h2 className="text-[11px] font-black uppercase tracking-[0.26em] text-slate-400 sm:text-sm sm:tracking-[0.3em]">
             Detalle del Pedido
           </h2>
         </div>
-        <ReceiptText className="w-5 h-5 text-slate-600" />
+        <ReceiptText className="h-5 w-5 text-slate-600" />
       </div>
 
       <div className="mb-4 shrink-0 xl:mb-3">
-        <div className="bg-slate-950 border border-slate-800 p-3 rounded-[1.2rem] sm:rounded-2xl flex items-center gap-3 focus-within:border-cyan-500/50 transition-colors">
-          <User className="w-4 h-4 text-cyan-400" />
+        <div className="flex items-center gap-3 rounded-[1.2rem] border border-slate-800 bg-slate-950 p-3 transition-colors focus-within:border-cyan-500/50 sm:rounded-2xl">
+          <User className="h-4 w-4 text-cyan-400" />
           <div className="flex-1">
-            <p className="text-[8px] font-black text-slate-600 uppercase tracking-tighter">
+            <p className="text-[8px] font-black uppercase tracking-tighter text-slate-600">
               {isTakeout ? "Cliente (Obligatorio)" : "Cliente (Opcional)"}
             </p>
             <input
               type="text"
               value={customerName}
-              onChange={(e) => setCustomer(normalizeCustomerName(e.target.value))}
-              placeholder={isTakeout ? "NOMBRE PARA LLEVAR (OBLIGATORIO)" : "NOMBRE DEL CLIENTE (OPCIONAL)"}
+              onChange={(event) => setCustomer(normalizeCustomerName(event.target.value))}
+              placeholder={
+                isTakeout
+                  ? "NOMBRE PARA LLEVAR (OBLIGATORIO)"
+                  : "NOMBRE DEL CLIENTE (OPCIONAL)"
+              }
               maxLength={60}
               autoComplete="off"
-              className="bg-transparent border-none text-xs font-black text-white uppercase tracking-tighter w-full focus:outline-none placeholder:text-slate-800"
+              className="w-full border-none bg-transparent text-xs font-black uppercase tracking-tighter text-white outline-none placeholder:text-slate-800"
             />
           </div>
         </div>
       </div>
 
-      {isTakeout && (
-        <div className="mb-4 shrink-0 xl:mb-3">
-          <div className="bg-slate-950 border border-amber-300/20 p-3 rounded-[1.2rem] sm:rounded-2xl flex items-center gap-3 focus-within:border-amber-300/60 transition-colors">
-            <MapPin className="w-4 h-4 text-amber-300" />
-            <div className="flex-1">
-              <p className="text-[8px] font-black text-amber-200/70 uppercase tracking-tighter">
-                Destino para llevar
-              </p>
-              <div className="mt-2 grid grid-cols-1 gap-2">
-                {takeoutDestinations.map((destination) => (
-                  <button
-                    key={destination}
-                    type="button"
-                    onClick={() => setTakeoutDestination(destination)}
-                    className={`rounded-xl border px-3 py-2 text-left text-[10px] font-black uppercase tracking-[0.14em] transition-all ${
-                      takeoutDestination === destination
-                        ? "border-amber-300 bg-amber-300 text-slate-950"
-                        : "border-slate-800 bg-slate-950 text-slate-300"
-                    }`}
-                  >
-                    {destination}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {isDeliverySelected && (
-        <div className="mb-4 shrink-0 xl:mb-3">
-          <div className="bg-slate-950 border border-cyan-400/20 p-3 rounded-[1.2rem] sm:rounded-2xl flex items-start gap-3 focus-within:border-cyan-400/60 transition-colors">
-            <MapPin className="w-4 h-4 text-cyan-300 mt-1" />
-            <div className="flex-1">
-              <p className="text-[8px] font-black text-cyan-200/70 uppercase tracking-tighter">
-                Direccion de delivery
-              </p>
-              <textarea
-                value={deliveryAddress}
-                onChange={(event) => setDeliveryAddress(normalizeDeliveryAddress(event.target.value))}
-                rows={3}
-                placeholder="CALLE, COLONIA, REFERENCIAS..."
-                maxLength={180}
-                className="mt-2 w-full resize-none rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-white outline-none placeholder:text-slate-600 focus:border-cyan-400/50"
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="mb-4 shrink-0 xl:mb-3">
-        {!isAssignedTakeout && canHandleTakeout && canHandleDining && Number(tableId) > 0 && (
-          <div className="mb-3 grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => setServiceMode("dine-in")}
-              className={`rounded-[1rem] border px-3 py-2 text-[9px] font-black uppercase tracking-[0.16em] transition-all ${
-                serviceMode === "dine-in"
-                  ? "border-cyan-300 bg-cyan-400 text-slate-950"
-                  : "border-slate-800 bg-slate-950 text-slate-300"
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="rounded-[1.2rem] border border-slate-800 bg-slate-950/80 p-3">
+            <p className="text-[8px] font-black uppercase tracking-tighter text-slate-600">
+              Servicio
+            </p>
+            <p
+              className={`mt-2 text-[10px] font-black uppercase tracking-[0.14em] ${
+                isTakeout ? "text-amber-300" : "text-cyan-300"
               }`}
             >
-              Consumir en mesa
-            </button>
-            <button
-              type="button"
-              onClick={() => setServiceMode("takeout")}
-              className={`rounded-[1rem] border px-3 py-2 text-[9px] font-black uppercase tracking-[0.16em] transition-all ${
-                serviceMode === "takeout"
-                  ? "border-amber-300 bg-amber-300 text-slate-950"
-                  : "border-slate-800 bg-slate-950 text-slate-300"
-              }`}
-            >
-              Pedir para llevar
-            </button>
+              {isTakeout ? "Para llevar" : "Mesa"}
+            </p>
           </div>
-        )}
 
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-slate-950 border border-slate-800 p-2.5 sm:p-3 rounded-[1.2rem] sm:rounded-2xl flex items-center gap-2 sm:gap-3">
-            <MapPin className="w-4 h-4 text-[#FFFF00]" />
+          <div className="flex items-center gap-2 rounded-[1.2rem] border border-slate-800 bg-slate-950 p-2.5 sm:gap-3 sm:rounded-2xl sm:p-3">
+            <MapPin className="h-4 w-4 text-[#FFFF00]" />
             <div>
-              <p className="text-[8px] font-black text-slate-600 uppercase tracking-tighter">
+              <p className="text-[8px] font-black uppercase tracking-tighter text-slate-600">
                 Ubicacion
               </p>
-              <p className="text-[10px] sm:text-xs font-black text-white uppercase tracking-tighter">
+              <p className="text-[10px] font-black uppercase tracking-tighter text-white sm:text-xs">
                 {tableId === 0
                   ? "Para llevar"
                   : tableId
@@ -188,18 +133,126 @@ const OrderPanel = ({
             </div>
           </div>
 
-          <div className="bg-slate-950 border border-fuchsia-500/20 p-2.5 sm:p-3 rounded-[1.2rem] sm:rounded-2xl">
-            <p className="text-[8px] font-black text-fuchsia-300 uppercase tracking-tighter">
+          <div className="rounded-[1.2rem] border border-fuchsia-500/20 bg-slate-950 p-2.5 sm:rounded-2xl sm:p-3">
+            <p className="text-[8px] font-black uppercase tracking-tighter text-fuchsia-300">
               Clientes
             </p>
-            <p className="mt-1 text-[10px] sm:text-xs font-black text-white uppercase tracking-tighter">
+            <p className="mt-1 text-[10px] font-black uppercase tracking-tighter text-white sm:text-xs">
               {isTakeout ? "No aplica" : `${Number(pax) || 0} personas`}
             </p>
           </div>
         </div>
+
+        <div className="mt-3 rounded-[1.3rem] border border-slate-800 bg-slate-950/70">
+          <button
+            type="button"
+            onClick={() => setShowServiceDetails((current) => !current)}
+            className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+          >
+            <div>
+              <p className="text-[8px] font-black uppercase tracking-[0.16em] text-slate-500">
+                Configuracion del servicio
+              </p>
+              <p className="mt-1 text-[10px] font-black uppercase tracking-[0.14em] text-slate-200">
+                {isTakeout
+                  ? `Destino actual: ${takeoutDestination}`
+                  : "Ajusta el modo y el destino si hace falta"}
+              </p>
+            </div>
+            <span className="inline-flex items-center gap-2 rounded-full border border-cyan-500/20 bg-cyan-500/10 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.14em] text-cyan-200">
+              {showServiceDetails ? "Ocultar" : "Ver"}
+              <ChevronDown
+                className={`h-4 w-4 transition-transform ${showServiceDetails ? "rotate-180" : ""}`}
+              />
+            </span>
+          </button>
+
+          {showServiceDetails && (
+            <div className="border-t border-slate-800 px-4 py-4">
+              {!isAssignedTakeout && canHandleTakeout && canHandleDining && Number(tableId) > 0 && (
+                <div className="mb-3 grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setServiceMode("dine-in")}
+                    className={`rounded-[1rem] border px-3 py-2 text-[9px] font-black uppercase tracking-[0.16em] transition-all ${
+                      serviceMode === "dine-in"
+                        ? "border-cyan-300 bg-cyan-400 text-slate-950"
+                        : "border-slate-800 bg-slate-950 text-slate-300"
+                    }`}
+                  >
+                    Consumir en mesa
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setServiceMode("takeout")}
+                    className={`rounded-[1rem] border px-3 py-2 text-[9px] font-black uppercase tracking-[0.16em] transition-all ${
+                      serviceMode === "takeout"
+                        ? "border-amber-300 bg-amber-300 text-slate-950"
+                        : "border-slate-800 bg-slate-950 text-slate-300"
+                    }`}
+                  >
+                    Pedir para llevar
+                  </button>
+                </div>
+              )}
+
+              {isTakeout && (
+                <div className="rounded-[1.2rem] border border-amber-300/20 bg-slate-950 p-3">
+                  <div className="flex items-center gap-3">
+                    <MapPin className="h-4 w-4 text-amber-300" />
+                    <div className="flex-1">
+                      <p className="text-[8px] font-black uppercase tracking-tighter text-amber-200/70">
+                        Destino para llevar
+                      </p>
+                      <div className="mt-2 grid grid-cols-1 gap-2">
+                        {takeoutDestinations.map((destination) => (
+                          <button
+                            key={destination}
+                            type="button"
+                            onClick={() => setTakeoutDestination(destination)}
+                            className={`rounded-xl border px-3 py-2 text-left text-[10px] font-black uppercase tracking-[0.14em] transition-all ${
+                              takeoutDestination === destination
+                                ? "border-amber-300 bg-amber-300 text-slate-950"
+                                : "border-slate-800 bg-slate-950 text-slate-300"
+                            }`}
+                          >
+                            {destination}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {isDeliverySelected && (
+                <div className="mt-3 rounded-[1.2rem] border border-cyan-400/20 bg-slate-950 p-3">
+                  <div className="flex items-start gap-3">
+                    <MapPin className="mt-1 h-4 w-4 text-cyan-300" />
+                    <div className="flex-1">
+                      <p className="text-[8px] font-black uppercase tracking-tighter text-cyan-200/70">
+                        Direccion de delivery
+                      </p>
+                      <textarea
+                        value={deliveryAddress}
+                        onChange={(event) =>
+                          setDeliveryAddress(normalizeDeliveryAddress(event.target.value))
+                        }
+                        rows={3}
+                        placeholder="CALLE, COLONIA, REFERENCIAS..."
+                        maxLength={180}
+                        className="mt-2 w-full resize-none rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-white outline-none placeholder:text-slate-600 focus:border-cyan-400/50"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
-      <div className="flex-1 min-h-0">
+      <div className="min-h-0 flex-1">
         <OrderBuilder
           customerName={customerName}
           tableId={isTakeout ? 0 : tableId}
