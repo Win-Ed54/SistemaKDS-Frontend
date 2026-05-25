@@ -472,26 +472,24 @@ const AdminView = () => {
         <section className="rounded-[2rem] border border-slate-800 bg-slate-900/70 p-4 shadow-xl">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500">
-                Navegacion de control
-              </p>
               <h2 className="mt-2 text-lg font-black uppercase tracking-[0.16em] text-white">
-                Panel administrativo ordenado por areas
+                Panel administrativo
               </h2>
             </div>
 
             <div className="flex flex-wrap gap-2">
               {sectionTabs.map((section) => {
                 const Icon = section.icon;
+                const isActive = activeSection === section.id;
 
                 return (
                   <button
                     key={section.id}
                     onClick={() => setActiveSection(section.id)}
                     className={`inline-flex items-center gap-2 rounded-2xl border px-4 py-3 text-[10px] font-black uppercase tracking-[0.18em] transition-all ${
-                      activeSection === section.id
+                      isActive
                         ? "border-cyan-300 bg-cyan-400 text-slate-950"
-                        : "border-slate-800 bg-slate-950 text-slate-300"
+                        : "border-cyan-300 bg-cyan-400 text-slate-950"
                     }`}
                   >
                     <Icon className="w-4 h-4" />
@@ -524,16 +522,7 @@ const AdminView = () => {
         {(activeSection === "overview" || activeSection === "operations") && (
           <section className="rounded-[2rem] border border-slate-800 bg-slate-900/70 p-5 shadow-xl">
             <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500">
-                  Seguimiento operativo
-                </p>
-                <h2 className="mt-2 text-lg font-black uppercase tracking-[0.16em] text-white">
-                  Solo lo necesario para reaccionar rapido
-                </h2>
-                <p className="mt-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">
-                  Si hace falta contexto extra, puedes ampliarlo sin saturar el panel principal.
-                </p>
+              <div>               
               </div>
 
               <div className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-4 py-2 text-[10px] font-black uppercase tracking-[0.16em] text-cyan-300">
