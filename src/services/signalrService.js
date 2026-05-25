@@ -1,8 +1,9 @@
 import * as signalR from "@microsoft/signalr";
 import useOrderStore from "../store/orderStore";
-import { clearAuthStorage, getAuthValue } from "./authStorage";
-import { getAppPath, getCurrentAppPath } from "../config/appPaths";
+import { getAuthValue } from "./authStorage";
+import { getCurrentAppPath } from "../config/appPaths";
 import { hubUrl } from "../config/runtime";
+import { forceSessionReset } from "./sessionReset";
 const ROLE_TOKEN_MAP = {
   kitchen: "kitchen_token",
   host: "host_token",
@@ -194,12 +195,11 @@ export const startConnection = async (preferredRole = "") => {
       notifyStatus(true);
       return connection;
     })
-    .catch((err) => {
+    .catch(async (err) => {
       notifyStatus(false);
 
       if (err?.message?.includes("401")) {
-        clearAuthStorage();
-        window.location.href = getAppPath("/login");
+        await forceSessionReset();
         return connection;
       }
 

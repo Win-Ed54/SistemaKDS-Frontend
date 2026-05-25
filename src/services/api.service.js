@@ -1,6 +1,7 @@
-import { clearAuthStorage, getAuthValue, setAuthValue } from "./authStorage";
-import { getAppPath, getCurrentAppPath } from "../config/appPaths";
+import { getAuthValue, setAuthValue } from "./authStorage";
+import { getCurrentAppPath } from "../config/appPaths";
 import { buildApiUrl } from "../config/runtime";
+import { forceSessionReset } from "./sessionReset";
 
 const getToken = () => {
   const path = getCurrentAppPath();
@@ -26,8 +27,7 @@ const refreshAccessToken = async () => {
   });
 
   if (!res.ok) {
-    clearAuthStorage();
-    window.location.href = getAppPath("/login");
+    await forceSessionReset();
     throw new Error("Session expired");
   }
 
@@ -67,6 +67,7 @@ const request = async (endpoint, options = {}, retry = true) => {
       } catch {
         isRefreshing = false;
         refreshQueue = [];
+        await forceSessionReset();
         throw new Error("Session expired");
       }
     }

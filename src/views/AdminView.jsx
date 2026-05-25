@@ -21,7 +21,6 @@ import AdministrativeLog from "../components/admin/AdministrativeLog";
 import InventoryManager from "../components/admin/InventoryManager";
 import KdsSettingsPanel from "../components/admin/KdsSettingsPanel";
 import OrdersSummary from "../components/admin/OrdersSummary";
-import RevenueAnalytics from "../components/admin/RevenueAnalytics";
 import StatsCard from "../components/admin/StatsCard";
 import StaffAssignmentsPanel from "../components/admin/StaffAssignmentsPanel";
 import TableStatus from "../components/admin/TableStatus";
@@ -438,7 +437,6 @@ const AdminView = () => {
 
   const sectionTabs = [
     { id: "overview", label: "Resumen", icon: LayoutDashboard },
-    { id: "earnings", label: "Ganancias", icon: TrendingUp },
     { id: "operations", label: "Operacion", icon: ClipboardList },
     { id: "inventory", label: "Inventario", icon: Boxes },
     { id: "team", label: "Equipo", icon: Users },
@@ -590,10 +588,6 @@ const AdminView = () => {
               />
             </div>
           </section>
-        )}
-
-        {activeSection === "earnings" && (
-          <RevenueAnalytics />
         )}
 
         {(activeSection === "overview" || activeSection === "operations") && (

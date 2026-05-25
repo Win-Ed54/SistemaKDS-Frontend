@@ -31,8 +31,6 @@ const GENERIC_QUICK_NOTES = ["Sin cebolla", "Sin salsa", "Para llevar", "Sin hie
 
 const normalizeCustomerName = (value) =>
   String(value || "")
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
     .replace(/[^\p{L}\s]/gu, "")
     .replace(/\s+/g, " ")
     .trim()
@@ -123,7 +121,10 @@ const OrderBuilder = ({
   };
 
   const sendOrder = async () => {
-    const normalizedCustomerName = normalizeCustomerName(customerName || "");
+    const sanitizedCustomerName = normalizeCustomerName(customerName || "");
+    const normalizedCustomerName = sanitizedCustomerName
+      .normalize("NFD")
+      .replace(/\p{Diacritic}/gu, "");
     const normalizedTakeoutDestination = normalizeTakeoutDestination(
       takeoutDestination || (Number(sourceTableId) > 0 ? `Mesa ${sourceTableId}` : ""),
     );
@@ -145,7 +146,7 @@ const OrderBuilder = ({
       return;
     }
 
-    if (isTakeout && settings.requireCustomerNameForTakeout && !normalizedCustomerName) {
+    if (isTakeout && settings.requireCustomerNameForTakeout && !sanitizedCustomerName) {
       showToast("El nombre del cliente es obligatorio para pedidos para llevar", "error");
       return;
     }
@@ -166,7 +167,7 @@ const OrderBuilder = ({
     const order = {
       tableNumber: Number.parseInt(tableId, 10),
       waiterName: getAuthValue("user_name") || "Mesero",
-      customerName: normalizedCustomerName || "GENERAL",
+      customerName: sanitizedCustomerName || "GENERAL",
       takeoutDestination: isTakeout ? normalizedTakeoutDestination : "",
       deliveryAddress: isTakeout ? normalizedDeliveryAddress : "",
       pax: isTakeout ? 0 : normalizedPax,

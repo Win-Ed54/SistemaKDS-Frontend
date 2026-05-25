@@ -6,7 +6,7 @@ import {
   setAuthValue,
 } from "./authStorage";
 import { buildApiUrl } from "../config/runtime";
-import { stopConnection } from "./signalrService";
+import { forceSessionReset } from "./sessionReset";
 const REFRESH_BUFFER_MS = 5 * 60 * 1000;
 const MIN_REFRESH_DELAY_MS = 30 * 1000;
 
@@ -145,7 +145,5 @@ export { getRoleRoute as getRouteForRole };
 
 export const logout = () => {
   clearRefreshTimeout();
-  void stopConnection();
-  clearAuthStorage();
-  window.dispatchEvent(new Event("auth-changed"));
+  void forceSessionReset();
 };
