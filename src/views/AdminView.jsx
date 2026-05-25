@@ -445,7 +445,7 @@ const AdminView = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(34,211,238,0.08),_transparent_24%),linear-gradient(180deg,_#020617_0%,_#020617_100%)] text-white p-4 lg:p-8 selection:bg-cyan-500/30">
+    <div className="min-h-screen bg-slate-950 text-white p-4 lg:p-8 selection:bg-cyan-500/30">
       <div className="max-w-[1700px] mx-auto space-y-8">
         <ConfirmDialog
           open={pendingTableRelease !== null}
@@ -480,16 +480,15 @@ const AdminView = () => {
             <div className="flex flex-wrap gap-2">
               {sectionTabs.map((section) => {
                 const Icon = section.icon;
-                const isActive = activeSection === section.id;
 
                 return (
                   <button
                     key={section.id}
                     onClick={() => setActiveSection(section.id)}
                     className={`inline-flex items-center gap-2 rounded-2xl border px-4 py-3 text-[10px] font-black uppercase tracking-[0.18em] transition-all ${
-                      isActive
+                      activeSection === section.id
                         ? "border-cyan-300 bg-cyan-400 text-slate-950"
-                        : "border-cyan-300 bg-cyan-400 text-slate-950"
+                        : "border-slate-800 bg-slate-950 text-slate-300"
                     }`}
                   >
                     <Icon className="w-4 h-4" />
