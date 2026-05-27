@@ -90,6 +90,8 @@ let reconnectTimeoutId = null;
 let activePreferredRole = "";
 let isManualStopRequested = false;
 const EVENT_DEDUPE_MS = 1500;
+let heartbeatIntervalId = null;
+const HEARTBEAT_MS = 25000; // debe ser menor al cutoff del servidor (60s)
 
 const getPayloadId = (payload) => {
   if (payload && typeof payload === "object") {
@@ -174,6 +176,10 @@ export const stopConnection = async ({ clearPreferredRole = true } = {}) => {
       // If stop fails, the connection status will be retried on the next init.
     }
   }
+  if (heartbeatIntervalId) {
+    clearInterval(heartbeatIntervalId);
+    heartbeatIntervalId = null;
+  }
 
   notifyStatus(false);
   startPromise = null;
@@ -191,15 +197,35 @@ export const startConnection = async (preferredRole = "") => {
 
     connection.onreconnecting(() => {
       notifyStatus(false);
+      if (heartbeatIntervalId) {
+        clearInterval(heartbeatIntervalId);
+        heartbeatIntervalId = null;
+      }
     });
 
     connection.onreconnected(() => {
       notifyStatus(true);
       void registerPresence();
+      // asegurar latido periódico para mantener presencia activa en el servidor
+      if (!heartbeatIntervalId) {
+        heartbeatIntervalId = setInterval(() => {
+          try {
+            if (connection.state === signalR.HubConnectionState.Connected) {
+              void connection.invoke("HeartbeatPresence");
+            }
+          } catch {
+            // ignore
+          }
+        }, HEARTBEAT_MS);
+      }
     });
 
     connection.onclose(() => {
       notifyStatus(false);
+      if (heartbeatIntervalId) {
+        clearInterval(heartbeatIntervalId);
+        heartbeatIntervalId = null;
+      }
       if (isManualStopRequested) {
         isManualStopRequested = false;
         return;
@@ -230,6 +256,18 @@ export const startConnection = async (preferredRole = "") => {
       }
       notifyStatus(true);
       void registerPresence();
+      // iniciar latido periódico para mantener presencia activa en el servidor
+      if (!heartbeatIntervalId) {
+        heartbeatIntervalId = setInterval(() => {
+          try {
+            if (connection.state === signalR.HubConnectionState.Connected) {
+              void connection.invoke("HeartbeatPresence");
+            }
+          } catch {
+            // ignore
+          }
+        }, HEARTBEAT_MS);
+      }
       return connection;
     })
     .catch(async (err) => {
