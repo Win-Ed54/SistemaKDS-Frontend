@@ -147,16 +147,28 @@ const normalizeWaiter = (waiter) => {
     waiter.username ?? waiter.Username ?? waiter.name ?? waiter.Name ?? "",
   ).trim();
   const role = String(waiter.role ?? waiter.Role ?? "waiter").trim().toLowerCase();
+  const serviceScope = String(
+    waiter.serviceScope ?? waiter.ServiceScope ?? "hybrid",
+  ).trim().toLowerCase();
+  const browser = String(waiter.browser ?? waiter.Browser ?? "Desconocido").trim() || "Desconocido";
 
   if (!id || !username) return null;
   if (role && role !== "waiter") return null;
 
-  return { ...waiter, id, username, role };
+  return {
+    ...waiter,
+    id,
+    username,
+    role,
+    serviceScope,
+    browser,
+    isConnected: waiter.isConnected ?? waiter.IsConnected ?? true,
+  };
 };
 
 const HostView = () => {
   const navigate = useNavigate();
-  const { isConnected } = useSignalRConnection("host");
+  const { isConnected, connection } = useSignalRConnection("host");
   const { tables, refetch: refetchTables } = useTables();
   const { settings } = useKdsSettings();
   const { showToast } = useToast();
@@ -181,10 +193,16 @@ const HostView = () => {
   );
   const [now, setNow] = useState(() => Date.now());
   const maxHostPartySize = Number(settings?.maxPartySize) > 0 ? Number(settings.maxPartySize) : 10;
+  const maxTablesPerWaiter = Number(settings?.maxTablesPerWaiter) > 0
+    ? Number(settings.maxTablesPerWaiter)
+    : 5;
   const defaultCleaningMinutes =
     Number(settings?.defaultCleaningMinutes) > 0
       ? Number(settings.defaultCleaningMinutes)
       : DEFAULT_CLEANING_MINUTES;
+  const requireConnectedWaitersForAssignment =
+    settings?.requireConnectedWaitersForAssignment !== false;
+  const connectedWaitersCount = waiters.filter((waiter) => waiter.isConnected !== false).length;
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
@@ -251,6 +269,20 @@ const HostView = () => {
       void loadWaiters();
     }
   }, [isConnected, loadWaiters]);
+
+  useEffect(() => {
+    if (!connection) return;
+
+    const handlePresenceUpdated = () => {
+      void loadWaiters();
+    };
+
+    connection.on("presenceupdated", handlePresenceUpdated);
+
+    return () => {
+      connection.off("presenceupdated", handlePresenceUpdated);
+    };
+  }, [connection, loadWaiters]);
 
   const normalizedTables = useMemo(
     () =>
@@ -396,6 +428,7 @@ const HostView = () => {
     const assignmentsByWaiter = waiters.map((waiter) => ({
       id: waiter.id,
       username: waiter.username,
+      isConnected: waiter.isConnected !== false,
       activeTables: 0,
       occupiedTables: 0,
       cleaningTables: 0,
@@ -429,6 +462,14 @@ const HostView = () => {
       return a.username.localeCompare(b.username);
     });
   }, [hostTableStates, waiters]);
+
+  const selectableWaiters = useMemo(
+    () =>
+      requireConnectedWaitersForAssignment
+        ? waiters.filter((waiter) => waiter.isConnected !== false)
+        : waiters,
+    [requireConnectedWaitersForAssignment, waiters],
+  );
 
   useEffect(() => {
     if (!transferSourceTableNumber) return;
@@ -480,8 +521,30 @@ const HostView = () => {
       return false;
     }
 
+    if (
+      requireConnectedWaitersForAssignment &&
+      assignedWaiter.isConnected === false
+    ) {
+      showToast("El mesero seleccionado no esta conectado. Elige otro mesero activo.", "error");
+      return false;
+    }
+
     if (table.capacity && partySize > table.capacity) {
       showToast(`Mesa ${table.number} admite maximo ${table.capacity}`, "error");
+      return false;
+    }
+
+    const currentAssignments = hostTableStates.filter(
+      (entry) =>
+        String(entry.assignedWaiterId || "").trim() === String(assignedWaiter.id || "").trim() &&
+        (entry.status === "occupied" || entry.status === "cleaning"),
+    ).length;
+
+    if (currentAssignments >= maxTablesPerWaiter) {
+      showToast(
+        `El mesero ${assignedWaiter.username} ya alcanzo el limite de ${maxTablesPerWaiter} mesas activas.`,
+        "error",
+      );
       return false;
     }
 
@@ -544,6 +607,30 @@ const HostView = () => {
     () => waiters.find((waiter) => waiter.id === selectedWaiterId) || null,
     [selectedWaiterId, waiters],
   );
+
+  const selectedWaiterAssignments = useMemo(
+    () =>
+      hostTableStates.filter(
+        (table) =>
+          String(table.assignedWaiterId || "").trim() === String(selectedWaiterId || "").trim() &&
+          (table.status === "occupied" || table.status === "cleaning"),
+      ).length,
+    [hostTableStates, selectedWaiterId],
+  );
+
+  const isSelectedWaiterAvailable = requireConnectedWaitersForAssignment
+    ? Boolean(selectedWaiter && selectedWaiter.isConnected !== false)
+    : Boolean(selectedWaiter);
+  const assignmentBlockedReason =
+    !selectedWaiter
+      ? requireConnectedWaitersForAssignment
+        ? "Selecciona un mesero conectado para asignar la mesa."
+        : "Selecciona un mesero para asignar la mesa."
+      : requireConnectedWaitersForAssignment && !isSelectedWaiterAvailable
+        ? "El mesero seleccionado no esta conectado. Elige otro mesero activo."
+        : selectedWaiterAssignments >= maxTablesPerWaiter
+          ? `El mesero ya alcanzo el limite de ${maxTablesPerWaiter} mesas activas.`
+          : "";
 
   const handlePrepareTransfer = (table) => {
     setTransferSourceTableNumber(table.number);
@@ -688,7 +775,7 @@ const HostView = () => {
         <SurfaceHeader
           eyebrow="Recepcion"
           title="Sala de espera y asignacion de mesas"
-          badge={`${waiters.length} meseros`}
+          badge={`${connectedWaitersCount}/${waiters.length} meseros conectados`}
         />
 
         <section className="rounded-[1.5rem] border border-slate-800 bg-slate-900/60 p-3 shadow-xl space-y-3">
@@ -724,30 +811,37 @@ const HostView = () => {
                   </h3>
 
                   <div className="mt-2 grid grid-cols-3 gap-1.5">
-                    <div className="rounded-[0.8rem] border border-cyan-500/20 bg-cyan-500/10 px-2 py-2">
-                      <p className="text-[7px] font-black uppercase tracking-[0.12em] text-cyan-300">
-                        Total
-                      </p>
-                      <p className="mt-1 text-sm font-black text-cyan-200">
-                        {waiter.activeTables}
-                      </p>
-                    </div>
-                    <div className="rounded-[0.8rem] border border-amber-500/20 bg-amber-500/10 px-2 py-2">
-                      <p className="text-[7px] font-black uppercase tracking-[0.12em] text-amber-300">
-                        Ocupadas
-                      </p>
-                      <p className="mt-1 text-sm font-black text-amber-200">
-                        {waiter.occupiedTables}
-                      </p>
-                    </div>
-                    <div className="rounded-[0.8rem] border border-emerald-500/20 bg-emerald-500/10 px-2 py-2">
-                      <p className="text-[7px] font-black uppercase tracking-[0.12em] text-emerald-300">
-                        Limpieza
-                      </p>
-                      <p className="mt-1 text-sm font-black text-emerald-200">
-                        {waiter.cleaningTables}
-                      </p>
-                    </div>
+                    {(() => {
+                      const muted = requireConnectedWaitersForAssignment && waiter.isConnected === false;
+                      return (
+                        <>
+                          <div className={`rounded-[0.8rem] px-2 py-2 ${muted ? 'border border-slate-800 bg-slate-900/30' : 'border border-cyan-500/20 bg-cyan-500/10'}`}>
+                            <p className={`text-[7px] font-black uppercase tracking-[0.12em] ${muted ? 'text-slate-500' : 'text-cyan-300'}`}>
+                              Total
+                            </p>
+                            <p className={`mt-1 text-sm font-black ${muted ? 'text-slate-400' : 'text-cyan-200'}`}>
+                              {waiter.activeTables}
+                            </p>
+                          </div>
+                          <div className={`rounded-[0.8rem] px-2 py-2 ${muted ? 'border border-slate-800 bg-slate-900/30' : 'border border-amber-500/20 bg-amber-500/10'}`}>
+                            <p className={`text-[7px] font-black uppercase tracking-[0.12em] ${muted ? 'text-slate-500' : 'text-amber-300'}`}>
+                              Ocupadas
+                            </p>
+                            <p className={`mt-1 text-sm font-black ${muted ? 'text-slate-400' : 'text-amber-200'}`}>
+                              {waiter.occupiedTables}
+                            </p>
+                          </div>
+                          <div className={`rounded-[0.8rem] px-2 py-2 ${muted ? 'border border-slate-800 bg-slate-900/30' : 'border border-emerald-500/20 bg-emerald-500/10'}`}>
+                            <p className={`text-[7px] font-black uppercase tracking-[0.12em] ${muted ? 'text-slate-500' : 'text-emerald-300'}`}>
+                              Limpieza
+                            </p>
+                            <p className={`mt-1 text-sm font-black ${muted ? 'text-slate-400' : 'text-emerald-200'}`}>
+                              {waiter.cleaningTables}
+                            </p>
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
                 </article>
               ))}
@@ -803,9 +897,16 @@ const HostView = () => {
               </p>
               <p className="mt-2 text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">
                 {waiters.length > 0
-                  ? `${waiters.length} meseros disponibles`
+                  ? requireConnectedWaitersForAssignment
+                    ? `${selectableWaiters.length} meseros conectados disponibles`
+                    : `${selectableWaiters.length} meseros disponibles`
                   : "Sin meseros cargados"}
               </p>
+              {!requireConnectedWaitersForAssignment && (
+                <p className="mt-3 text-[10px] font-black uppercase tracking-[0.16em] text-amber-300">
+                  La regla de meseros conectados esta desactivada. Podras asignar a cualquier mesero registrado.
+                </p>
+              )}
               <select
                 value={selectedWaiterId}
                 onChange={(event) => setSelectedWaiterId(event.target.value)}
@@ -814,7 +915,7 @@ const HostView = () => {
                 <option value="" className="text-slate-500">
                   Selecciona mesero
                 </option>
-                {waiters.map((waiter) => (
+                {selectableWaiters.map((waiter) => (
                   <option key={waiter.id} value={waiter.id}>
                     {waiter.username}
                   </option>
@@ -827,6 +928,23 @@ const HostView = () => {
               ) : (
                 <p className="mt-3 text-[10px] font-black uppercase tracking-[0.16em] text-amber-300">
                   Selecciona un mesero antes de asignar
+                </p>
+              )}
+              {selectableWaiters.length === 0 && (
+                <p className="mt-3 text-[10px] font-black uppercase tracking-[0.16em] text-amber-300">
+                  {requireConnectedWaitersForAssignment
+                    ? "No hay meseros conectados en este momento."
+                    : "No hay meseros cargados en este momento."}
+                </p>
+              )}
+              {selectedWaiter && (
+                <p className="mt-3 text-[10px] font-black uppercase tracking-[0.16em] text-slate-300">
+                  Estado: {selectedWaiter.isConnected === false ? "Desconectado" : "Conectado"}
+                </p>
+              )}
+              {selectedWaiter && (
+                <p className="mt-2 text-[10px] font-black uppercase tracking-[0.16em] text-slate-300">
+                  Navegador: {selectedWaiter.browser || "Desconocido"}
                 </p>
               )}
             </div>
@@ -856,6 +974,11 @@ const HostView = () => {
               <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-300 mt-2">
                 Estadia esperada: {formatMinutes(estimateStayMinutes(seatingPartySize))}
               </p>
+              {assignmentBlockedReason && (
+                <p className="mt-3 text-[10px] font-black uppercase tracking-[0.16em] text-amber-300">
+                  {assignmentBlockedReason}
+                </p>
+              )}
               {suggestedTables[0] && (
                 <button
                   type="button"
@@ -865,7 +988,7 @@ const HostView = () => {
                       : handleSeatGuests(suggestedTables[0])
                   }
                   disabled={
-                    !selectedWaiter ||
+                    Boolean(assignmentBlockedReason) ||
                     assigningTable === suggestedTables[0].number ||
                     reassigningTable === suggestedTables[0].number
                   }
@@ -874,11 +997,11 @@ const HostView = () => {
                   {assigningTable === suggestedTables[0].number ||
                   reassigningTable === suggestedTables[0].number
                     ? "Asignando..."
-                    : !selectedWaiter
-                      ? "Selecciona mesero"
-                    : transferSourceTableNumber
-                      ? `Mover a mesa ${suggestedTables[0].number}`
-                      : `Elegir mesa ${suggestedTables[0].number}`}
+                    : assignmentBlockedReason
+                      ? "Bloqueado"
+                      : transferSourceTableNumber
+                        ? `Mover a mesa ${suggestedTables[0].number}`
+                        : `Elegir mesa ${suggestedTables[0].number}`}
                 </button>
               )}
             </div>
@@ -972,7 +1095,8 @@ const HostView = () => {
                     cancelling={cancellingTable === table.number}
                     reassigning={reassigningTable === table.number}
                     transferSourceTableNumber={transferSourceTableNumber}
-                    canSeat={!selectedWaiter}
+                    assignmentBlocked={Boolean(assignmentBlockedReason)}
+                    assignmentBlockedMessage={assignmentBlockedReason}
                     onSeatGuests={handleSeatGuests}
                     onCancelAssignment={setPendingCancelTable}
                     onPrepareTransfer={handlePrepareTransfer}
@@ -1115,7 +1239,8 @@ const HostTableCard = ({
   cancelling,
   reassigning,
   transferSourceTableNumber,
-  canSeat,
+  assignmentBlocked,
+  assignmentBlockedMessage,
   onSeatGuests,
   onCancelAssignment,
   onPrepareTransfer,
@@ -1189,16 +1314,16 @@ const HostTableCard = ({
             onClick={() =>
               isTransferMode ? onTransferAssignment(table) : onSeatGuests(table)
             }
-            disabled={canSeat || loading || reassigning}
+            disabled={assignmentBlocked || loading || reassigning}
             className="w-full py-4 rounded-[1.4rem] bg-emerald-400 text-slate-950 font-black uppercase text-[11px] tracking-[0.2em] hover:bg-emerald-300 active:scale-95 transition-all disabled:opacity-50"
           >
-            {canSeat
-              ? "Selecciona mesero"
+            {assignmentBlocked
+              ? assignmentBlockedMessage || "Bloqueado"
               : loading || reassigning
-              ? "Asignando..."
-              : isTransferMode
-                ? "Mover asignacion aqui"
-                : "Ubicar comensales"}
+                ? "Asignando..."
+                : isTransferMode
+                  ? "Mover asignacion aqui"
+                  : "Ubicar comensales"}
           </button>
         ) : table.status === "occupied" ? (
           <div className="space-y-3">

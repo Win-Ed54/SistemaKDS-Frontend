@@ -223,6 +223,7 @@ const AdminView = () => {
       "TableUpdated",
       "productupdated",
       "ProductUpdated",
+      "presenceupdated",
     ];
 
     reloadEvents.forEach((eventName) => connection.on(eventName, handleReload));

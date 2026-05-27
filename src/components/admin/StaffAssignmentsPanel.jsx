@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { ShieldCheck, UserCog, UtensilsCrossed, Wallet, ChefHat, Armchair } from "lucide-react";
+import { ShieldCheck, UserCog, UtensilsCrossed, Wallet, ChefHat, Armchair, ChevronDown } from "lucide-react";
 import { updateUserServiceScope } from "../../services/api.service";
 import { useToast } from "../../context/ToastContext";
 
@@ -28,6 +28,12 @@ const getServiceScopeLabel = (value) =>
 const StaffAssignmentsPanel = ({ users = [], onUpdated }) => {
   const { showToast } = useToast();
   const [savingUsers, setSavingUsers] = useState({});
+  const [panelCollapsed, setPanelCollapsed] = useState(false);
+
+  const connectedCount = useMemo(
+    () => (Array.isArray(users) ? users.filter((user) => user?.isConnected !== false).length : 0),
+    [users],
+  );
 
   const groupedUsers = useMemo(() => {
     const groups = new Map();
@@ -40,6 +46,12 @@ const StaffAssignmentsPanel = ({ users = [], onUpdated }) => {
 
     return Array.from(groups.entries()).sort((a, b) => a[0].localeCompare(b[0]));
   }, [users]);
+
+  const [collapsed, setCollapsed] = useState(() => ({}));
+
+  const toggleCollapsed = (role) => {
+    setCollapsed((prev) => ({ ...prev, [role]: !prev[role] }));
+  };
 
   const handleScopeChange = async (userId, serviceScope) => {
     try {
@@ -65,15 +77,30 @@ const StaffAssignmentsPanel = ({ users = [], onUpdated }) => {
             Perfiles y alcance de servicio
           </h2>
         </div>
-        <div className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-4 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-cyan-300">
-          {users.length} perfiles disponibles
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-4 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-cyan-300">
+            {users.length} perfiles disponibles
+          </div>
+          <div className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-4 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-emerald-300">
+            {connectedCount} conectados
+          </div>
+            <button
+              type="button"
+              onClick={() => setPanelCollapsed((v) => !v)}
+              className="ml-2 flex items-center gap-2 rounded-full border border-slate-800 bg-slate-950/50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-slate-300 hover:bg-slate-900/70"
+            >
+              <ChevronDown className={`w-4 h-4 transition-transform ${panelCollapsed ? "rotate-180" : "rotate-0"}`} />
+              <span>{panelCollapsed ? "Abrir" : "Ocultar"}</span>
+            </button>
         </div>
       </div>
 
-      <div className="mt-5 space-y-5">
+      {!panelCollapsed && <div className="mt-5 space-y-5">
         {groupedUsers.map(([role, roleUsers]) => {
           const meta = ROLE_META[role] || ROLE_META.waiter;
           const Icon = meta.icon || UtensilsCrossed;
+
+          const isCollapsed = Boolean(collapsed[role]);
 
           return (
             <div key={role} className="rounded-[1.6rem] border border-slate-800 bg-slate-950/70 p-4">
@@ -91,59 +118,95 @@ const StaffAssignmentsPanel = ({ users = [], onUpdated }) => {
                     </p>
                   </div>
                 </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => toggleCollapsed(role)}
+                    aria-expanded={!isCollapsed}
+                    className="flex items-center gap-2 rounded-full border border-slate-800 bg-slate-950/50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-slate-300 hover:bg-slate-900/70"
+                  >
+                    <ChevronDown className={`w-4 h-4 transition-transform ${isCollapsed ? "rotate-180" : "rotate-0"}`} />
+                    <span>{isCollapsed ? "Abrir" : "Ocultar"}</span>
+                  </button>
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
-                {roleUsers.map((user) => (
-                  <div key={user.id} className="rounded-[1.4rem] border border-slate-800 bg-slate-900/60 p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-black uppercase tracking-[0.14em] text-white">
-                          {user.username}
-                        </p>
-                        <p className="mt-1 text-[9px] font-black uppercase tracking-[0.16em] text-slate-500">
-                          {meta.label}
-                        </p>
+              {!isCollapsed && (
+                <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+                  {roleUsers.map((user) => (
+                    <div key={user.id} className="rounded-[1.4rem] border border-slate-800 bg-slate-900/60 p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-black uppercase tracking-[0.14em] text-white">
+                            {user.username}
+                          </p>
+                          <p className="mt-1 text-[9px] font-black uppercase tracking-[0.16em] text-slate-500">
+                            {meta.label}
+                          </p>
+                        </div>
+                        <div className="flex flex-col items-end gap-2">
+                          <span
+                            className={`rounded-full border px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.16em] ${
+                              user?.isConnected === false
+                                ? "border-red-400/20 bg-red-400/10 text-red-300"
+                                : "border-emerald-400/20 bg-emerald-400/10 text-emerald-300"
+                            }`}
+                          >
+                            {user?.isConnected === false ? "Desconectado" : "Conectado"}
+                          </span>
+                          {role === "waiter" && (
+                            <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.16em] text-emerald-300">
+                              {getServiceScopeLabel(user.serviceScope)}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      {role === "waiter" && (
-                        <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.16em] text-emerald-300">
-                          {getServiceScopeLabel(user.serviceScope)}
+
+                      <div className="mt-3 flex flex-wrap gap-2 text-[9px] font-black uppercase tracking-[0.16em] text-slate-300">
+                        <span className="rounded-full border border-slate-800 bg-slate-950 px-3 py-1.5">
+                          Navegador: {user?.browser || "Desconocido"}
                         </span>
+                        {user?.lastSeenAt ? (
+                          <span className="rounded-full border border-slate-800 bg-slate-950 px-3 py-1.5">
+                            Ultima vez: {new Date(user.lastSeenAt).toLocaleString("es-SV")}
+                          </span>
+                        ) : null}
+                      </div>
+
+                      {role === "waiter" ? (
+                        <div className="mt-4">
+                          <label className="block">
+                            <span className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-500">
+                              Alcance del mesero
+                            </span>
+                            <select
+                              value={normalizeServiceScope(user.serviceScope)}
+                              onChange={(event) => handleScopeChange(user.id, event.target.value)}
+                              disabled={Boolean(savingUsers[user.id])}
+                              className="mt-2 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-3 text-sm font-black uppercase text-white outline-none disabled:opacity-60"
+                            >
+                              {SERVICE_SCOPE_OPTIONS.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                  {option.label}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                        </div>
+                      ) : (
+                        <div className="mt-4 rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-3 text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
+                          Perfil operativo listo para respaldo
+                        </div>
                       )}
                     </div>
-
-                    {role === "waiter" ? (
-                      <div className="mt-4">
-                        <label className="block">
-                          <span className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-500">
-                            Alcance del mesero
-                          </span>
-                          <select
-                            value={normalizeServiceScope(user.serviceScope)}
-                            onChange={(event) => handleScopeChange(user.id, event.target.value)}
-                            disabled={Boolean(savingUsers[user.id])}
-                            className="mt-2 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-3 text-sm font-black uppercase text-white outline-none disabled:opacity-60"
-                          >
-                            {SERVICE_SCOPE_OPTIONS.map((option) => (
-                              <option key={option.value} value={option.value}>
-                                {option.label}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                      </div>
-                    ) : (
-                      <div className="mt-4 rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-3 text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
-                        Perfil operativo listo para respaldo
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           );
         })}
-      </div>
+      </div>}
     </section>
   );
 };

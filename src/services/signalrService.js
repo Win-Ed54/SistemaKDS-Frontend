@@ -36,6 +36,41 @@ export const getSignalRToken = (preferredRole = "") => {
 
 export const hasSignalRToken = (preferredRole = "") => Boolean(getSignalRToken(preferredRole));
 
+const getBrowserName = () => {
+  if (typeof navigator === "undefined") return "Unknown";
+
+  const userAgentData = navigator.userAgentData;
+  if (userAgentData?.brands?.length) {
+    const browserBrand = userAgentData.brands
+      .map((brand) => String(brand?.brand || "").trim().toLowerCase())
+      .find((brand) => Boolean(brand));
+
+    if (browserBrand?.includes("chrome")) return "Chrome";
+    if (browserBrand?.includes("edge")) return "Edge";
+    if (browserBrand?.includes("firefox")) return "Firefox";
+    if (browserBrand?.includes("safari")) return "Safari";
+  }
+
+  const userAgent = navigator.userAgent || "";
+  if (/edg/i.test(userAgent)) return "Edge";
+  if (/opr\//i.test(userAgent) || /opera/i.test(userAgent)) return "Opera";
+  if (/firefox/i.test(userAgent)) return "Firefox";
+  if (/chrome|chromium/i.test(userAgent)) return "Chrome";
+  if (/safari/i.test(userAgent)) return "Safari";
+
+  return "Unknown";
+};
+
+const registerPresence = async () => {
+  if (!connection || connection.state !== signalR.HubConnectionState.Connected) return;
+
+  try {
+    await connection.invoke("RegisterPresence", getBrowserName(), navigator.userAgent || "");
+  } catch {
+    // La presencia se reintentara en el siguiente arranque o reconexion.
+  }
+};
+
 const connection = new signalR.HubConnectionBuilder()
   .withUrl(hubUrl, {
     accessTokenFactory: () => getSignalRToken(activePreferredRole),
@@ -160,6 +195,7 @@ export const startConnection = async (preferredRole = "") => {
 
     connection.onreconnected(() => {
       notifyStatus(true);
+      void registerPresence();
     });
 
     connection.onclose(() => {
@@ -193,6 +229,7 @@ export const startConnection = async (preferredRole = "") => {
         reconnectTimeoutId = null;
       }
       notifyStatus(true);
+      void registerPresence();
       return connection;
     })
     .catch(async (err) => {

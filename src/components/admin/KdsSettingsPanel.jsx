@@ -12,21 +12,35 @@ const MODE_LABELS = {
   [ORDER_MODES.RESTAURANT]: "Restaurante",
 };
 
-const SettingInput = ({ name, label, value, onChange }) => (
-  <div>
-    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
-      {label}
-    </label>
-    <input
-      name={name}
-      type="number"
-      min="1"
-      value={value}
-      onChange={onChange}
-      className="w-full mt-1 bg-slate-950 border border-slate-700 focus:border-fuchsia-500 rounded-xl px-4 py-3 text-white text-sm font-bold outline-none transition-all"
-    />
-  </div>
-);
+const FIELD_LIMITS = {
+  maxDistinctItems: { min: 5, max: 100 },
+  maxTotalUnits: { min: 10, max: 500 },
+  maxQuantityPerProduct: { min: 1, max: 200 },
+  largeOrderUnitsWarning: { min: 1, max: 500 },
+  defaultCleaningMinutes: { min: 5, max: 120 },
+  maxPartySize: { min: 1, max: 100 },
+  maxTablesPerWaiter: { min: 1, max: 50 },
+};
+
+const SettingInput = ({ name, label, value, onChange }) => {
+  const limits = FIELD_LIMITS[name] || { min: 1 };
+  return (
+    <div>
+      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
+        {label}
+      </label>
+      <input
+        name={name}
+        type="number"
+        min={limits.min}
+        max={limits.max}
+        value={value}
+        onChange={onChange}
+        className="w-full mt-1 bg-slate-950 border border-slate-700 focus:border-fuchsia-500 rounded-xl px-4 py-3 text-white text-sm font-bold outline-none transition-all"
+      />
+    </div>
+  );
+};
 
 const ToggleInput = ({ name, label, checked, onChange, description }) => (
   <label className="rounded-xl border border-slate-800 bg-slate-950/70 p-4 flex items-start justify-between gap-4 cursor-pointer">
@@ -62,8 +76,13 @@ const KdsSettingsPanel = ({ settings, onSaved }) => {
   };
 
   const handleNumberChange = (event) => {
-    const value = parseInt(event.target.value, 10);
-    setForm((prev) => ({ ...prev, [event.target.name]: Number.isNaN(value) ? 0 : value }));
+    const { name, value } = event.target;
+    const limits = FIELD_LIMITS[name] || { min: 1 };
+    let parsed = parseInt(value, 10);
+    if (Number.isNaN(parsed)) parsed = limits.min;
+    if (typeof limits.min === "number" && parsed < limits.min) parsed = limits.min;
+    if (typeof limits.max === "number" && parsed > limits.max) parsed = limits.max;
+    setForm((prev) => ({ ...prev, [name]: parsed }));
   };
 
   const handleToggleChange = (event) => {
@@ -71,29 +90,27 @@ const KdsSettingsPanel = ({ settings, onSaved }) => {
   };
 
   const handleSubmit = async () => {
-    if (form.maxDistinctItems < 1 || form.maxTotalUnits < 1 || form.maxQuantityPerProduct < 1) {
-      const message = "Todos los limites deben ser mayores a cero.";
-      setError(message);
-      showToast(message, "error");
-      return;
+    // Validación de rangos estricta según backend
+    for (const key in FIELD_LIMITS) {
+      const limits = FIELD_LIMITS[key];
+      const value = form[key];
+      if (typeof value === "number") {
+        if (typeof limits.min === "number" && value < limits.min) {
+          const message = `El valor de "${key}" debe ser al menos ${limits.min}.`;
+          setError(message);
+          showToast(message, "error");
+          return;
+        }
+        if (typeof limits.max === "number" && value > limits.max) {
+          const message = `El valor de "${key}" no puede ser mayor a ${limits.max}.`;
+          setError(message);
+          showToast(message, "error");
+          return;
+        }
+      }
     }
-
     if (form.largeOrderUnitsWarning > form.maxTotalUnits) {
       const message = "La alerta de orden grande no puede superar el maximo de unidades.";
-      setError(message);
-      showToast(message, "error");
-      return;
-    }
-
-    if (form.defaultCleaningMinutes < 1) {
-      const message = "El tiempo de limpieza debe ser mayor a cero.";
-      setError(message);
-      showToast(message, "error");
-      return;
-    }
-
-    if (form.maxPartySize < 1) {
-      const message = "El maximo de personas por mesa debe ser mayor a cero.";
       setError(message);
       showToast(message, "error");
       return;
@@ -159,6 +176,7 @@ const KdsSettingsPanel = ({ settings, onSaved }) => {
           <SettingInput name="largeOrderUnitsWarning" label="Alerta orden grande" value={form.largeOrderUnitsWarning} onChange={handleNumberChange} />
           <SettingInput name="defaultCleaningMinutes" label="Limpieza por defecto" value={form.defaultCleaningMinutes} onChange={handleNumberChange} />
           <SettingInput name="maxPartySize" label="Max personas por mesa" value={form.maxPartySize} onChange={handleNumberChange} />
+          <SettingInput name="maxTablesPerWaiter" label="Max mesas por mesero" value={form.maxTablesPerWaiter} onChange={handleNumberChange} />
         </div>
       </div>
 
@@ -176,6 +194,13 @@ const KdsSettingsPanel = ({ settings, onSaved }) => {
           checked={Boolean(form.requireCustomerNameForTakeout)}
           onChange={handleToggleChange}
           description="Solicita nombre del cliente en pedidos para llevar."
+        />
+        <ToggleInput
+          name="requireConnectedWaitersForAssignment"
+          label="Exigir meseros conectados"
+          checked={Boolean(form.requireConnectedWaitersForAssignment)}
+          onChange={handleToggleChange}
+          description="Cuando esta activo, el host solo podra asignar mesas a meseros con conexion activa. Si lo desactiva, podra asignar a cualquier mesero registrado."
         />
       </div>
 

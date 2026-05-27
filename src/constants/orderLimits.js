@@ -14,6 +14,7 @@ export const ORDER_MODE_DEFAULTS = {
     requireCustomerNameForTakeout: true,
     defaultCleaningMinutes: 8,
     maxPartySize: 10,
+    requireConnectedWaitersForAssignment: true,
   },
   [ORDER_MODES.RESTAURANT]: {
     serviceMode: ORDER_MODES.RESTAURANT,
@@ -25,6 +26,7 @@ export const ORDER_MODE_DEFAULTS = {
     requireCustomerNameForTakeout: true,
     defaultCleaningMinutes: 8,
     maxPartySize: 10,
+    requireConnectedWaitersForAssignment: true,
   },
 };
 
@@ -60,6 +62,8 @@ export const normalizeOrderSettings = (settings) => {
         : defaults.defaultCleaningMinutes,
     maxPartySize:
       settings?.maxPartySize > 0 ? settings.maxPartySize : defaults.maxPartySize,
+    requireConnectedWaitersForAssignment:
+      settings?.requireConnectedWaitersForAssignment ?? defaults.requireConnectedWaitersForAssignment,
   };
 };
 
