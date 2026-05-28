@@ -7,6 +7,7 @@ import { useToast } from "../../context/ToastContext";
 import { validateOrderLimits } from "../../constants/orderLimits";
 import { getCurrentKdsSettings } from "../../store/kdsSettingsStore";
 import { getAuthValue } from "../../services/authStorage";
+import { sortCartItemsForTakeout } from "../../utils/displayOrder";
 
 const MAX_NOTE_LENGTH = 160;
 
@@ -85,6 +86,12 @@ const OrderBuilder = ({
   const isTakeout = Number(tableId) === 0 || serviceMode === "takeout";
   const hasSelectedLocation = tableId !== null && tableId !== undefined && tableId !== "";
   const settings = getCurrentKdsSettings();
+
+  const displayItems = useMemo(() => {
+    if (!isTakeout) return items;
+
+    return sortCartItemsForTakeout(items, products);
+  }, [isTakeout, items, products]);
 
   const noteProduct = useMemo(() => {
     if (!noteTarget?.productId) return null;
@@ -251,8 +258,8 @@ const OrderBuilder = ({
         )}
       </div>
 
-      <div className="mb-4 min-h-[120px] flex-1 space-y-2.5 overflow-y-auto pr-1 custom-scrollbar sm:mb-5 sm:space-y-3 sm:pr-2 xl:max-h-[calc(100dvh-560px)] 2xl:max-h-[calc(100dvh-520px)]">
-        {items.length === 0 ? (
+      <div className="mb-3 min-h-0 flex-1 space-y-2.5 overflow-y-auto pr-2 custom-scrollbar sm:mb-4 sm:space-y-3 xl:min-h-[260px] 2xl:min-h-[300px]">
+        {displayItems.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-10 opacity-20">
             <ReceiptText className="mb-2 h-12 w-12" />
             <p className="text-[10px] font-black uppercase tracking-widest">
@@ -260,7 +267,7 @@ const OrderBuilder = ({
             </p>
           </div>
         ) : (
-          items.map((item, index) => {
+          displayItems.map((item) => {
             const isEditing =
               noteTarget?.productId === item.productId &&
               (noteTarget?.currentNotes || "") === (item.notes || "") &&
@@ -268,7 +275,7 @@ const OrderBuilder = ({
 
             return (
               <div
-                key={`${item.productId}_${item.notes}_${index}`}
+                key={item.productId + "_" + (item.notes || "no-notes")}
                 className="rounded-[1.2rem] sm:rounded-2xl border border-slate-800/50 bg-slate-950 p-2.5 sm:p-3 transition-all hover:border-slate-700"
               >
                 <div className="mb-2 flex items-center justify-between">
@@ -355,10 +362,10 @@ const OrderBuilder = ({
                 </div>
 
                 {isEditing && (
-                  <div className="mt-3 rounded-[1.4rem] border border-cyan-400/20 bg-slate-900/80 p-4">
+                  <div className="mt-3 rounded-[1.4rem] border border-cyan-400/30 bg-slate-950/95 p-4">
                     <div className="mb-3 flex items-center justify-between gap-3">
                       <div>
-                        <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">
+                        <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-300">
                           Instrucciones del producto
                         </p>
                         <p className="mt-1 text-xs font-black uppercase text-white">
@@ -516,12 +523,30 @@ const OrderBuilder = ({
         )}
       </div>
 
+      <div
+        className={`mt-2 shrink-0 rounded-[1rem] border px-3 py-2 text-center sm:mt-3 ${
+          isTakeout && Number(tableId) > 0
+            ? "border-amber-400/20 bg-amber-400/10"
+            : "border-cyan-400/15 bg-cyan-400/10"
+        }`}
+      >
+        <p
+          className={`text-[8px] font-black uppercase tracking-[0.18em] ${
+            isTakeout && Number(tableId) > 0 ? "text-amber-200" : "text-cyan-200"
+          }`}
+        >
+          {isTakeout && Number(tableId) > 0
+            ? `La orden se enviara para llevar sin salir de la mesa ${tableId}`
+            : "Verifica los productos antes de enviar"}
+        </p>
+      </div>
+
       <button
         onClick={sendOrder}
         disabled={isButtonDisabled}
-        className={`sticky bottom-0 z-10 mt-auto flex w-full shrink-0 items-center justify-between rounded-[1.4rem] px-5 py-4 text-[11px] font-black uppercase tracking-[0.16em] shadow-xl transition-all sm:rounded-[1.8rem] sm:px-8 sm:py-5 sm:text-xs sm:tracking-[0.2em] ${
+        className={`z-10 mt-3 flex w-full shrink-0 items-center justify-between rounded-[1.4rem] px-5 py-3.5 text-[11px] font-black uppercase tracking-[0.16em] shadow-xl transition-all sm:rounded-[1.8rem] sm:px-8 sm:py-4 sm:text-xs sm:tracking-[0.2em] ${
           isButtonDisabled
-            ? "cursor-not-allowed border border-slate-700 bg-slate-800 text-slate-600 opacity-50"
+            ? "cursor-not-allowed border border-slate-600 bg-slate-800/95 text-slate-300"
             : "bg-emerald-400 text-black shadow-emerald-400/20 active:scale-95 hover:scale-[1.01]"
         }`}
       >
@@ -530,7 +555,7 @@ const OrderBuilder = ({
               {isSending ? "Enviando..." : "Confirmar orden"}
             </span>
           {!isSending && isTakeout && !normalizeCustomerName(customerName || "") && (
-            <span className="mt-1 text-[7px] text-red-700">
+            <span className="mt-1 text-[7px] text-red-300">
               Nombre obligatorio para llevar
             </span>
           )}

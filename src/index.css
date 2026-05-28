@@ -14,6 +14,31 @@ body {
   overscroll-behavior-y: contain;
 }
 
+.custom-scrollbar {
+  scrollbar-color: rgba(148, 163, 184, 0.75) rgba(15, 23, 42, 0.8);
+  scrollbar-width: thin;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.8);
+  border-radius: 999px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(34, 211, 238, 0.9), rgba(16, 185, 129, 0.85));
+  border: 2px solid rgba(15, 23, 42, 0.95);
+  border-radius: 999px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(103, 232, 249, 1), rgba(52, 211, 153, 1));
+}
+
 /* ============================= */
 /* AUTO GRID PARA KDS */
 /* ============================= */

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   BellRing,
@@ -42,6 +42,7 @@ import ReadyOrdersView from "../components/waiter/ReadyOrdersView";
 import TableSelector from "../components/waiter/TableSelector";
 import WaiterProfile from "../components/waiter/WaiterProfile";
 import { readViewState, writeViewState } from "../utils/viewStateStorage";
+import { sortCategoriesForDisplay, sortProductsForDisplay } from "../utils/displayOrder";
 
 const TABS = [
   { id: "ordenar", label: "Nueva orden", icon: ReceiptText },
@@ -637,10 +638,7 @@ export default function WaiterView() {
     [cleanupOrders, normalizedTables, waiterId, waiterName],
   );
 
-  const categories = useMemo(
-    () => ["Todas", ...new Set(products.map((product) => product.category).filter(Boolean))],
-    [products],
-  );
+  const categories = useMemo(() => ["Todas", ...sortCategoriesForDisplay(products)], [products]);
 
   const visualCategories = useMemo(
     () =>
@@ -661,7 +659,13 @@ export default function WaiterView() {
   );
 
   const filteredProducts = useMemo(
-    () => (activeCategory === "Todas" ? products : products.filter((product) => product.category === activeCategory)),
+    () =>
+      sortProductsForDisplay(
+        activeCategory === "Todas"
+          ? products
+          : products.filter((product) => product.category === activeCategory),
+        activeCategory,
+      ),
     [activeCategory, products],
   );
 
@@ -1411,7 +1415,7 @@ export default function WaiterView() {
         )}
       </div>
       {activeTab === "ordenar" && isCartOpen && <div className="fixed inset-0 bg-slate-950/40 z-40 xl:hidden" onClick={() => setIsCartOpen(false)} />}
-      {activeTab === "ordenar" && <aside className={`xl:hidden fixed inset-y-0 right-0 z-50 w-[84vw] max-w-[380px] bg-slate-950 border-l border-slate-800 transition-transform ${isCartOpen ? "translate-x-0" : "translate-x-full"}`}><div className="h-full overflow-y-auto p-2.5 sm:p-3"><div className="flex items-center justify-between mb-2 sm:mb-3 px-1"><div><p className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Orden actual</p><p className="text-xs sm:text-sm font-black uppercase text-white mt-1">Panel de confirmacion</p></div><button onClick={() => setIsCartOpen(false)} className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-2xl bg-slate-900 border border-slate-800 text-slate-300 text-[9px] sm:text-[10px] font-black uppercase tracking-[0.18em]"><X className="w-4 h-4" />Cerrar</button></div>{isCurrentTableCleaning ? <div className="flex min-h-[240px] items-center justify-center rounded-[1.6rem] border border-rose-400/20 bg-rose-400/10 p-5 text-center"><div><p className="text-[9px] font-black uppercase tracking-[0.2em] text-rose-200">Pedido bloqueado</p><p className="mt-3 text-xs font-black uppercase text-slate-100">La mesa seleccionada se esta limpiando.</p></div></div> : <OrderPanel key={`mobile-order-panel-${tableId ?? "none"}`} pax={pax} tableId={tableId} onOrderSent={(createdOrder) => { setIsCartOpen(false); handleOrderCreated(createdOrder); }} canHandleTakeout={canHandleTableTakeout} canHandleDining={canHandleDining} />}</div></aside>}
+      {activeTab === "ordenar" && <aside className={`xl:hidden fixed inset-y-0 right-0 z-50 w-[84vw] max-w-[380px] bg-slate-950 border-l border-slate-800 transition-transform ${isCartOpen ? "translate-x-0" : "translate-x-full"}`}><div className="h-full overflow-y-auto p-2.5 sm:p-3 custom-scrollbar"><div className="flex items-center justify-between mb-2 sm:mb-3 px-1"><div><p className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Orden actual</p><p className="text-xs sm:text-sm font-black uppercase text-white mt-1">Panel de confirmacion</p></div><button onClick={() => setIsCartOpen(false)} className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-2xl bg-slate-900 border border-slate-800 text-slate-300 text-[9px] sm:text-[10px] font-black uppercase tracking-[0.18em]"><X className="w-4 h-4" />Cerrar</button></div>{isCurrentTableCleaning ? <div className="flex min-h-[240px] items-center justify-center rounded-[1.6rem] border border-rose-400/20 bg-rose-400/10 p-5 text-center"><div><p className="text-[9px] font-black uppercase tracking-[0.2em] text-rose-200">Pedido bloqueado</p><p className="mt-3 text-xs font-black uppercase text-slate-100">La mesa seleccionada se esta limpiando.</p></div></div> : <OrderPanel key={`mobile-order-panel-${tableId ?? "none"}`} pax={pax} tableId={tableId} onOrderSent={(createdOrder) => { setIsCartOpen(false); handleOrderCreated(createdOrder); }} canHandleTakeout={canHandleTableTakeout} canHandleDining={canHandleDining} />}</div></aside>}
       {showProfile && <WaiterProfile user={currentUser} onClose={() => setShowProfile(false)} />}
     </div>
   );
@@ -1574,4 +1578,5 @@ const EmptyState = ({ title, subtitle }) => (
     <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-600 mt-3">{subtitle}</p>
   </div>
 );
+
 

@@ -1,6 +1,5 @@
 import request from "./api.service";
 import {
-  clearAuthStorage,
   getAuthValue,
   getRoleRoute,
   setAuthValue,

@@ -443,6 +443,9 @@ const CashierView = () => {
       setChargingOrders((prev) => ({ ...prev, [order.id]: true }));
       const form = paymentForms[formKey] || {};
       const selectedTotal = getSelectedOrderTotal(order);
+      const remainingBeforeCharge = getRemainingOrderTotal(order);
+      const remainingAfterSelection = Math.max(0, remainingBeforeCharge - selectedTotal);
+      const isPartialCharge = remainingAfterSelection > 0;
       await payOrder(order.id, {
         paymentMethod: form.paymentMethod || "efectivo",
         receiptNumber: form.receiptNumber || "",
@@ -453,14 +456,21 @@ const CashierView = () => {
       clearSelectedItemPayments(order.id);
       registerChargeSummary(
         createChargeSummaryEntry({
-          type: "partial",
+          type: isPartialCharge ? "partial" : "total",
           label: order.correlativeCode || order.id,
           amount: selectedTotal,
-          detail: `${getOrderLocationLabel(order)} · ${itemPayments.length} lineas cobradas`,
+          detail: isPartialCharge
+            ? `${getOrderLocationLabel(order)} - parcial - queda ${formatCurrency(remainingAfterSelection)}`
+            : `${getOrderLocationLabel(order)} - cobro completo`,
           paymentMethod: form.paymentMethod || "efectivo",
         }),
       );
-      showToast(`Cobro parcial aplicado a ${order.correlativeCode || order.id}`, "success");
+      showToast(
+        isPartialCharge
+          ? `Cobro parcial aplicado a ${order.correlativeCode || order.id} - Pendiente ${formatCurrency(remainingAfterSelection)}`
+          : `Pedido ${order.correlativeCode || order.id} cobrado correctamente`,
+        "success",
+      );
       await loadCashierData(true);
     } catch (error) {
       console.error("Error cobrando productos seleccionados:", error);
@@ -642,6 +652,10 @@ const CashierView = () => {
               <SplitSquareVertical className="w-4 h-4" />
               Cobro por pedido
             </button>
+          </div>
+
+          <div className="mb-6 rounded-[1.2rem] border border-cyan-400/20 bg-cyan-400/10 px-4 py-3 text-[10px] font-black uppercase tracking-[0.16em] text-cyan-200">
+            El cobro parcial descuenta solo las cantidades seleccionadas. Lo restante sigue pendiente.
           </div>
 
           {pendingPayments.length === 0 ? (
@@ -1035,7 +1049,7 @@ const GroupedPaymentsView = ({
                   <CreditCard className="w-4 h-4" />
                   {chargingOrders[order.id]
                     ? "Cobrando seleccion..."
-                    : `${isTakeoutPrepayment ? "Prepago parcial" : "Cobrar seleccionado"} ${formatCurrency(getSelectedOrderTotal(order))}`}
+                    : `${Math.max(0, getRemainingOrderTotal(order) - getSelectedOrderTotal(order)) > 0 ? "Cobro parcial" : "Cobrar seleccionado"} ${formatCurrency(getSelectedOrderTotal(order))}`}
                 </button>
 
                 <button
@@ -1216,7 +1230,7 @@ const SeparatePaymentsView = ({
           <CreditCard className="w-4 h-4" />
           {chargingOrders[order.id]
             ? "Cobrando seleccion..."
-            : `${isTakeoutPrepayment ? "Prepago parcial" : "Cobrar seleccionado"} ${formatCurrency(getSelectedOrderTotal(order))}`}
+            : `${Math.max(0, getRemainingOrderTotal(order) - getSelectedOrderTotal(order)) > 0 ? "Cobro parcial" : "Cobrar seleccionado"} ${formatCurrency(getSelectedOrderTotal(order))}`}
         </button>
 
         <button

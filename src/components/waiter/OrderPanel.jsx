@@ -65,7 +65,7 @@ const OrderPanel = ({
   };
 
   return (
-    <div className="flex h-full min-h-0 flex-col rounded-[2rem] border border-slate-800 bg-slate-900/80 p-4 shadow-2xl backdrop-blur-xl sm:rounded-[2.5rem] sm:p-5 xl:p-4">
+    <div className="flex min-h-full flex-col rounded-[2rem] border border-slate-800 bg-slate-900/80 p-4 shadow-2xl backdrop-blur-xl sm:rounded-[2.5rem] sm:p-5 xl:h-full xl:min-h-0 xl:overflow-y-auto xl:p-4 custom-scrollbar">
       <div className="mb-4 flex shrink-0 items-center justify-between xl:mb-3">
         <div className="flex items-center gap-3">
           <div className="h-6 w-1.5 rounded-full bg-[#39FF14] shadow-[0_0_15px_#39FF14]" />
@@ -73,14 +73,14 @@ const OrderPanel = ({
             Detalle del Pedido
           </h2>
         </div>
-        <ReceiptText className="h-5 w-5 text-slate-600" />
+        <ReceiptText className="h-5 w-5 text-slate-500" />
       </div>
 
       <div className="mb-4 shrink-0 xl:mb-3">
         <div className="flex items-center gap-3 rounded-[1.2rem] border border-slate-800 bg-slate-950 p-3 transition-colors focus-within:border-cyan-500/50 sm:rounded-2xl">
           <User className="h-4 w-4 text-cyan-400" />
           <div className="flex-1">
-            <p className="text-[8px] font-black uppercase tracking-tighter text-slate-600">
+            <p className="text-[8px] font-black uppercase tracking-tighter text-slate-500">
               {isTakeout ? "Cliente (Obligatorio)" : "Cliente (Opcional)"}
             </p>
             <input
@@ -103,7 +103,7 @@ const OrderPanel = ({
       <div className="mb-4 shrink-0 xl:mb-3">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div className="rounded-[1.2rem] border border-slate-800 bg-slate-950/80 p-3">
-            <p className="text-[8px] font-black uppercase tracking-tighter text-slate-600">
+            <p className="text-[8px] font-black uppercase tracking-tighter text-slate-500">
               Servicio
             </p>
             <p
@@ -118,7 +118,7 @@ const OrderPanel = ({
           <div className="flex items-center gap-2 rounded-[1.2rem] border border-slate-800 bg-slate-950 p-2.5 sm:gap-3 sm:rounded-2xl sm:p-3">
             <MapPin className="h-4 w-4 text-[#FFFF00]" />
             <div>
-              <p className="text-[8px] font-black uppercase tracking-tighter text-slate-600">
+              <p className="text-[8px] font-black uppercase tracking-tighter text-slate-500">
                 Ubicacion
               </p>
               <p className="text-[10px] font-black uppercase tracking-tighter text-white sm:text-xs">
@@ -153,7 +153,7 @@ const OrderPanel = ({
               <p className="text-[8px] font-black uppercase tracking-[0.16em] text-slate-500">
                 Configuracion del servicio
               </p>
-              <p className="mt-1 text-[10px] font-black uppercase tracking-[0.14em] text-slate-200">
+              <p className="mt-1 text-[10px] font-black uppercase tracking-[0.14em] text-slate-100">
                 {isTakeout
                   ? `Destino actual: ${takeoutDestination}`
                   : "Ajusta el modo y el destino si hace falta"}
@@ -241,7 +241,7 @@ const OrderPanel = ({
                         rows={3}
                         placeholder="CALLE, COLONIA, REFERENCIAS..."
                         maxLength={180}
-                        className="mt-2 w-full resize-none rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-white outline-none placeholder:text-slate-600 focus:border-cyan-400/50"
+                        className="mt-2 w-full resize-none rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-white outline-none placeholder:text-slate-500 focus:border-cyan-400/50"
                       />
                     </div>
                   </div>
@@ -252,7 +252,7 @@ const OrderPanel = ({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1">
+      <div className="min-h-[360px] flex-1 xl:min-h-[430px]">
         <OrderBuilder
           customerName={customerName}
           tableId={isTakeout ? 0 : tableId}
@@ -265,11 +265,6 @@ const OrderPanel = ({
         />
       </div>
 
-      <p className="mt-3 shrink-0 text-center text-[8px] font-black uppercase tracking-[0.18em] text-slate-700 sm:mt-4 sm:text-[9px] sm:tracking-widest">
-        {isTakeout && Number(tableId) > 0
-          ? `La orden se enviara para llevar sin salir de la mesa ${tableId}`
-          : "Verifica los productos antes de enviar"}
-      </p>
     </div>
   );
 };
