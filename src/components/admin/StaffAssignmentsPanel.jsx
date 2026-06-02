@@ -29,6 +29,15 @@ const StaffAssignmentsPanel = ({ users = [], onUpdated }) => {
   const { showToast } = useToast();
   const [savingUsers, setSavingUsers] = useState({});
   const [panelCollapsed, setPanelCollapsed] = useState(false);
+  const takeoutWaiterId = useMemo(() => {
+    const waiterUsers = (Array.isArray(users) ? users : []).filter(
+      (user) => String(user?.role || "").trim().toLowerCase() === "waiter",
+    );
+
+    return (
+      waiterUsers.find((user) => normalizeServiceScope(user?.serviceScope) === "takeout")?.id || ""
+    );
+  }, [users]);
 
   const connectedCount = useMemo(
     () => (Array.isArray(users) ? users.filter((user) => user?.isConnected !== false).length : 0),
@@ -57,7 +66,12 @@ const StaffAssignmentsPanel = ({ users = [], onUpdated }) => {
     try {
       setSavingUsers((prev) => ({ ...prev, [userId]: true }));
       await updateUserServiceScope(userId, serviceScope);
-      showToast("Alcance de servicio actualizado", "success");
+      showToast(
+        serviceScope === "takeout"
+          ? "Perfil para llevar asignado. Los demas meseros pasan a solo mesas."
+          : "Alcance de servicio actualizado",
+        "success",
+      );
       onUpdated?.();
     } catch (error) {
       showToast(error?.message || "No se pudo actualizar el alcance", "error");
@@ -134,7 +148,14 @@ const StaffAssignmentsPanel = ({ users = [], onUpdated }) => {
 
               {!isCollapsed && (
                 <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
-                  {roleUsers.map((user) => (
+                  {roleUsers.map((user) => {
+                    const normalizedUserScope = normalizeServiceScope(user.serviceScope);
+                    const disableTakeoutOption =
+                      Boolean(takeoutWaiterId) &&
+                      takeoutWaiterId !== user.id &&
+                      normalizedUserScope !== "takeout";
+
+                    return (
                     <div key={user.id} className="rounded-[1.4rem] border border-slate-800 bg-slate-900/60 p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div>
@@ -181,17 +202,26 @@ const StaffAssignmentsPanel = ({ users = [], onUpdated }) => {
                               Alcance del mesero
                             </span>
                             <select
-                              value={normalizeServiceScope(user.serviceScope)}
+                              value={normalizedUserScope}
                               onChange={(event) => handleScopeChange(user.id, event.target.value)}
                               disabled={Boolean(savingUsers[user.id])}
                               className="mt-2 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-3 text-sm font-black uppercase text-white outline-none disabled:opacity-60"
                             >
                               {SERVICE_SCOPE_OPTIONS.map((option) => (
-                                <option key={option.value} value={option.value}>
+                                <option
+                                  key={option.value}
+                                  value={option.value}
+                                  disabled={option.value === "takeout" && disableTakeoutOption}
+                                >
                                   {option.label}
                                 </option>
                               ))}
                             </select>
+                            {disableTakeoutOption ? (
+                              <span className="mt-2 block text-[9px] font-black uppercase tracking-[0.14em] text-amber-300">
+                                Ya existe un mesero asignado a para llevar.
+                              </span>
+                            ) : null}
                           </label>
                         </div>
                       ) : (
@@ -200,7 +230,7 @@ const StaffAssignmentsPanel = ({ users = [], onUpdated }) => {
                         </div>
                       )}
                     </div>
-                  ))}
+                  )})}
                 </div>
               )}
             </div>

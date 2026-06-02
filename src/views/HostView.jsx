@@ -276,11 +276,18 @@ const HostView = () => {
     const handlePresenceUpdated = () => {
       void loadWaiters();
     };
+    const handleStaffUpdated = () => {
+      void loadWaiters();
+    };
 
     connection.on("presenceupdated", handlePresenceUpdated);
+    connection.on("staffupdated", handleStaffUpdated);
+    connection.on("StaffUpdated", handleStaffUpdated);
 
     return () => {
       connection.off("presenceupdated", handlePresenceUpdated);
+      connection.off("staffupdated", handleStaffUpdated);
+      connection.off("StaffUpdated", handleStaffUpdated);
     };
   }, [connection, loadWaiters]);
 

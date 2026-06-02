@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 
 import { logout } from "../services/authService";
-import { getAuthValue } from "../services/authStorage";
+import { getAuthValue, setAuthValue } from "../services/authStorage";
 import { useToast } from "../context/ToastContext";
 import {
   closeTable,
@@ -138,6 +138,30 @@ const getServiceScopeSubtitle = (serviceScope) => {
   if (serviceScope === "dining") return "Atiende mesas asignadas por host";
   if (serviceScope === "takeout") return "Responsable de pedidos para llevar";
   return "Puede atender mesas y para llevar";
+};
+
+const getEffectiveServiceScopeLabel = ({
+  serviceScope,
+  canHandleDining,
+  canHandleStandaloneTakeout,
+}) => {
+  if (serviceScope === "hybrid" && canHandleDining && !canHandleStandaloneTakeout) {
+    return "Solo mesas";
+  }
+
+  return getServiceScopeLabel(serviceScope);
+};
+
+const getEffectiveServiceScopeSubtitle = ({
+  serviceScope,
+  canHandleDining,
+  canHandleStandaloneTakeout,
+}) => {
+  if (serviceScope === "hybrid" && canHandleDining && !canHandleStandaloneTakeout) {
+    return "Hay un perfil exclusivo para llevar activo en este momento";
+  }
+
+  return getServiceScopeSubtitle(serviceScope);
 };
 
 const getSelectionStepTitle = ({
@@ -376,7 +400,7 @@ const upsertActiveOrderList = (orders, incomingOrder) => {
 
 export default function WaiterView() {
   const navigate = useNavigate();
-  const { isConnected } = useSignalRConnection("waiter");
+  const { connection, isConnected } = useSignalRConnection("waiter");
   const { settings } = useKdsSettings();
   const { products } = useProducts();
   const { tables, refetch: refetchTables } = useTables();
@@ -387,7 +411,9 @@ export default function WaiterView() {
   const clearOrderStore = useOrderStore((state) => state.clearOrders);
   const { showToast } = useToast();
   const waiterName = getAuthValue("user_name") || "Mesero de Turno";
-  const waiterServiceScope = normalizeServiceScope(getAuthValue("service_scope"));
+  const [waiterServiceScope, setWaiterServiceScope] = useState(() =>
+    normalizeServiceScope(getAuthValue("service_scope")),
+  );
 
   const [showProfile, setShowProfile] = useState(false);
   const [activeCategory, setActiveCategory] = useState(() =>
@@ -422,6 +448,16 @@ export default function WaiterView() {
     waiterServiceScope === "takeout" ||
     (waiterServiceScope === "hybrid" && !hasDedicatedTakeoutWaiter);
   const canHandleTableTakeout = canHandleDining;
+  const effectiveServiceScopeLabel = getEffectiveServiceScopeLabel({
+    serviceScope: waiterServiceScope,
+    canHandleDining,
+    canHandleStandaloneTakeout,
+  });
+  const effectiveServiceScopeSubtitle = getEffectiveServiceScopeSubtitle({
+    serviceScope: waiterServiceScope,
+    canHandleDining,
+    canHandleStandaloneTakeout,
+  });
   const defaultCleaningMinutes =
     Number(settings?.defaultCleaningMinutes) > 0
       ? Number(settings.defaultCleaningMinutes)
@@ -547,6 +583,10 @@ export default function WaiterView() {
   const isTakeout = Number(tableId) === 0;
   const assignedPartySize = currentTable?.currentPartySize ?? 0;
   const isCurrentTableCleaning = Boolean(currentTable?.cleaning);
+  const isWaitingForAssignedDiningTable =
+    canHandleDining &&
+    !canHandleStandaloneTakeout &&
+    selectableAssignedDiningTables.length === 0;
 
   const loadWaiterData = useCallback(async () => {
     try {
@@ -688,6 +728,18 @@ export default function WaiterView() {
   }, [isDesktopCartOpen, waiterName]);
 
   useEffect(() => {
+    const syncServiceScopeFromSession = () => {
+      setWaiterServiceScope(normalizeServiceScope(getAuthValue("service_scope")));
+    };
+
+    window.addEventListener("auth-changed", syncServiceScopeFromSession);
+
+    return () => {
+      window.removeEventListener("auth-changed", syncServiceScopeFromSession);
+    };
+  }, []);
+
+  useEffect(() => {
     clearOrderStore();
     void loadWaiterData();
 
@@ -775,6 +827,34 @@ export default function WaiterView() {
   }, [isConnected, refetchTables]);
 
   useEffect(() => {
+    if (!connection) return;
+
+    const handleServiceScopeUpdated = (payload) => {
+      const nextScope = normalizeServiceScope(payload?.serviceScope);
+      setAuthValue("service_scope", nextScope);
+      setWaiterServiceScope(nextScope);
+      showToast(`Tu alcance ahora es ${getServiceScopeLabel(nextScope)}`, "success");
+      scheduleWaiterRefresh();
+      void refetchTables();
+    };
+
+    connection.on("servicescopeupdated", handleServiceScopeUpdated);
+    connection.on("ServiceScopeUpdated", handleServiceScopeUpdated);
+
+    return () => {
+      connection.off("servicescopeupdated", handleServiceScopeUpdated);
+      connection.off("ServiceScopeUpdated", handleServiceScopeUpdated);
+    };
+  }, [connection, refetchTables, scheduleWaiterRefresh, showToast]);
+
+  useEffect(() => {
+    if (isWaitingForAssignedDiningTable) {
+      if (tableId !== null && tableId !== undefined && tableId !== "") {
+        setTable("");
+      }
+      return;
+    }
+
     const selectedTableStillAvailable = serviceTables.some(
       (table) => Number(table.number) === Number(tableId),
     );
@@ -824,7 +904,7 @@ export default function WaiterView() {
     if ((tableId === null || tableId === undefined || tableId === "") && canHandleStandaloneTakeout) {
       setTable(0);
     }
-  }, [canHandleStandaloneTakeout, currentTable, selectableAssignedDiningTables, serviceTables, setTable, tableId]);
+  }, [canHandleStandaloneTakeout, currentTable, isWaitingForAssignedDiningTable, selectableAssignedDiningTables, serviceTables, setTable, tableId]);
 
   useEffect(() => {
     if (isTakeout) {
@@ -982,7 +1062,7 @@ export default function WaiterView() {
                   Operador: {waiterName}
                 </p>
                 <p className="mt-2 inline-flex rounded-full border border-cyan-500/20 bg-cyan-500/10 px-3 py-1 text-[8px] font-black uppercase tracking-[0.18em] text-cyan-300">
-                  {getServiceScopeLabel(waiterServiceScope)}
+                  {effectiveServiceScopeLabel}
                 </p>
               </div>
             </button>
@@ -1055,7 +1135,7 @@ export default function WaiterView() {
                               : "Preparando pedido para llevar"}
                     </h2>
                     <p className="mt-3 inline-flex rounded-full border border-slate-700 bg-slate-950/80 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.16em] text-slate-300">
-                      {getServiceScopeSubtitle(waiterServiceScope)}
+                      {effectiveServiceScopeSubtitle}
                     </p>
                   </div>
                   <div className="flex items-center gap-3">
@@ -1162,7 +1242,16 @@ export default function WaiterView() {
                   </div>
                   <div className="px-4 py-2 rounded-2xl bg-slate-950 border border-slate-800 text-[10px] font-black uppercase tracking-widest text-cyan-300">{filteredProducts.length} items</div>
                 </div>
-                {isCurrentTableCleaning ? (
+                {isWaitingForAssignedDiningTable ? (
+                  <div className="rounded-[1.8rem] border border-dashed border-amber-400/20 bg-amber-400/10 p-8 text-center">
+                    <p className="text-[10px] font-black uppercase tracking-[0.24em] text-amber-200">
+                      Esperando asignacion
+                    </p>
+                    <p className="mt-3 text-sm font-black uppercase tracking-[0.14em] text-slate-100">
+                      Cuando host te asigne una mesa, aqui se habilitara el menu para tomar la orden.
+                    </p>
+                  </div>
+                ) : isCurrentTableCleaning ? (
                   <div className="rounded-[1.8rem] border border-rose-400/20 bg-rose-400/10 p-8 text-center">
                     <p className="text-[10px] font-black uppercase tracking-[0.24em] text-rose-200">
                       Mesa en limpieza
@@ -1217,7 +1306,18 @@ export default function WaiterView() {
                     <ChevronRight className="h-4 w-4" />
                   </button>
                   <div className="min-h-0 flex-1">
-                    {isCurrentTableCleaning ? (
+                    {isWaitingForAssignedDiningTable ? (
+                      <div className="flex h-full items-center justify-center rounded-[1.8rem] border border-dashed border-amber-400/20 bg-amber-400/10 p-6 text-center">
+                        <div>
+                          <p className="text-[10px] font-black uppercase tracking-[0.22em] text-amber-200">
+                            Pedido en espera
+                          </p>
+                          <p className="mt-3 text-sm font-black uppercase text-slate-100">
+                            Necesitas una mesa asignada para empezar a tomar ordenes.
+                          </p>
+                        </div>
+                      </div>
+                    ) : isCurrentTableCleaning ? (
                       <div className="flex h-full items-center justify-center rounded-[1.8rem] border border-rose-400/20 bg-rose-400/10 p-6 text-center">
                         <div>
                           <p className="text-[10px] font-black uppercase tracking-[0.22em] text-rose-200">
@@ -1244,6 +1344,7 @@ export default function WaiterView() {
                 <button
                   type="button"
                   onClick={() => setIsDesktopCartOpen(true)}
+                  disabled={isWaitingForAssignedDiningTable}
                   className="flex min-h-[260px] w-full flex-col items-center justify-between rounded-[1.8rem] border border-cyan-400/25 bg-cyan-400/10 px-3 py-5 text-cyan-200 shadow-xl transition-all hover:bg-cyan-400 hover:text-slate-950"
                   aria-label="Abrir panel de pedido"
                 >
@@ -1380,7 +1481,7 @@ export default function WaiterView() {
       </main>
 
       <div className="xl:hidden fixed inset-x-4 bottom-4 z-40 flex items-end justify-between gap-3">
-        {activeTab === "ordenar" && items.length > 0 && !isCartOpen && (
+        {activeTab === "ordenar" && items.length > 0 && !isCartOpen && !isWaitingForAssignedDiningTable && (
           <button
             onClick={() => setIsCartOpen(true)}
             className="flex-1 min-w-0 items-center justify-between rounded-[1.25rem] bg-cyan-400 px-4 py-3 text-slate-950 shadow-2xl shadow-cyan-950/40"
@@ -1411,7 +1512,7 @@ export default function WaiterView() {
         )}
       </div>
       {activeTab === "ordenar" && isCartOpen && <div className="fixed inset-0 bg-slate-950/40 z-40 xl:hidden" onClick={() => setIsCartOpen(false)} />}
-      {activeTab === "ordenar" && <aside className={`xl:hidden fixed inset-y-0 right-0 z-50 w-[84vw] max-w-[380px] bg-slate-950 border-l border-slate-800 transition-transform ${isCartOpen ? "translate-x-0" : "translate-x-full"}`}><div className="h-full overflow-y-auto p-2.5 sm:p-3"><div className="flex items-center justify-between mb-2 sm:mb-3 px-1"><div><p className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Orden actual</p><p className="text-xs sm:text-sm font-black uppercase text-white mt-1">Panel de confirmacion</p></div><button onClick={() => setIsCartOpen(false)} className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-2xl bg-slate-900 border border-slate-800 text-slate-300 text-[9px] sm:text-[10px] font-black uppercase tracking-[0.18em]"><X className="w-4 h-4" />Cerrar</button></div>{isCurrentTableCleaning ? <div className="flex min-h-[240px] items-center justify-center rounded-[1.6rem] border border-rose-400/20 bg-rose-400/10 p-5 text-center"><div><p className="text-[9px] font-black uppercase tracking-[0.2em] text-rose-200">Pedido bloqueado</p><p className="mt-3 text-xs font-black uppercase text-slate-100">La mesa seleccionada se esta limpiando.</p></div></div> : <OrderPanel key={`mobile-order-panel-${tableId ?? "none"}`} pax={pax} tableId={tableId} onOrderSent={(createdOrder) => { setIsCartOpen(false); handleOrderCreated(createdOrder); }} canHandleTakeout={canHandleTableTakeout} canHandleDining={canHandleDining} />}</div></aside>}
+      {activeTab === "ordenar" && <aside className={`xl:hidden fixed inset-y-0 right-0 z-50 w-[84vw] max-w-[380px] bg-slate-950 border-l border-slate-800 transition-transform ${isCartOpen ? "translate-x-0" : "translate-x-full"}`}><div className="h-full overflow-y-auto p-2.5 sm:p-3"><div className="flex items-center justify-between mb-2 sm:mb-3 px-1"><div><p className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Orden actual</p><p className="text-xs sm:text-sm font-black uppercase text-white mt-1">Panel de confirmacion</p></div><button onClick={() => setIsCartOpen(false)} className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-2xl bg-slate-900 border border-slate-800 text-slate-300 text-[9px] sm:text-[10px] font-black uppercase tracking-[0.18em]"><X className="w-4 h-4" />Cerrar</button></div>{isWaitingForAssignedDiningTable ? <div className="flex min-h-[240px] items-center justify-center rounded-[1.6rem] border border-dashed border-amber-400/20 bg-amber-400/10 p-5 text-center"><div><p className="text-[9px] font-black uppercase tracking-[0.2em] text-amber-200">Pedido en espera</p><p className="mt-3 text-xs font-black uppercase text-slate-100">Necesitas una mesa asignada para empezar.</p></div></div> : isCurrentTableCleaning ? <div className="flex min-h-[240px] items-center justify-center rounded-[1.6rem] border border-rose-400/20 bg-rose-400/10 p-5 text-center"><div><p className="text-[9px] font-black uppercase tracking-[0.2em] text-rose-200">Pedido bloqueado</p><p className="mt-3 text-xs font-black uppercase text-slate-100">La mesa seleccionada se esta limpiando.</p></div></div> : <OrderPanel key={`mobile-order-panel-${tableId ?? "none"}`} pax={pax} tableId={tableId} onOrderSent={(createdOrder) => { setIsCartOpen(false); handleOrderCreated(createdOrder); }} canHandleTakeout={canHandleTableTakeout} canHandleDining={canHandleDining} />}</div></aside>}
       {showProfile && <WaiterProfile user={currentUser} onClose={() => setShowProfile(false)} />}
     </div>
   );
