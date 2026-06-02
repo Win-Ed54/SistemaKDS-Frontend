@@ -4,7 +4,7 @@ import useOrderBuilder from "../../hooks/useOrderBuilder";
 import { useToast } from "../../context/ToastContext";
 import ProductCard from "./ProductCard";
 
-const ProductList = ({ products: initialProducts }) => {
+const ProductList = ({ products: initialProducts, disabled = false }) => {
   const [localProducts, setLocalProducts] = useState(initialProducts);
   const { connection } = useSignalRConnection("waiter");
   const { addItem } = useOrderBuilder();
@@ -47,6 +47,8 @@ const ProductList = ({ products: initialProducts }) => {
   }, [connection]);
 
   const handleAdd = (product) => {
+    if (disabled) return;
+
     const result = addItem(product);
     if (result?.ok === false && result?.message) {
       showToast(result.message, "error");
@@ -60,6 +62,7 @@ const ProductList = ({ products: initialProducts }) => {
           key={product.id || product._id}
           product={product}
           onAdd={handleAdd}
+          disabled={disabled}
         />
       ))}
     </div>

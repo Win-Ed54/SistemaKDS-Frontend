@@ -2,7 +2,7 @@ import React from "react";
 import useOrderBuilder from "../../hooks/useOrderBuilder";
 import { resolveAssetUrl } from "../../config/runtime";
 
-const ProductCard = ({ product, onAdd }) => {
+const ProductCard = ({ product, onAdd, disabled = false }) => {
   const { items } = useOrderBuilder();
 
   const productId = product.id || product._id || product.Id;
@@ -19,7 +19,8 @@ const ProductCard = ({ product, onAdd }) => {
   const isInCart = quantityInCart > 0;
   const totalPrice = isInCart ? productPrice * quantityInCart : productPrice;
   const handleImageAdd = () => {
-    if (!isOutOfStock) onAdd(product);
+    if (disabled || isOutOfStock) return;
+    onAdd(product);
   };
 
   return (
@@ -42,11 +43,11 @@ const ProductCard = ({ product, onAdd }) => {
 
       <div
         role="button"
-        tabIndex={isOutOfStock ? -1 : 0}
-        aria-label={isOutOfStock ? `${productName} agotado` : `Agregar ${productName}`}
+        tabIndex={disabled || isOutOfStock ? -1 : 0}
+        aria-label={disabled ? `${productName} bloqueado` : isOutOfStock ? `${productName} agotado` : `Agregar ${productName}`}
         onClick={handleImageAdd}
         onKeyDown={(event) => {
-          if (isOutOfStock) return;
+          if (disabled || isOutOfStock) return;
           if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
             handleImageAdd();
@@ -110,9 +111,9 @@ const ProductCard = ({ product, onAdd }) => {
             <button
               onClick={(event) => {
                 event.stopPropagation();
-                if (!isOutOfStock) onAdd(product);
+                if (!disabled && !isOutOfStock) onAdd(product);
               }}
-              disabled={isOutOfStock}
+              disabled={disabled || isOutOfStock}
               className={`w-full rounded-[0.95rem] py-2.5 text-[9px] font-black uppercase tracking-[0.18em] transition-all ${
                 isOutOfStock
                   ? "cursor-not-allowed border border-slate-700 bg-slate-800 text-slate-600"
