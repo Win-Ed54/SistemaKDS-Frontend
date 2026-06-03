@@ -1,5 +1,5 @@
-import React, { useMemo } from "react";
-import { BellRing, MapPin, PackageCheck } from "lucide-react";
+import React, { useCallback, useMemo, useRef } from "react";
+import { BellRing, ChevronDown, ChevronUp, MapPin, PackageCheck } from "lucide-react";
 import { finishOrder } from "../../services/api.service";
 import { useToast } from "../../context/ToastContext";
 import { getAuthValue } from "../../services/authStorage";
@@ -36,6 +36,128 @@ const belongsToWaiter = (order, waiterId, waiterName) => {
     normalizeCompareValue(order?.waiterName) === normalizeCompareValue(waiterName);
 
   return idMatches || nameMatches;
+};
+
+const ReadyOrderCard = ({ order, variant, onDeliver }) => {
+  const detailRef = useRef(null);
+  const orderId = order.id || order._id;
+  const isInline = variant === "inline";
+
+  const scrollDetail = useCallback((direction) => {
+    const detail = detailRef.current;
+    if (!detail) return;
+
+    detail.scrollBy({
+      top: direction * Math.max(160, detail.clientHeight * 0.75),
+      behavior: "smooth",
+    });
+  }, []);
+
+  return (
+    <div
+      className={`flex min-h-0 flex-col bg-slate-900 ${
+        isInline
+          ? "max-h-[min(78vh,760px)] rounded-[2rem] border border-[#39FF14]/30 bg-slate-900/70 p-5 shadow-[0_0_30px_rgba(57,255,20,0.12)]"
+          : "max-h-[min(72vh,620px)] pointer-events-auto rounded-[2rem] border-2 border-[#39FF14] p-5 shadow-[0_0_30px_rgba(57,255,20,0.3)]"
+      }`}
+    >
+      <div className="mb-4 flex shrink-0 items-start justify-between">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="shrink-0 rounded-2xl bg-[#39FF14] p-2.5">
+            <MapPin size={20} className="text-black" />
+          </div>
+          <div className="min-w-0">
+            <h4
+              className={`truncate text-2xl font-black leading-none text-white uppercase ${
+                isInline ? "" : "italic"
+              }`}
+              title={getOrderLocationLabel(order)}
+            >
+              {getOrderLocationLabel(order)}
+            </h4>
+            <p className="mt-1 text-[9px] font-black uppercase tracking-widest text-[#39FF14]">
+              {isInline ? "Lista para entrega" : "Recoger en barra"}
+            </p>
+          </div>
+        </div>
+        <BellRing className="shrink-0 text-[#39FF14]" size={20} />
+      </div>
+
+      <div className="mb-5 min-h-0 flex-1 overflow-hidden rounded-2xl border border-slate-800 bg-black/40">
+        <div className="flex items-center justify-end gap-2 border-b border-slate-800/80 px-3 py-2">
+          <button
+            type="button"
+            onClick={() => scrollDetail(-1)}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-slate-700 bg-slate-900/90 text-slate-200 transition-all hover:border-[#39FF14]/50 hover:text-[#39FF14] active:scale-95"
+            aria-label="Subir detalle"
+            title="Subir detalle"
+          >
+            <ChevronUp size={17} />
+          </button>
+          <button
+            type="button"
+            onClick={() => scrollDetail(1)}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-slate-700 bg-slate-900/90 text-slate-200 transition-all hover:border-[#39FF14]/50 hover:text-[#39FF14] active:scale-95"
+            aria-label="Bajar detalle"
+            title="Bajar detalle"
+          >
+            <ChevronDown size={17} />
+          </button>
+        </div>
+
+        <div
+          ref={detailRef}
+          className="custom-scrollbar max-h-[360px] min-h-0 overflow-y-auto overscroll-contain p-4"
+          onWheel={(event) => event.stopPropagation()}
+          onTouchMove={(event) => event.stopPropagation()}
+        >
+          {Number(order?.tableNumber) === 0 && getTakeoutDestination(order) && (
+            <div className="mb-3 rounded-xl border border-amber-300/20 bg-amber-300/10 p-3">
+              <p className="text-[8px] font-black uppercase tracking-[0.16em] text-amber-200/80">
+                Destino
+              </p>
+              <p className="mt-1 text-xs font-black uppercase text-amber-100">
+                {getTakeoutDestination(order)}
+              </p>
+            </div>
+          )}
+          <ul className="space-y-2">
+            {order.items?.map((item, index) => (
+              <li
+                key={`${item.productId || item.productName || "item"}-${index}`}
+                className={`text-xs ${isInline ? "font-bold text-slate-300" : "flex items-center justify-between"}`}
+              >
+                <span className="font-bold text-slate-300">
+                  <span className="mr-2 text-cyan-400">{item.quantity}x</span>
+                  {item.productName}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      {isDiningOrder(order) && (
+        <div className="mb-4 shrink-0 rounded-2xl border border-[#39FF14]/25 bg-[#39FF14]/10 p-4">
+          <p className="text-[8px] font-black uppercase tracking-[0.18em] text-[#39FF14]/80">
+            Entregar en
+          </p>
+          <p className="mt-1 text-base font-black uppercase text-white">
+            {getDeliveryTargetLabel(order)}
+          </p>
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={() => onDeliver(orderId)}
+        className="flex w-full shrink-0 items-center justify-center gap-3 rounded-2xl bg-[#39FF14] px-4 py-4 text-center font-black text-black shadow-lg transition-all hover:bg-[#2cff00] active:scale-95"
+      >
+        <PackageCheck size={20} />
+        <span className="leading-tight">{getDeliveryButtonLabel(order)}</span>
+      </button>
+    </div>
+  );
 };
 
 const ReadyOrdersView = ({ variant = "floating", waiterId = "" }) => {
@@ -84,146 +206,28 @@ const ReadyOrdersView = ({ variant = "floating", waiterId = "" }) => {
   if (variant === "inline") {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-        {readyOrders.map((order) => {
-          const orderId = order.id || order._id;
-          return (
-            <div
-              key={orderId}
-              className="bg-slate-900/70 border border-[#39FF14]/30 rounded-[2rem] p-5 shadow-[0_0_30px_rgba(57,255,20,0.12)]"
-            >
-              <div className="flex justify-between items-start mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="bg-[#39FF14] p-2.5 rounded-2xl">
-                    <MapPin size={20} className="text-black" />
-                  </div>
-                  <div>
-                    <h4 className="text-2xl font-black text-white leading-none uppercase">
-                      {getOrderLocationLabel(order)}
-                    </h4>
-                    <p className="text-[9px] text-[#39FF14] font-black uppercase tracking-widest mt-1">
-                      Lista para entrega
-                    </p>
-                  </div>
-                </div>
-                <BellRing className="text-[#39FF14]" size={20} />
-              </div>
-
-              <div className="bg-black/30 rounded-2xl p-4 border border-slate-800 mb-5">
-                {Number(order?.tableNumber) === 0 && getTakeoutDestination(order) && (
-                  <div className="mb-3 rounded-xl border border-amber-300/20 bg-amber-300/10 p-3">
-                    <p className="text-[8px] font-black uppercase tracking-[0.16em] text-amber-200/80">
-                      Destino
-                    </p>
-                    <p className="mt-1 text-xs font-black uppercase text-amber-100">
-                      {getTakeoutDestination(order)}
-                    </p>
-                  </div>
-                )}
-                <ul className="space-y-2">
-                  {order.items?.map((item, index) => (
-                    <li key={index} className="text-xs font-bold text-slate-300">
-                      <span className="text-cyan-400 mr-2">{item.quantity}x</span>
-                      {item.productName}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              {isDiningOrder(order) && (
-                <div className="mb-4 rounded-2xl border border-[#39FF14]/25 bg-[#39FF14]/10 p-4">
-                  <p className="text-[8px] font-black uppercase tracking-[0.18em] text-[#39FF14]/80">
-                    Entregar en
-                  </p>
-                  <p className="mt-1 text-base font-black uppercase text-white">
-                    {getDeliveryTargetLabel(order)}
-                  </p>
-                </div>
-              )}
-
-              <button
-                onClick={() => handleDeliver(orderId)}
-                className="w-full bg-[#39FF14] hover:bg-[#2cff00] text-black font-black py-4 px-4 rounded-2xl flex items-center justify-center gap-3 text-center transition-all active:scale-95 shadow-lg"
-              >
-                <PackageCheck size={20} />
-                <span className="leading-tight">{getDeliveryButtonLabel(order)}</span>
-              </button>
-            </div>
-          );
-        })}
+        {readyOrders.map((order) => (
+          <ReadyOrderCard
+            key={order.id || order._id}
+            order={order}
+            variant="inline"
+            onDeliver={handleDeliver}
+          />
+        ))}
       </div>
     );
   }
 
   return (
-    <div className="fixed bottom-24 right-4 z-[60] flex flex-col gap-4 w-[90%] max-w-sm pointer-events-none">
-      {readyOrders.map((order) => {
-        const orderId = order.id || order._id;
-        return (
-          <div
-            key={orderId}
-            className="pointer-events-auto bg-slate-900 border-2 border-[#39FF14] rounded-[2rem] p-5 shadow-[0_0_30px_rgba(57,255,20,0.3)] animate-in slide-in-from-right duration-500"
-          >
-            <div className="flex justify-between items-start mb-4">
-              <div className="flex items-center gap-3">
-                <div className="bg-[#39FF14] p-2.5 rounded-2xl">
-                  <MapPin size={20} className="text-black" />
-                </div>
-                <div>
-                  <h4 className="text-2xl font-black text-white italic leading-none uppercase">
-                    {getOrderLocationLabel(order)}
-                  </h4>
-                  <p className="text-[9px] text-[#39FF14] font-black uppercase tracking-widest mt-1">
-                    Recoger en barra
-                  </p>
-                </div>
-              </div>
-              <BellRing className="text-[#39FF14] animate-bounce" size={20} />
-            </div>
-
-            <div className="bg-black/40 rounded-2xl p-4 border border-slate-800 mb-5">
-              {Number(order?.tableNumber) === 0 && getTakeoutDestination(order) && (
-                <div className="mb-3 rounded-xl border border-amber-300/20 bg-amber-300/10 p-3">
-                  <p className="text-[8px] font-black uppercase tracking-[0.16em] text-amber-200/80">
-                    Destino
-                  </p>
-                  <p className="mt-1 text-xs font-black uppercase text-amber-100">
-                    {getTakeoutDestination(order)}
-                  </p>
-                </div>
-              )}
-              <ul className="space-y-2">
-                {order.items?.map((item, index) => (
-                  <li key={index} className="flex justify-between items-center text-xs">
-                    <span className="text-slate-300 font-bold">
-                      <span className="text-cyan-400 mr-2">{item.quantity}x</span>
-                      {item.productName}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {isDiningOrder(order) && (
-              <div className="mb-4 rounded-2xl border border-[#39FF14]/25 bg-[#39FF14]/10 p-4">
-                <p className="text-[8px] font-black uppercase tracking-[0.18em] text-[#39FF14]/80">
-                  Entregar en
-                </p>
-                <p className="mt-1 text-base font-black uppercase text-white">
-                  {getDeliveryTargetLabel(order)}
-                </p>
-              </div>
-            )}
-
-            <button
-              onClick={() => handleDeliver(orderId)}
-              className="w-full bg-[#39FF14] hover:bg-[#2cff00] text-black font-black py-4 px-4 rounded-2xl flex items-center justify-center gap-3 text-center transition-all active:scale-95 shadow-lg"
-            >
-              <PackageCheck size={20} />
-              <span className="leading-tight">{getDeliveryButtonLabel(order)}</span>
-            </button>
-          </div>
-        );
-      })}
+    <div className="pointer-events-none fixed bottom-24 right-4 z-[60] flex max-h-[calc(100dvh-7rem)] w-[90%] max-w-sm flex-col gap-4 overflow-y-auto overscroll-contain pr-1 custom-scrollbar">
+      {readyOrders.map((order) => (
+        <ReadyOrderCard
+          key={order.id || order._id}
+          order={order}
+          variant="floating"
+          onDeliver={handleDeliver}
+        />
+      ))}
     </div>
   );
 };

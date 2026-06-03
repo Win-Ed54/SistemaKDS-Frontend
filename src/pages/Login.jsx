@@ -2,6 +2,12 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getRouteForRole, getSession, login, logout } from "../services/authService";
 import { buildApiUrl } from "../config/runtime";
+import {
+  MAX_LOGIN_PASSWORD_LENGTH,
+  MAX_LOGIN_USERNAME_LENGTH,
+  sanitizeLoginPassword,
+  sanitizeLoginUsername,
+} from "../utils/inputSanitizers";
 
 export default function Login() {
   const [username, setUsername] = useState("");
@@ -89,6 +95,16 @@ export default function Login() {
 
   const isServerReachable = healthState === "ok";
 
+  const updateUsername = (value) => {
+    setUsername(sanitizeLoginUsername(value));
+    setError(null);
+  };
+
+  const updatePassword = (value) => {
+    setPassword(sanitizeLoginPassword(value));
+    setError(null);
+  };
+
   const retryHealthCheck = async () => {
     if (!navigator.onLine) {
       setHealthState("error");
@@ -127,7 +143,10 @@ export default function Login() {
       return;
     }
 
-    if (!username || !password) {
+    const safeUsername = sanitizeLoginUsername(username).trim();
+    const safePassword = sanitizeLoginPassword(password);
+
+    if (!safeUsername || !safePassword) {
       setError("Ingresa usuario y contrasena");
       return;
     }
@@ -136,7 +155,7 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const data = await login(username, password);
+      const data = await login(safeUsername, safePassword);
       const route = getRouteForRole(data.role);
 
       if (!route || route === "/login") {
@@ -225,14 +244,17 @@ export default function Login() {
           style={styles.input}
           placeholder="Usuario"
           value={username}
+          autoComplete="username"
+          autoCapitalize="none"
+          spellCheck={false}
+          maxLength={MAX_LOGIN_USERNAME_LENGTH}
           onKeyDown={(event) => {
             if (event.key === "Enter" && !loading) {
               handleLogin();
             }
           }}
           onChange={(event) => {
-            setUsername(event.target.value);
-            setError(null);
+            updateUsername(event.target.value);
           }}
         />
 
@@ -241,14 +263,17 @@ export default function Login() {
           type="password"
           placeholder="Contrasena"
           value={password}
+          autoComplete="current-password"
+          autoCapitalize="none"
+          spellCheck={false}
+          maxLength={MAX_LOGIN_PASSWORD_LENGTH}
           onKeyDown={(event) => {
             if (event.key === "Enter" && !loading) {
               handleLogin();
             }
           }}
           onChange={(event) => {
-            setPassword(event.target.value);
-            setError(null);
+            updatePassword(event.target.value);
           }}
         />
 
