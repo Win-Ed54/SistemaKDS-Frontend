@@ -120,18 +120,18 @@ const OrderCard = ({ order, now, isConnected, onPreparing, onReady, onFinish, on
       <div className="px-5 py-4 space-y-3 min-h-[140px]">
         {groupItems(order.items)?.map((item, i) => (
           <div key={i} className="group">
-            <div className="flex items-baseline gap-3">
+            <div className="flex min-w-0 items-baseline gap-3">
               <span className="font-black text-2xl leading-none text-[#00FFFF]">
                 {item.quantity}x
               </span>
-              <span className="font-black text-base text-slate-100 uppercase tracking-tight leading-tight">
+              <span className="min-w-0 break-words font-black text-base text-slate-100 uppercase tracking-tight leading-tight">
                 {item.productName}
               </span>
             </div>
             {item.notes && (
-              <div className="mt-2 px-3 py-1.5 rounded-lg border-l-4 text-[10px] font-black uppercase tracking-tight italic"
+              <div className="mt-2 max-w-full break-words whitespace-pre-wrap px-3 py-2 rounded-lg border-l-4 text-[11px] font-black uppercase tracking-normal italic leading-snug"
                 style={{ backgroundColor: "#FFFF0008", borderLeftColor: "#FFFF00", color: "#FFFF00" }}>
-                ⚠️ {item.notes}
+                ! {item.notes}
               </div>
             )}
           </div>

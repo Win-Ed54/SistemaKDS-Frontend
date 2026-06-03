@@ -16,6 +16,7 @@ import useSignalRConnection from "../hooks/useSignalRConnection";
 import { logout } from "../services/authService";
 import { getAuthValue } from "../services/authStorage";
 import { getOrderHistory, payOrder } from "../services/api.service";
+import { sanitizeReceiptNumber, sanitizeSafeFreeText } from "../utils/inputSanitizers";
 import {
   onOrderCancelled,
   onOrderCreatedForPayment,
@@ -40,12 +41,28 @@ const formatTime = (value = Date.now()) =>
 const getTakeoutDestination = (order) =>
   String(order?.takeoutDestination || order?.TakeoutDestination || "").trim();
 
+const isTechnicalIdLike = (value) => {
+  const normalized = String(value || "").trim();
+  return /^[a-f0-9]{24}$/i.test(normalized) || /^[a-z0-9]{16,}$/i.test(normalized);
+};
+
+const sanitizeChargeLabel = (label, fallback = "Cobro registrado") => {
+  const normalized = String(label || "").trim();
+  return !normalized || isTechnicalIdLike(normalized) ? fallback : normalized;
+};
+
 const getOrderLocationLabel = (order) => {
   if (Number(order?.tableNumber) > 0) return `Mesa ${order.tableNumber}`;
 
   const destination = getTakeoutDestination(order);
   return destination ? `Para llevar · ${destination}` : "Para llevar";
 };
+
+const getPublicOrderLabel = (order) =>
+  sanitizeChargeLabel(
+    order?.correlativeCode || order?.CorrelativeCode,
+    getOrderLocationLabel(order),
+  );
 
 const isTakeoutPrepaymentOrder = (order, settings) =>
   Boolean(settings?.takeoutRequirePrepayment) &&
@@ -132,6 +149,10 @@ const loadStoredRecentCharges = (cashierName) => {
 
     return parsed
       .filter((entry) => entry && typeof entry === "object")
+      .map((entry) => ({
+        ...entry,
+        label: sanitizeChargeLabel(entry.label),
+      }))
       .slice(0, MAX_RECENT_CHARGES);
   } catch {
     return [];
@@ -415,17 +436,17 @@ const CashierView = () => {
       registerChargeSummary(
         createChargeSummaryEntry({
           type: "total",
-          label: order.correlativeCode || order.id,
+          label: sanitizeChargeLabel(getPublicOrderLabel(order), getOrderLocationLabel(order)),
           amount: getRemainingOrderTotal(order),
           detail: `${getOrderLocationLabel(order)} · cobro completo`,
           paymentMethod: form.paymentMethod || "efectivo",
         }),
       );
-      showToast(`Pedido ${order.id} cobrado correctamente`, "success");
+      showToast(`${getPublicOrderLabel(order)} cobrado correctamente`, "success");
       await loadCashierData(true);
     } catch (error) {
       console.error("Error cobrando orden:", error);
-      showToast(`No se pudo cobrar el pedido ${order.id}`, "error");
+      showToast(`No se pudo cobrar ${getPublicOrderLabel(order)}`, "error");
     } finally {
       setChargingOrders((prev) => ({ ...prev, [order.id]: false }));
     }
@@ -457,7 +478,7 @@ const CashierView = () => {
       registerChargeSummary(
         createChargeSummaryEntry({
           type: isPartialCharge ? "partial" : "total",
-          label: order.correlativeCode || order.id,
+          label: sanitizeChargeLabel(getPublicOrderLabel(order), getOrderLocationLabel(order)),
           amount: selectedTotal,
           detail: isPartialCharge
             ? `${getOrderLocationLabel(order)} - parcial - queda ${formatCurrency(remainingAfterSelection)}`
@@ -467,14 +488,14 @@ const CashierView = () => {
       );
       showToast(
         isPartialCharge
-          ? `Cobro parcial aplicado a ${order.correlativeCode || order.id} - Pendiente ${formatCurrency(remainingAfterSelection)}`
-          : `Pedido ${order.correlativeCode || order.id} cobrado correctamente`,
+          ? `Cobro parcial aplicado a ${getPublicOrderLabel(order)} - Pendiente ${formatCurrency(remainingAfterSelection)}`
+          : `${getPublicOrderLabel(order)} cobrado correctamente`,
         "success",
       );
       await loadCashierData(true);
     } catch (error) {
       console.error("Error cobrando productos seleccionados:", error);
-      showToast(`No se pudieron cobrar los productos de ${order.correlativeCode || order.id}`, "error");
+      showToast(`No se pudieron cobrar los productos de ${getPublicOrderLabel(order)}`, "error");
     } finally {
       setChargingOrders((prev) => ({ ...prev, [order.id]: false }));
     }
@@ -551,7 +572,7 @@ const CashierView = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white p-4 lg:p-6 selection:bg-emerald-400/30">
+    <div className="min-h-screen min-w-0 overflow-x-hidden bg-slate-950 text-white p-4 lg:p-6 selection:bg-emerald-400/30">
       <div className="max-w-[1500px] mx-auto space-y-6">
         <header className="rounded-[1.4rem] border border-slate-800 bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.10),_transparent_24%),linear-gradient(135deg,_rgba(15,23,42,0.98)_0%,_rgba(2,6,23,0.98)_100%)] px-4 py-3 shadow-2xl">
           <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
@@ -620,7 +641,7 @@ const CashierView = () => {
               <input
                 type="text"
                 value={tableSearch}
-                onChange={(event) => setTableSearch(event.target.value.slice(0, 40))}
+                onChange={(event) => setTableSearch(sanitizeSafeFreeText(event.target.value, 40))}
                 placeholder="Buscar mesa, para llevar, cliente o codigo"
                 className="w-full rounded-[1.2rem] border border-slate-800 bg-slate-950 pl-11 pr-4 py-3 text-sm font-bold text-white outline-none placeholder:text-slate-600 focus:border-emerald-400"
               />
@@ -794,7 +815,7 @@ const PaymentFormFields = ({ formKey, paymentForms, updatePaymentForm, placehold
         type="text"
         value={paymentForms[formKey]?.receiptNumber || ""}
         onChange={(event) =>
-          updatePaymentForm(formKey, { receiptNumber: event.target.value.slice(0, 40) })
+          updatePaymentForm(formKey, { receiptNumber: sanitizeReceiptNumber(event.target.value) })
         }
         placeholder={placeholder}
         className="w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-3 text-sm font-bold text-white outline-none placeholder:text-slate-700"
@@ -939,7 +960,7 @@ const GroupedPaymentsView = ({
                   <div>
                     <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">Pedido</p>
                     <p className="text-sm font-black text-cyan-300 mt-1 break-all">
-                      {order.correlativeCode || order.id}
+                      {getPublicOrderLabel(order)}
                     </p>
                     {isTakeoutPrepayment && (
                       <span className="mt-2 inline-flex rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.16em] text-cyan-300">
@@ -1111,7 +1132,7 @@ const SeparatePaymentsView = ({
           <div>
             <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Pedido</p>
             <p className="text-sm font-black text-cyan-300 mt-1 break-all">
-              {order.correlativeCode || order.id}
+              {getPublicOrderLabel(order)}
             </p>
             {isTakeoutPrepayment && (
               <span className="mt-2 inline-flex rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.16em] text-cyan-300">
@@ -1219,7 +1240,7 @@ const SeparatePaymentsView = ({
           formKey={order.id}
           paymentForms={paymentForms}
           updatePaymentForm={updatePaymentForm}
-          placeholder={`Ej. ${order.correlativeCode || "REC-001"}`}
+          placeholder={`Ej. ${getPublicOrderLabel(order) || "REC-001"}`}
         />
 
         <button

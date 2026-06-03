@@ -42,6 +42,7 @@ Frontend del sistema KDS construido con React 19, Vite 7, Zustand, Tailwind CSS 
 
 ## Testers
 
+- Oscar Cruz
 - Edwin Fernandez
 - Sorayda Lopez
 - Michael Garcia
@@ -64,6 +65,8 @@ Referencia recomendada para produccion:
 - `VITE_BACKEND_URL=https://TU-BACKEND.up.railway.app`
 - `VITE_HUB_URL=https://TU-BACKEND.up.railway.app/ordersHub`
 - `VITE_BASE_PATH=/`
+
+No guardes tokens, contrasenas ni URLs privadas reales en este README. Usa variables de entorno del proveedor de despliegue.
 
 ## Desarrollo local
 

@@ -8,8 +8,14 @@ import { validateOrderLimits } from "../../constants/orderLimits";
 import { getCurrentKdsSettings } from "../../store/kdsSettingsStore";
 import { getAuthValue } from "../../services/authStorage";
 import { sortCartItemsForTakeout } from "../../utils/displayOrder";
+import {
+  finalizeKitchenNote,
+  MAX_KITCHEN_NOTE_LENGTH,
+  sanitizeCustomerName,
+  sanitizeKitchenNote,
+} from "../../utils/inputSanitizers";
 
-const MAX_NOTE_LENGTH = 160;
+const MAX_NOTE_LENGTH = MAX_KITCHEN_NOTE_LENGTH;
 
 const QUICK_NOTES = {
   Hamburguesas: [
@@ -30,28 +36,16 @@ const QUICK_NOTES = {
 };
 const GENERIC_QUICK_NOTES = ["Sin cebolla", "Sin salsa", "Para llevar", "Sin hielo"];
 
-const normalizeCustomerName = (value) =>
-  String(value || "")
-    .replace(/[^\p{L}\s]/gu, "")
-    .replace(/\s+/g, " ")
-    .trim()
-    .toUpperCase();
-
 const normalizeTakeoutDestination = (value) =>
   String(value || "")
     .replace(/\s+/g, " ")
     .trim()
     .toUpperCase();
 
-const sanitizeNoteInput = (value) =>
-  String(value || "")
-    .replace(/[<>]/g, "")
-    .slice(0, MAX_NOTE_LENGTH);
-
-const finalizeNote = (value) =>
-  sanitizeNoteInput(value)
-    .replace(/\r?\n/g, " ")
-    .trim();
+const normalizeCustomerName = (value) =>
+  sanitizeCustomerName(value)
+    .trim()
+    .toUpperCase();
 
 const OrderBuilder = ({
   customerName,
@@ -110,7 +104,7 @@ const OrderBuilder = ({
   }, [noteProduct]);
 
   useEffect(() => {
-    setNoteDraft(sanitizeNoteInput(noteTarget?.currentNotes || ""));
+    setNoteDraft(sanitizeKitchenNote(noteTarget?.currentNotes || ""));
   }, [noteTarget]);
 
   const toggleQuickNote = (quickNote) => {
@@ -124,7 +118,7 @@ const OrderBuilder = ({
         return parts.filter((item) => item !== quickNote).join(", ");
       }
 
-      return sanitizeNoteInput(parts.length ? `${prev}, ${quickNote}` : quickNote);
+      return sanitizeKitchenNote(parts.length ? `${prev}, ${quickNote}` : quickNote);
     });
   };
 
@@ -220,7 +214,7 @@ const OrderBuilder = ({
   const handleSaveNotes = () => {
     if (!noteTarget?.productId) return;
 
-    const cleaned = finalizeNote(noteDraft);
+    const cleaned = finalizeKitchenNote(noteDraft);
 
     if (noteTarget.source === "catalog" && noteTarget.product) {
       if (cleaned) {
@@ -409,7 +403,7 @@ const OrderBuilder = ({
 
                     <textarea
                       value={noteDraft}
-                      onChange={(event) => setNoteDraft(sanitizeNoteInput(event.target.value))}
+                      onChange={(event) => setNoteDraft(sanitizeKitchenNote(event.target.value))}
                       maxLength={MAX_NOTE_LENGTH}
                       placeholder="Escribe instrucciones especiales para cocina o barra..."
                       className="min-h-[110px] w-full resize-none rounded-[1.2rem] border-2 border-slate-800 bg-slate-950 p-3 text-sm font-bold text-white outline-none transition-all focus:border-cyan-500"
@@ -488,7 +482,7 @@ const OrderBuilder = ({
 
             <textarea
               value={noteDraft}
-              onChange={(event) => setNoteDraft(sanitizeNoteInput(event.target.value))}
+              onChange={(event) => setNoteDraft(sanitizeKitchenNote(event.target.value))}
               maxLength={MAX_NOTE_LENGTH}
               placeholder="Opcional: agrega instrucciones para este producto..."
               className="min-h-[110px] w-full resize-none rounded-[1.2rem] border-2 border-slate-800 bg-slate-900 p-3 text-sm font-bold text-white outline-none transition-all focus:border-cyan-500"

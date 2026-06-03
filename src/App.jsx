@@ -66,6 +66,34 @@ const HostView = lazyView(() => import("./views/HostView"), "host");
 const KitchenDisplay = lazyView(() => import("./views/KitchenDisplay"), "kitchen");
 const WaiterView = lazyView(() => import("./views/WaiterView"), "waiter");
 
+const canScrollVertically = (element, deltaY) => {
+  if (!element || element === document.body || element === document.documentElement) {
+    return false;
+  }
+
+  const style = window.getComputedStyle(element);
+  const overflowY = style.overflowY;
+  if (!["auto", "scroll", "overlay"].includes(overflowY)) return false;
+  if (element.scrollHeight <= element.clientHeight + 1) return false;
+
+  if (deltaY > 0) {
+    return element.scrollTop + element.clientHeight < element.scrollHeight - 1;
+  }
+
+  return element.scrollTop > 0;
+};
+
+const findScrollableParent = (startElement, deltaY) => {
+  let current = startElement instanceof Element ? startElement : null;
+
+  while (current) {
+    if (canScrollVertically(current, deltaY)) return current;
+    current = current.parentElement;
+  }
+
+  return null;
+};
+
 const ScreenLoading = () => (
   <div className="min-h-screen bg-[#020617] text-cyan-100 flex items-center justify-center">
     <div className="rounded-2xl border border-cyan-400/20 bg-slate-950/80 px-6 py-4 text-xs font-black uppercase tracking-[0.24em] text-cyan-300">
@@ -75,6 +103,35 @@ const ScreenLoading = () => (
 );
 
 function App() {
+  useEffect(() => {
+    const handleWheelScroll = (event) => {
+      if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.deltaY === 0) {
+        return;
+      }
+
+      const scrollableParent = findScrollableParent(event.target, event.deltaY);
+      if (scrollableParent) return;
+
+      const documentElement = document.scrollingElement || document.documentElement;
+      const canScrollDocument =
+        documentElement.scrollHeight > documentElement.clientHeight + 1 &&
+        ((event.deltaY > 0 &&
+          documentElement.scrollTop + documentElement.clientHeight < documentElement.scrollHeight - 1) ||
+          (event.deltaY < 0 && documentElement.scrollTop > 0));
+
+      if (!canScrollDocument) return;
+
+      event.preventDefault();
+      documentElement.scrollBy({ top: event.deltaY, left: 0, behavior: "auto" });
+    };
+
+    document.addEventListener("wheel", handleWheelScroll, { passive: false });
+
+    return () => {
+      document.removeEventListener("wheel", handleWheelScroll);
+    };
+  }, []);
+
   useEffect(() => {
     const init = async (forceRestart = false) => {
       const isLoginRoute = getCurrentAppPath() === "/login";

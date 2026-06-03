@@ -1,17 +1,86 @@
 @import "tailwindcss";
 
+* {
+  box-sizing: border-box;
+}
+
 html {
   min-height: 100%;
+  width: 100%;
   background-color: #020617;
   color-scheme: dark;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 body {
+  min-width: 0;
   min-height: 100vh;
   margin: 0;
   background: radial-gradient(circle at top, rgba(34, 211, 238, 0.10), transparent 28%), linear-gradient(180deg, #020617 0%, #0f172a 100%);
   color: white;
+  overflow-x: hidden;
+  overflow-y: auto;
   overscroll-behavior-y: contain;
+}
+
+#root {
+  min-width: 0;
+  min-height: 100vh;
+  background: #020617;
+  isolation: isolate;
+  overflow-x: hidden;
+}
+
+img,
+svg,
+canvas,
+video {
+  max-width: 100%;
+}
+
+button,
+[role="button"],
+select,
+input[type="checkbox"],
+input[type="radio"],
+summary {
+  cursor: pointer;
+}
+
+button:disabled,
+select:disabled,
+input:disabled,
+textarea:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
+button,
+[role="button"],
+a,
+input,
+select,
+textarea,
+summary {
+  touch-action: manipulation;
+}
+
+:focus {
+  outline: none;
+}
+
+:focus-visible {
+  outline: 3px solid rgba(34, 211, 238, 0.95);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 6px rgba(34, 211, 238, 0.16);
+}
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline-color: rgba(52, 211, 153, 0.95);
+  box-shadow: 0 0 0 5px rgba(52, 211, 153, 0.14);
 }
 
 .custom-scrollbar {
@@ -45,7 +114,7 @@ body {
 
 .auto-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr));
 }
 
 /* ============================= */

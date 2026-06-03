@@ -22,6 +22,7 @@ import ConfirmDialog from "../components/common/ConfirmDialog";
 import useKdsSettings from "../hooks/useKdsSettings";
 import useSignalRConnection from "../hooks/useSignalRConnection";
 import useTables from "../hooks/useTables";
+import { sanitizeSafeFreeText } from "../utils/inputSanitizers";
 import { readViewState, writeViewState } from "../utils/viewStateStorage";
 
 const DEFAULT_CLEANING_MINUTES = 8;
@@ -700,7 +701,7 @@ const HostView = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(14,165,233,0.10),_transparent_28%),linear-gradient(180deg,_#020617_0%,_#0f172a_100%)] text-white selection:bg-cyan-400/30">
+    <div className="min-h-screen min-w-0 overflow-x-hidden bg-[radial-gradient(circle_at_top,_rgba(14,165,233,0.10),_transparent_28%),linear-gradient(180deg,_#020617_0%,_#0f172a_100%)] text-white selection:bg-cyan-400/30">
       <ConfirmDialog
         open={pendingCancelTable !== null}
         title="Cancelar asignacion de mesa"
@@ -962,7 +963,7 @@ const HostView = () => {
               </p>
               <textarea
                 value={seatingNotes}
-                onChange={(event) => setSeatingNotes(event.target.value.slice(0, 80))}
+                onChange={(event) => setSeatingNotes(sanitizeSafeFreeText(event.target.value, 80))}
                 rows={3}
                 placeholder="Ej. silla para bebe, aniversario, ventana"
                 className="mt-4 w-full rounded-[1.2rem] border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:border-cyan-400 resize-none"

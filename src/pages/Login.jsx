@@ -283,6 +283,8 @@ export default function Login() {
 
 const styles = {
   container: {
+    width: "100%",
+    minWidth: 0,
     minHeight: "100dvh",
     display: "flex",
     justifyContent: "center",
@@ -313,6 +315,7 @@ const styles = {
     borderRadius: "24px",
     width: "360px",
     maxWidth: "100%",
+    minWidth: 0,
     display: "flex",
     flexDirection: "column",
     gap: "14px",

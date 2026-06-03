@@ -74,7 +74,7 @@ const KitchenDisplay = () => {
 
   return (
     <div
-      className="flex min-h-[100dvh] flex-col bg-[radial-gradient(circle_at_top,_rgba(249,115,22,0.10),_transparent_24%),linear-gradient(180deg,_#020617_0%,_#020617_100%)] text-white selection:bg-orange-500/30 md:h-[100dvh]"
+      className="flex min-h-[100dvh] min-w-0 flex-col overflow-x-hidden bg-[radial-gradient(circle_at_top,_rgba(249,115,22,0.10),_transparent_24%),linear-gradient(180deg,_#020617_0%,_#020617_100%)] text-white selection:bg-orange-500/30 md:h-[100dvh]"
     >
       <header className="px-3 pt-3 lg:px-5 lg:pt-4" style={{ flexShrink: 0 }}>
         <div className="mx-auto max-w-[1800px] rounded-[1.4rem] border border-slate-800 bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.10),_transparent_24%),linear-gradient(135deg,_rgba(15,23,42,0.98)_0%,_rgba(2,6,23,0.98)_100%)] px-4 py-3 shadow-2xl">

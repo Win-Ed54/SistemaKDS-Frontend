@@ -427,7 +427,7 @@ const AdminView = () => {
 
   if (loading && orders.length === 0) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+      <div className="min-h-screen min-w-0 overflow-x-hidden bg-slate-950 flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin shadow-[0_0_15px_rgba(6,182,212,0.5)]" />
           <p className="text-[10px] font-black text-cyan-500 uppercase tracking-[0.5em] animate-pulse">
@@ -448,7 +448,7 @@ const AdminView = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white p-4 lg:p-8 selection:bg-cyan-500/30">
+    <div className="min-h-screen min-w-0 overflow-x-hidden bg-slate-950 text-white p-4 lg:p-8 selection:bg-cyan-500/30">
       <div className="max-w-[1700px] mx-auto space-y-8">
         <ConfirmDialog
           open={pendingTableRelease !== null}

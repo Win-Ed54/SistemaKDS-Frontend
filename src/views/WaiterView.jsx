@@ -1014,7 +1014,7 @@ export default function WaiterView() {
   };
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(34,211,238,0.10),_transparent_28%),linear-gradient(180deg,_#020617_0%,_#0f172a_100%)] text-white">
+    <div className="min-h-screen min-w-0 overflow-x-hidden bg-[radial-gradient(circle_at_top,_rgba(34,211,238,0.10),_transparent_28%),linear-gradient(180deg,_#020617_0%,_#0f172a_100%)] text-white">
       <header className="sticky top-0 z-50 px-3 pt-3 lg:px-5 lg:pt-4 backdrop-blur-md">
         <div className="max-w-[1600px] mx-auto rounded-[1.4rem] border border-slate-800 bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.10),_transparent_24%),linear-gradient(135deg,_rgba(15,23,42,0.98)_0%,_rgba(2,6,23,0.98)_100%)] px-4 py-3 shadow-2xl">
           <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
@@ -1492,7 +1492,14 @@ export default function WaiterView() {
           </button>
         )}
       </div>
-      {activeTab === "ordenar" && isCartOpen && <div className="fixed inset-0 bg-slate-950/40 z-40 xl:hidden" onClick={() => setIsCartOpen(false)} />}
+      {activeTab === "ordenar" && isCartOpen && (
+        <button
+          type="button"
+          className="fixed inset-0 z-40 bg-slate-950/40 xl:hidden"
+          aria-label="Cerrar panel de orden"
+          onClick={() => setIsCartOpen(false)}
+        />
+      )}
       {activeTab === "ordenar" && <aside className={`xl:hidden fixed inset-y-0 right-0 z-50 w-[84vw] max-w-[380px] bg-slate-950 border-l border-slate-800 transition-transform ${isCartOpen ? "translate-x-0" : "translate-x-full"}`}><div className="h-full overflow-y-auto p-2.5 sm:p-3 custom-scrollbar"><div className="flex items-center justify-between mb-2 sm:mb-3 px-1"><div><p className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Orden actual</p><p className="text-xs sm:text-sm font-black uppercase text-white mt-1">Panel de confirmacion</p></div><button onClick={() => setIsCartOpen(false)} className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-2xl bg-slate-900 border border-slate-800 text-slate-300 text-[9px] sm:text-[10px] font-black uppercase tracking-[0.18em]"><X className="w-4 h-4" />Cerrar</button></div>{isWaitingForAssignedDiningTable ? <div className="flex min-h-[240px] items-center justify-center rounded-[1.6rem] border border-dashed border-amber-400/20 bg-amber-400/10 p-5 text-center"><div><p className="text-[9px] font-black uppercase tracking-[0.2em] text-amber-200">Pedido en espera</p><p className="mt-3 text-xs font-black uppercase text-slate-100">Necesitas una mesa asignada para empezar.</p></div></div> : isCurrentTableCleaning ? <div className="flex min-h-[240px] items-center justify-center rounded-[1.6rem] border border-rose-400/20 bg-rose-400/10 p-5 text-center"><div><p className="text-[9px] font-black uppercase tracking-[0.2em] text-rose-200">Pedido bloqueado</p><p className="mt-3 text-xs font-black uppercase text-slate-100">La mesa seleccionada se esta limpiando.</p></div></div> : <OrderPanel key={`mobile-order-panel-${tableId ?? "none"}`} pax={pax} tableId={tableId} onOrderSent={(createdOrder) => { setIsCartOpen(false); handleOrderCreated(createdOrder); }} canHandleTakeout={canHandleTableTakeout} canHandleDining={canHandleDining} sourceTableId={takeoutSourceTableId ?? (Number(tableId) > 0 ? tableId : null)} />}</div></aside>}
       {showProfile && <WaiterProfile user={currentUser} onClose={() => setShowProfile(false)} />}
     </div>

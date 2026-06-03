@@ -2,20 +2,15 @@ import React, { useEffect, useState } from "react";
 import { ReceiptText, MapPin, User, ChevronDown } from "lucide-react";
 import OrderBuilder from "./OrderBuilder";
 import useOrderBuilderStore from "../../store/orderBuilderStore";
+import { sanitizeCustomerName, sanitizeSafeFreeText } from "../../utils/inputSanitizers";
 
 const TAKEOUT_DESTINATIONS = ["Mostrador", "Autoservicio", "Delivery"];
 
 const normalizeDeliveryAddress = (value) =>
-  String(value || "")
-    .replace(/\s+/g, " ")
-    .replace(/[<>]/g, "")
-    .slice(0, 180);
+  sanitizeSafeFreeText(value, 180);
 
 const normalizeCustomerName = (value) =>
-  String(value || "")
-    .replace(/[^\p{L}\s]/gu, "")
-    .replace(/\s+/g, " ")
-    .slice(0, 60);
+  sanitizeCustomerName(value, 60);
 
 const OrderPanel = ({
   pax,

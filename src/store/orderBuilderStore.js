@@ -6,6 +6,7 @@ import {
   normalizeOrderSettings,
 } from "../constants/orderLimits";
 import { getCurrentKdsSettings } from "./kdsSettingsStore";
+import { finalizeKitchenNote } from "../utils/inputSanitizers";
 
 const EMPTY_DRAFT = {
   customerName: "",
@@ -158,7 +159,7 @@ const useOrderBuilderStore = create((set, get) => ({
 
   addCustomItem: (product, notes = "") => {
     const productId = product.id || product._id || product.Id;
-    const normalizedNotes = String(notes || "").trim();
+    const normalizedNotes = finalizeKitchenNote(notes);
     const { products, updateStock } = useProductStore.getState();
     const current = products.find((p) => (p.id || p._id || p.Id) === productId);
     const currentItems = get().items;
@@ -297,12 +298,12 @@ const useOrderBuilderStore = create((set, get) => ({
 
   updateItemNotes: (productId, notes, currentNotes = "") => {
     set((state) => {
-      const normalizedNotes = String(notes || "").trim();
-      const normalizedCurrentNotes = String(currentNotes || "").trim();
+      const normalizedNotes = finalizeKitchenNote(notes);
+      const normalizedCurrentNotes = finalizeKitchenNote(currentNotes);
       const sourceItem = state.items.find(
         (item) =>
           item.productId === productId &&
-          String(item.notes || "").trim() === normalizedCurrentNotes
+          finalizeKitchenNote(item.notes) === normalizedCurrentNotes
       );
 
       if (!sourceItem) {
@@ -317,14 +318,14 @@ const useOrderBuilderStore = create((set, get) => ({
         (item) =>
           !(
             item.productId === productId &&
-            String(item.notes || "").trim() === normalizedCurrentNotes
+            finalizeKitchenNote(item.notes) === normalizedCurrentNotes
           )
       );
 
       const targetIndex = remainingItems.findIndex(
         (item) =>
           item.productId === productId &&
-          String(item.notes || "").trim() === normalizedNotes
+          finalizeKitchenNote(item.notes) === normalizedNotes
       );
 
       if (targetIndex >= 0) {

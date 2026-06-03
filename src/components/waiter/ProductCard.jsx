@@ -82,7 +82,7 @@ const ProductCard = ({ product, onAdd, disabled = false }) => {
         </div>
         {!isOutOfStock && (
           <div className="absolute inset-x-2.5 bottom-2.5 rounded-xl border border-white/10 bg-slate-950/75 px-3 py-2 text-center text-[8px] font-black uppercase tracking-[0.14em] text-cyan-100 opacity-0 backdrop-blur-md transition-opacity group-hover:opacity-100 sm:opacity-100 lg:opacity-0">
-            Toca imagen para agregar
+            Toca, click o Enter para agregar
           </div>
         )}
       </div>
