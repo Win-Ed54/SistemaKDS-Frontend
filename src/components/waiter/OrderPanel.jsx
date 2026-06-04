@@ -61,8 +61,8 @@ const OrderPanel = ({
   };
 
   return (
-    <div className="flex min-h-full flex-col rounded-[2rem] border border-slate-800 bg-slate-900/80 p-4 shadow-2xl backdrop-blur-xl sm:rounded-[2.5rem] sm:p-5 xl:h-full xl:min-h-0 xl:p-4">
-      <div className="mb-4 flex shrink-0 items-center justify-between xl:mb-3">
+    <div className="flex min-h-0 flex-col rounded-[2rem] border border-slate-800 bg-slate-900/80 p-4 shadow-2xl backdrop-blur-xl sm:rounded-[2.5rem] sm:p-5 xl:p-4">
+      <div className="mb-4 flex shrink-0 items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="h-6 w-1.5 rounded-full bg-[#39FF14] shadow-[0_0_15px_#39FF14]" />
           <h2 className="text-[11px] font-black uppercase tracking-[0.26em] text-slate-400 sm:text-sm sm:tracking-[0.3em]">
@@ -72,7 +72,7 @@ const OrderPanel = ({
         <ReceiptText className="h-5 w-5 text-slate-500" />
       </div>
 
-      <div className="mb-4 shrink-0 xl:mb-3">
+      <div className="mb-4 shrink-0">
         <div className="flex items-center gap-3 rounded-[1.2rem] border border-slate-800 bg-slate-950 p-3 transition-colors focus-within:border-cyan-500/50 sm:rounded-2xl">
           <User className="h-4 w-4 text-cyan-400" />
           <div className="flex-1">
@@ -96,7 +96,7 @@ const OrderPanel = ({
         </div>
       </div>
 
-      <div className="mb-4 shrink-0 xl:mb-3">
+      <div className="mb-4 shrink-0">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div className="rounded-[1.2rem] border border-slate-800 bg-slate-950/80 p-3">
             <p className="text-[8px] font-black uppercase tracking-tighter text-slate-500">
@@ -248,7 +248,7 @@ const OrderPanel = ({
         </div>
       </div>
 
-      <div className="min-h-[360px] flex-1">
+      <div className="min-h-0">
         <OrderBuilder
           customerName={customerName}
           tableId={isTakeout ? 0 : tableId}

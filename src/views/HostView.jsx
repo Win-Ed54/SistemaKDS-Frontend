@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+  ArrowUp,
   Armchair,
   Clock3,
   LogOut,
@@ -192,6 +193,7 @@ const HostView = () => {
   const [activeStatusFilter, setActiveStatusFilter] = useState(() =>
     readViewState("host", hostName, "activeStatusFilter", "all"),
   );
+  const [showBackToTop, setShowBackToTop] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const maxHostPartySize = Number(settings?.maxPartySize) > 0 ? Number(settings.maxPartySize) : 10;
   const maxTablesPerWaiter = Number(settings?.maxTablesPerWaiter) > 0
@@ -208,6 +210,21 @@ const HostView = () => {
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
+  }, []);
+
+  const scrollToTop = useCallback(() => {
+    if (typeof window === "undefined") return;
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const updateVisibility = () => setShowBackToTop(window.scrollY > 260);
+    updateVisibility();
+    window.addEventListener("scroll", updateVisibility, { passive: true });
+
+    return () => window.removeEventListener("scroll", updateVisibility);
   }, []);
 
   useEffect(() => {
@@ -1167,6 +1184,17 @@ const HostView = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {showBackToTop && (
+        <button
+          type="button"
+          onClick={scrollToTop}
+          className="fixed bottom-4 right-4 z-[80] inline-flex h-12 w-12 items-center justify-center rounded-[1.25rem] border border-slate-800 bg-slate-950/90 text-cyan-300 shadow-2xl shadow-cyan-950/40"
+          aria-label="Subir arriba"
+        >
+          <ArrowUp className="h-5 w-5" />
+        </button>
       )}
     </div>
   );

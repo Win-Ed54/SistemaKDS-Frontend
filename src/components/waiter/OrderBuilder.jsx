@@ -238,7 +238,7 @@ const OrderBuilder = ({
   };
 
   return (
-    <div className="flex h-full min-h-0 flex-col rounded-[1.8rem] border border-slate-800 bg-slate-900 p-4 shadow-2xl backdrop-blur-md sm:rounded-[2.5rem] sm:p-5">
+    <div className="flex min-h-0 flex-col rounded-[1.8rem] border border-slate-800 bg-slate-900 p-4 shadow-2xl backdrop-blur-md sm:rounded-[2.5rem] sm:p-5">
       <div className="mb-3 flex shrink-0 items-center justify-between border-b border-slate-800 pb-3 sm:mb-4 sm:pb-4">
         <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
           Carrito actual
@@ -253,9 +253,9 @@ const OrderBuilder = ({
         )}
       </div>
 
-      <div className="mb-3 min-h-0 flex-1 space-y-2.5 overflow-y-auto pr-2 custom-scrollbar sm:mb-4 sm:space-y-3 xl:min-h-[260px] 2xl:min-h-[300px]">
+      <div className="mb-3 max-h-[42vh] space-y-2.5 overflow-y-auto pr-2 custom-scrollbar sm:mb-4 sm:max-h-[46vh] sm:space-y-3 lg:max-h-[48vh]">
         {displayItems.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-10 opacity-20">
+          <div className="flex min-h-[140px] flex-col items-center justify-center py-8 opacity-20">
             <ReceiptText className="mb-2 h-12 w-12" />
             <p className="text-[10px] font-black uppercase tracking-widest">
               Sin productos

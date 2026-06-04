@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  ArrowUp,
   Clock3,
   CreditCard,
   Layers3,
@@ -175,6 +176,7 @@ const CashierView = () => {
   const [groupMode, setGroupMode] = useState(() =>
     readViewState("cashier", cashierName, "groupMode", "grouped"),
   );
+  const [showBackToTop, setShowBackToTop] = useState(false);
   const [selectedItemPayments, setSelectedItemPayments] = useState({});
   const [recentCharges, setRecentCharges] = useState(() => loadStoredRecentCharges(cashierName));
   const refreshTimeoutRef = useRef(null);
@@ -260,6 +262,21 @@ const CashierView = () => {
       unsubscribeConnection?.();
     };
   }, [loadCashierData]);
+
+  const scrollToTop = useCallback(() => {
+    if (typeof window === "undefined") return;
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const updateVisibility = () => setShowBackToTop(window.scrollY > 260);
+    updateVisibility();
+    window.addEventListener("scroll", updateVisibility, { passive: true });
+
+    return () => window.removeEventListener("scroll", updateVisibility);
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -767,6 +784,17 @@ const CashierView = () => {
           )}
         </section>
       </div>
+
+      {showBackToTop && (
+        <button
+          type="button"
+          onClick={scrollToTop}
+          className="fixed bottom-4 right-4 z-[80] inline-flex h-12 w-12 items-center justify-center rounded-[1.25rem] border border-slate-800 bg-slate-950/90 text-emerald-300 shadow-2xl shadow-emerald-950/40"
+          aria-label="Subir arriba"
+        >
+          <ArrowUp className="h-5 w-5" />
+        </button>
+      )}
     </div>
   );
 };

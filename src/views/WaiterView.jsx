@@ -1084,7 +1084,7 @@ export default function WaiterView() {
 
         {activeTab === "ordenar" && (
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 items-start">
-            <div className="xl:col-span-8 2xl:col-span-9 space-y-5">
+            <div className="xl:col-span-7 2xl:col-span-8 space-y-5">
               <section className="rounded-[2rem] border border-slate-800 bg-slate-900/60 p-5 shadow-xl">
                 <div className="flex items-center justify-between gap-3 mb-5">
                   <div>
@@ -1270,14 +1270,16 @@ export default function WaiterView() {
             </div>
 
             <aside
-              className={`hidden xl:sticky xl:top-[96px] xl:block xl:h-[calc(100dvh-112px)] transition-all duration-300 ${
+              className={`hidden xl:sticky xl:top-[96px] xl:block xl:min-w-0 transition-all duration-300 ${
                 isDesktopCartOpen
-                  ? "xl:col-span-4 2xl:col-span-3"
+                  ? "xl:col-span-5 2xl:col-span-4"
                   : "xl:col-span-1"
               }`}
             >
               {isDesktopCartOpen ? (
-                <div className="relative flex h-full min-h-0 flex-col gap-3 pr-1">
+                <div
+                  className="relative flex flex-col gap-3 pr-1"
+                >
                   <button
                     type="button"
                     onClick={() => setIsDesktopCartOpen(false)}
@@ -1286,41 +1288,39 @@ export default function WaiterView() {
                     <span>Ocultar pedido</span>
                     <ChevronRight className="h-4 w-4" />
                   </button>
-                  <div className="min-h-0 flex-1 overflow-y-auto pr-1 custom-scrollbar">
-                    {isWaitingForAssignedDiningTable ? (
-                      <div className="flex h-full items-center justify-center rounded-[1.8rem] border border-dashed border-amber-400/20 bg-amber-400/10 p-6 text-center">
-                        <div>
-                          <p className="text-[10px] font-black uppercase tracking-[0.22em] text-amber-200">
-                            Pedido en espera
-                          </p>
-                          <p className="mt-3 text-sm font-black uppercase text-slate-100">
-                            Necesitas una mesa asignada para empezar a tomar ordenes.
-                          </p>
-                        </div>
+                  {isWaitingForAssignedDiningTable ? (
+                    <div className="flex min-h-[240px] items-center justify-center rounded-[1.8rem] border border-dashed border-amber-400/20 bg-amber-400/10 p-6 text-center">
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-[0.22em] text-amber-200">
+                          Pedido en espera
+                        </p>
+                        <p className="mt-3 text-sm font-black uppercase text-slate-100">
+                          Necesitas una mesa asignada para empezar a tomar ordenes.
+                        </p>
                       </div>
-                    ) : isCurrentTableCleaning ? (
-                      <div className="flex h-full items-center justify-center rounded-[1.8rem] border border-rose-400/20 bg-rose-400/10 p-6 text-center">
-                        <div>
-                          <p className="text-[10px] font-black uppercase tracking-[0.22em] text-rose-200">
-                            Pedido bloqueado
-                          </p>
-                          <p className="mt-3 text-sm font-black uppercase text-slate-100">
-                            La mesa seleccionada se esta limpiando.
-                          </p>
-                        </div>
+                    </div>
+                  ) : isCurrentTableCleaning ? (
+                    <div className="flex min-h-[240px] items-center justify-center rounded-[1.8rem] border border-rose-400/20 bg-rose-400/10 p-6 text-center">
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-[0.22em] text-rose-200">
+                          Pedido bloqueado
+                        </p>
+                        <p className="mt-3 text-sm font-black uppercase text-slate-100">
+                          La mesa seleccionada se esta limpiando.
+                        </p>
                       </div>
-                    ) : (
-                      <OrderPanel
-                        key={`desktop-order-panel-${tableId ?? "none"}`}
-                        pax={pax}
-                        tableId={tableId}
-                        onOrderSent={handleOrderCreated}
-                        canHandleTakeout={canHandleTableTakeout}
-                        canHandleDining={canHandleDining}
-                        sourceTableId={takeoutSourceTableId ?? (Number(tableId) > 0 ? tableId : null)}
-                      />
-                    )}
-                  </div>
+                    </div>
+                  ) : (
+                    <OrderPanel
+                      key={`desktop-order-panel-${tableId ?? "none"}`}
+                      pax={pax}
+                      tableId={tableId}
+                      onOrderSent={handleOrderCreated}
+                      canHandleTakeout={canHandleTableTakeout}
+                      canHandleDining={canHandleDining}
+                      sourceTableId={takeoutSourceTableId ?? (Number(tableId) > 0 ? tableId : null)}
+                    />
+                  )}
                 </div>
               ) : (
                 <button
@@ -1461,11 +1461,11 @@ export default function WaiterView() {
         )}
       </main>
 
-      <div className="xl:hidden fixed inset-x-4 bottom-4 z-40 flex items-end justify-between gap-3">
+      <div className="fixed inset-x-4 bottom-4 z-40 flex items-end justify-between gap-3 xl:right-5 xl:left-auto xl:w-auto">
         {activeTab === "ordenar" && items.length > 0 && !isCartOpen && (
           <button
             onClick={() => setIsCartOpen(true)}
-            className="flex-1 min-w-0 items-center justify-between rounded-[1.25rem] bg-cyan-400 px-4 py-3 text-slate-950 shadow-2xl shadow-cyan-950/40"
+            className="xl:hidden flex-1 min-w-0 items-center justify-between rounded-[1.25rem] bg-cyan-400 px-4 py-3 text-slate-950 shadow-2xl shadow-cyan-950/40"
           >
             <div className="flex items-center gap-2.5">
               <PackageCheck className="h-4 w-4" />
