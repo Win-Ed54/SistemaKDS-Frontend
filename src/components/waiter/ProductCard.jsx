@@ -18,6 +18,10 @@ const ProductCard = ({ product, onAdd, disabled = false }) => {
   const isLowStock = productStock > 0 && productStock <= 5;
   const isInCart = quantityInCart > 0;
   const totalPrice = isInCart ? productPrice * quantityInCart : productPrice;
+  const productHeadingId = `product-card-title-${String(productId || productName)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "item"}`;
   const handleImageAdd = () => {
     if (disabled || isOutOfStock) return;
     onAdd(product);
@@ -41,10 +45,10 @@ const ProductCard = ({ product, onAdd, disabled = false }) => {
         </div>
       )}
 
-      <div
-        role="button"
-        tabIndex={disabled || isOutOfStock ? -1 : 0}
-        aria-label={disabled ? `${productName} bloqueado` : isOutOfStock ? `${productName} agotado` : `Agregar ${productName}`}
+      <button
+        type="button"
+        aria-labelledby={productHeadingId}
+        title={disabled ? `${productName} bloqueado` : isOutOfStock ? `${productName} agotado` : productName}
         onClick={handleImageAdd}
         onKeyDown={(event) => {
           if (disabled || isOutOfStock) return;
@@ -53,7 +57,8 @@ const ProductCard = ({ product, onAdd, disabled = false }) => {
             handleImageAdd();
           }
         }}
-        className={`relative aspect-[4/3] w-full overflow-hidden bg-slate-800 sm:aspect-square lg:aspect-[4/3] ${
+        disabled={disabled || isOutOfStock}
+        className={`relative aspect-[4/3] w-full overflow-hidden bg-slate-800 text-left sm:aspect-square lg:aspect-[4/3] ${
           isOutOfStock ? "cursor-not-allowed" : "cursor-pointer"
         }`}
       >
@@ -85,21 +90,24 @@ const ProductCard = ({ product, onAdd, disabled = false }) => {
             Toca, click o Enter para agregar
           </div>
         )}
-      </div>
+      </button>
 
       <div className="flex flex-1 flex-col p-3 sm:p-4">
         <div className="mb-2">
-          <h3 className="mb-1 line-clamp-2 text-sm font-black uppercase tracking-tight text-white sm:text-base">
+          <h3
+            id={productHeadingId}
+            className="mb-1 line-clamp-2 text-sm font-black uppercase tracking-tight text-white sm:text-base"
+          >
             {productName}
           </h3>
-          <p className="line-clamp-2 text-[9px] italic leading-relaxed text-slate-500 sm:text-[10px]">
+          <p className="line-clamp-2 text-[10px] italic leading-relaxed text-slate-300 sm:text-[11px]">
             {productDescription}
           </p>
         </div>
 
         <div className="mt-auto border-t border-slate-800/60 pt-2.5">
           <div className="mb-2.5 flex items-end justify-between gap-3">
-            <span className="text-[8px] font-black uppercase tracking-[0.16em] text-slate-500">
+            <span className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-400">
               {isInCart ? "Subtotal" : "Precio"}
             </span>
             <span className="text-lg font-black tracking-tighter text-emerald-400 sm:text-xl">

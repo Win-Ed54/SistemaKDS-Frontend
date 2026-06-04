@@ -1,5 +1,5 @@
-import React, { useCallback, useMemo, useRef } from "react";
-import { BellRing, ChevronDown, ChevronUp, MapPin, PackageCheck } from "lucide-react";
+import React, { useMemo } from "react";
+import { BellRing, MapPin, PackageCheck } from "lucide-react";
 import { finishOrder } from "../../services/api.service";
 import { useToast } from "../../context/ToastContext";
 import { getAuthValue } from "../../services/authStorage";
@@ -39,25 +39,14 @@ const belongsToWaiter = (order, waiterId, waiterName) => {
 };
 
 const ReadyOrderCard = ({ order, variant, onDeliver }) => {
-  const detailRef = useRef(null);
   const orderId = order.id || order._id;
   const isInline = variant === "inline";
-
-  const scrollDetail = useCallback((direction) => {
-    const detail = detailRef.current;
-    if (!detail) return;
-
-    detail.scrollBy({
-      top: direction * Math.max(160, detail.clientHeight * 0.75),
-      behavior: "smooth",
-    });
-  }, []);
 
   return (
     <div
       className={`flex min-h-0 flex-col bg-slate-900 ${
         isInline
-          ? "max-h-[min(78vh,760px)] rounded-[2rem] border border-[#39FF14]/30 bg-slate-900/70 p-5 shadow-[0_0_30px_rgba(57,255,20,0.12)]"
+          ? "max-h-[min(82vh,860px)] rounded-[2rem] border border-[#39FF14]/30 bg-slate-900/70 p-5 lg:p-6 shadow-[0_0_30px_rgba(57,255,20,0.12)]"
           : "max-h-[min(72vh,620px)] pointer-events-auto rounded-[2rem] border-2 border-[#39FF14] p-5 shadow-[0_0_30px_rgba(57,255,20,0.3)]"
       }`}
     >
@@ -84,32 +73,10 @@ const ReadyOrderCard = ({ order, variant, onDeliver }) => {
       </div>
 
       <div className="mb-5 min-h-0 flex-1 overflow-hidden rounded-2xl border border-slate-800 bg-black/40">
-        <div className="flex items-center justify-end gap-2 border-b border-slate-800/80 px-3 py-2">
-          <button
-            type="button"
-            onClick={() => scrollDetail(-1)}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-slate-700 bg-slate-900/90 text-slate-200 transition-all hover:border-[#39FF14]/50 hover:text-[#39FF14] active:scale-95"
-            aria-label="Subir detalle"
-            title="Subir detalle"
-          >
-            <ChevronUp size={17} />
-          </button>
-          <button
-            type="button"
-            onClick={() => scrollDetail(1)}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-slate-700 bg-slate-900/90 text-slate-200 transition-all hover:border-[#39FF14]/50 hover:text-[#39FF14] active:scale-95"
-            aria-label="Bajar detalle"
-            title="Bajar detalle"
-          >
-            <ChevronDown size={17} />
-          </button>
-        </div>
-
         <div
-          ref={detailRef}
-          className="custom-scrollbar max-h-[360px] min-h-0 overflow-y-auto overscroll-contain p-4"
-          onWheel={(event) => event.stopPropagation()}
-          onTouchMove={(event) => event.stopPropagation()}
+          className={`custom-scrollbar min-h-0 overflow-y-auto overscroll-contain p-4 lg:p-5 ${
+            isInline ? "max-h-[52vh] lg:max-h-[62vh]" : "max-h-[42vh]"
+          }`}
         >
           {Number(order?.tableNumber) === 0 && getTakeoutDestination(order) && (
             <div className="mb-3 rounded-xl border border-amber-300/20 bg-amber-300/10 p-3">
@@ -125,7 +92,11 @@ const ReadyOrderCard = ({ order, variant, onDeliver }) => {
             {order.items?.map((item, index) => (
               <li
                 key={`${item.productId || item.productName || "item"}-${index}`}
-                className={`text-xs ${isInline ? "font-bold text-slate-300" : "flex items-center justify-between"}`}
+                className={`${
+                  isInline
+                    ? "text-sm lg:text-base font-bold text-slate-200"
+                    : "flex items-center justify-between text-xs"
+                }`}
               >
                 <span className="font-bold text-slate-300">
                   <span className="mr-2 text-cyan-400">{item.quantity}x</span>

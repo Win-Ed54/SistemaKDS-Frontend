@@ -1286,7 +1286,7 @@ export default function WaiterView() {
                     <span>Ocultar pedido</span>
                     <ChevronRight className="h-4 w-4" />
                   </button>
-                  <div className="min-h-0 flex-1">
+                  <div className="min-h-0 flex-1 overflow-y-auto pr-1 custom-scrollbar">
                     {isWaitingForAssignedDiningTable ? (
                       <div className="flex h-full items-center justify-center rounded-[1.8rem] border border-dashed border-amber-400/20 bg-amber-400/10 p-6 text-center">
                         <div>

@@ -61,7 +61,7 @@ const OrderPanel = ({
   };
 
   return (
-    <div className="flex min-h-full flex-col rounded-[2rem] border border-slate-800 bg-slate-900/80 p-4 shadow-2xl backdrop-blur-xl sm:rounded-[2.5rem] sm:p-5 xl:h-full xl:min-h-0 xl:overflow-y-auto xl:p-4 custom-scrollbar">
+    <div className="flex min-h-full flex-col rounded-[2rem] border border-slate-800 bg-slate-900/80 p-4 shadow-2xl backdrop-blur-xl sm:rounded-[2.5rem] sm:p-5 xl:h-full xl:min-h-0 xl:p-4">
       <div className="mb-4 flex shrink-0 items-center justify-between xl:mb-3">
         <div className="flex items-center gap-3">
           <div className="h-6 w-1.5 rounded-full bg-[#39FF14] shadow-[0_0_15px_#39FF14]" />
@@ -248,7 +248,7 @@ const OrderPanel = ({
         </div>
       </div>
 
-      <div className="min-h-[360px] flex-1 xl:min-h-[430px]">
+      <div className="min-h-[360px] flex-1">
         <OrderBuilder
           customerName={customerName}
           tableId={isTakeout ? 0 : tableId}

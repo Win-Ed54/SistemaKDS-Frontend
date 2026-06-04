@@ -1,5 +1,5 @@
 import { Navigate } from "react-router-dom";
-import { clearAuthStorage, getAuthValue } from "../services/authStorage";
+import { clearAuthStorage, getAuthValue, getRoleRoute } from "../services/authStorage";
 import { getAppPath } from "../config/appPaths";
 
 const RoleProtectedRoute = ({ children, role }) => {
@@ -13,6 +13,11 @@ const RoleProtectedRoute = ({ children, role }) => {
   }
 
   if (requiredRole && normalizedUserRole !== requiredRole) {
+    const fallbackRoute = getRoleRoute(normalizedUserRole);
+    if (fallbackRoute && fallbackRoute !== "/login") {
+      return <Navigate to={fallbackRoute} replace />;
+    }
+
     return (
       <div style={{ textAlign: "center", marginTop: "50px", fontFamily: "sans-serif" }}>
         <h2>Acceso Denegado</h2>
