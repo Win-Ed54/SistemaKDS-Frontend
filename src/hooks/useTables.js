@@ -48,9 +48,14 @@ const useTables = () => {
         })
       );
 
+      // Reconciliamos siempre con el servidor para evitar estados parciales
+      // cuando el evento llega con datos incompletos o la vista estuvo desfasada.
       if (!foundMatch) {
         scheduleFetchTables();
+        return;
       }
+
+      scheduleFetchTables();
     });
 
     const unsubscribeConnection = subscribeConnectionStatus((connected) => {
@@ -61,7 +66,19 @@ const useTables = () => {
       scheduleFetchTables();
     };
 
+    const handleWindowFocus = () => {
+      scheduleFetchTables();
+    };
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        scheduleFetchTables();
+      }
+    };
+
     window.addEventListener("kds-sync-tables", handleForceSync);
+    window.addEventListener("focus", handleWindowFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
       if (fetchTimeoutRef.current) {
@@ -71,6 +88,8 @@ const useTables = () => {
       unsubscribe?.();
       unsubscribeConnection?.();
       window.removeEventListener("kds-sync-tables", handleForceSync);
+      window.removeEventListener("focus", handleWindowFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [fetchTables]);
 
