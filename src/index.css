@@ -21,7 +21,6 @@ body {
   color: white;
   overflow-x: hidden;
   overflow-y: auto;
-  overscroll-behavior-y: contain;
 }
 
 #root {
@@ -56,14 +55,18 @@ textarea:disabled,
   cursor: not-allowed;
 }
 
-button,
-[role="button"],
-a,
-input,
-select,
-textarea,
-summary {
-  touch-action: manipulation;
+html,
+body,
+#root {
+  -webkit-overflow-scrolling: touch;
+}
+
+[class*="overflow-y-auto"],
+[class*="overflow-auto"],
+.custom-scrollbar {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: auto;
+  touch-action: pan-y pinch-zoom;
 }
 
 :focus {
