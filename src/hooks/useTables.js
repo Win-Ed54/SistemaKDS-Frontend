@@ -2,6 +2,34 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { getTables } from "../services/api.service";
 import { onTableUpdated, subscribeConnectionStatus } from "../services/signalrService";
 
+const createClearedTableState = (table, data) => ({
+  ...table,
+  ...data,
+  number: data.number ?? data.Number ?? table.number ?? table.Number,
+  isOccupied: false,
+  IsOccupied: false,
+  currentPartySize: null,
+  CurrentPartySize: null,
+  occupiedSince: null,
+  OccupiedSince: null,
+  estimatedDiningMinutes: null,
+  EstimatedDiningMinutes: null,
+  hostNotes: "",
+  HostNotes: "",
+  assignedByName: "",
+  AssignedByName: "",
+  assignedWaiterId: "",
+  AssignedWaiterId: "",
+  assignedWaiterName: "",
+  AssignedWaiterName: "",
+  isBeingCleaned: false,
+  IsBeingCleaned: false,
+  cleaningStartedAt: null,
+  CleaningStartedAt: null,
+  estimatedCleaningMinutes: null,
+  EstimatedCleaningMinutes: null,
+});
+
 const useTables = () => {
   const [tables, setTables] = useState([]);
   const fetchTimeoutRef = useRef(null);
@@ -37,6 +65,10 @@ const useTables = () => {
           }
 
           foundMatch = true;
+
+          if (data.isOccupied === false) {
+            return createClearedTableState(t, data);
+          }
 
           return {
             ...t,

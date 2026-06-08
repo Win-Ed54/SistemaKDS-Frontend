@@ -62,6 +62,36 @@ const getMinutesSince = (value, reference = Date.now()) => {
   return Math.max(0, Math.floor((reference - timestamp) / 60000));
 };
 
+const hasRealTableServiceState = (table) => {
+  const isBeingCleaned = Boolean(table.isBeingCleaned ?? table.IsBeingCleaned);
+  if (isBeingCleaned) return true;
+
+  const partySize = Number(table.currentPartySize ?? table.CurrentPartySize ?? 0);
+  if (partySize > 0) return true;
+
+  const occupiedSinceValue = table.occupiedSince ?? table.OccupiedSince;
+  const occupiedSince = occupiedSinceValue ? new Date(occupiedSinceValue).getTime() : 0;
+  if (Number.isFinite(occupiedSince) && occupiedSince > 0) return true;
+
+  const assignedWaiterId = String(table.assignedWaiterId ?? table.AssignedWaiterId ?? "").trim();
+  const assignedWaiterName = String(table.assignedWaiterName ?? table.AssignedWaiterName ?? "").trim();
+
+  return Boolean(assignedWaiterId || assignedWaiterName);
+};
+
+const getOrderCreatedTimestamp = (order) => {
+  const createdAt = new Date(order?.createdAt || 0).getTime();
+  return Number.isFinite(createdAt) ? createdAt : 0;
+};
+
+const getCleanupReferenceTimestamp = (order) => {
+  const referenceTime = new Date(
+    order?.paidAt || order?.deliveredAt || order?.createdAt || 0,
+  ).getTime();
+
+  return Number.isFinite(referenceTime) ? referenceTime : 0;
+};
+
 const AdminView = () => {
   const adminUserName = getAuthValue("user_name") || "admin";
   const [orders, setOrders] = useState([]);
@@ -313,7 +343,18 @@ const AdminView = () => {
     () =>
       tables.map((table) => {
         const tableNumber = Number(table.number ?? table.Number);
-        if (!activeTableNumbers.has(tableNumber)) return table;
+        const hasActiveOrders = activeTableNumbers.has(tableNumber);
+        const hasServiceState = hasRealTableServiceState(table);
+
+        if (!hasActiveOrders && !hasServiceState) {
+          return {
+            ...table,
+            isOccupied: false,
+            IsOccupied: false,
+          };
+        }
+
+        if (!hasActiveOrders) return table;
 
         return {
           ...table,
@@ -323,6 +364,46 @@ const AdminView = () => {
       }),
     [activeTableNumbers, tables],
   );
+
+  const pendingCleanupByTable = useMemo(() => {
+    const latestCandidates = new Map();
+    const allKnownOrders = [...history, ...orders];
+
+    history
+      .filter(
+        (order) =>
+          Number(order?.tableNumber) > 0 &&
+          getOrderStatusNumber(order?.status) === 3 &&
+          order?.isPaid &&
+          !order?.isCleanupCompleted,
+      )
+      .forEach((order) => {
+        const tableNumber = Number(order.tableNumber);
+        const referenceDate = getCleanupReferenceTimestamp(order);
+
+        const hasNewerOrderForSameTable = allKnownOrders.some((candidate) => {
+          if (Number(candidate?.tableNumber) !== tableNumber) return false;
+          const candidateId = candidate?.id ?? candidate?._id ?? candidate?.Id;
+          const orderId = order?.id ?? order?._id ?? order?.Id;
+          if (candidateId && orderId && candidateId === orderId) return false;
+
+          return getOrderCreatedTimestamp(candidate) > referenceDate;
+        });
+
+        if (hasNewerOrderForSameTable) return;
+
+        const current = latestCandidates.get(tableNumber);
+        if (!current || referenceDate > current.referenceDate) {
+          latestCandidates.set(tableNumber, {
+            tableNumber,
+            order,
+            referenceDate,
+          });
+        }
+      });
+
+    return latestCandidates;
+  }, [history, orders]);
 
   const adminTableStates = useMemo(
     () =>
@@ -338,13 +419,7 @@ const AdminView = () => {
             getOrderStatusNumber(order?.status) === 3 &&
             !order?.isPaid,
         );
-        const hasPendingCleanup = history.some(
-          (order) =>
-            Number(order?.tableNumber) === tableNumber &&
-            getOrderStatusNumber(order?.status) === 3 &&
-            order?.isPaid &&
-            !order?.isCleanupCompleted,
-        );
+        const hasPendingCleanup = pendingCleanupByTable.has(tableNumber);
 
         let releaseAction = null;
         let releaseBlockedReason = "";
@@ -365,7 +440,7 @@ const AdminView = () => {
           releaseBlockedReason,
         };
       }),
-    [effectiveTables, history, orders],
+    [effectiveTables, history, orders, pendingCleanupByTable],
   );
 
   const quickStats = useMemo(() => {
@@ -401,26 +476,15 @@ const AdminView = () => {
       .filter((order) => order.waitingMinutes >= PAYMENT_INCIDENT_MINUTES)
       .sort((a, b) => b.waitingMinutes - a.waitingMinutes);
 
-    const pendingCleanupByTable = new Map();
-
-    history
-      .filter((order) => Number(order?.tableNumber) > 0 && order?.isPaid && !order?.isCleanupCompleted)
-      .forEach((order) => {
-        const tableNumber = Number(order.tableNumber);
-        const current = pendingCleanupByTable.get(tableNumber);
-        const referenceDate = new Date(order?.paidAt || order?.deliveredAt || order?.createdAt || 0).getTime();
-
-        if (!current || referenceDate > current.referenceDate) {
-          pendingCleanupByTable.set(tableNumber, {
-            tableNumber,
-            order,
-            referenceDate,
-            waitingMinutes: getMinutesSince(order?.paidAt || order?.deliveredAt || order?.createdAt, now),
-          });
-        }
-      });
-
-    const cleanupPending = Array.from(pendingCleanupByTable.values()).sort(
+    const cleanupPending = Array.from(pendingCleanupByTable.values())
+      .map((entry) => ({
+        ...entry,
+        waitingMinutes: getMinutesSince(
+          entry.order?.paidAt || entry.order?.deliveredAt || entry.order?.createdAt,
+          now,
+        ),
+      }))
+      .sort(
       (a, b) => b.waitingMinutes - a.waitingMinutes,
     );
 
@@ -439,7 +503,7 @@ const AdminView = () => {
         cleanupPending.length +
         outOfStockProducts.length,
     };
-  }, [history, orders, products]);
+  }, [history, orders, pendingCleanupByTable, products]);
 
   if (loading && orders.length === 0) {
     return (

@@ -104,6 +104,22 @@ const getAssignmentTimestamp = (table) => {
   return Number.isFinite(occupiedSince) ? occupiedSince : null;
 };
 
+const hasRealTableServiceState = (table) => {
+  const isBeingCleaned = Boolean(table.isBeingCleaned ?? table.IsBeingCleaned);
+  if (isBeingCleaned) return true;
+
+  const partySize = Number(table.currentPartySize ?? table.CurrentPartySize ?? 0);
+  if (partySize > 0) return true;
+
+  const assignmentTimestamp = getAssignmentTimestamp(table);
+  if (Number.isFinite(assignmentTimestamp) && assignmentTimestamp > 0) return true;
+
+  const assignedWaiterId = String(table.assignedWaiterId ?? table.AssignedWaiterId ?? "").trim();
+  const assignedWaiterName = String(table.assignedWaiterName ?? table.AssignedWaiterName ?? "").trim();
+
+  return Boolean(assignedWaiterId || assignedWaiterName);
+};
+
 const compareTablesByArrival = (a, b) => {
   const aAssignedAt = Number(a.assignmentTimestamp || 0);
   const bAssignedAt = Number(b.assignmentTimestamp || 0);
@@ -319,7 +335,7 @@ const HostView = () => {
           name:
             table.name ?? table.Name ?? `Mesa ${table.number ?? table.Number}`,
           capacity: Number(table.capacity ?? table.Capacity ?? 0),
-          isOccupied: Boolean(table.isOccupied ?? table.IsOccupied),
+          isOccupied: Boolean(table.isOccupied ?? table.IsOccupied) && hasRealTableServiceState(table),
           assignedWaiterId: table.assignedWaiterId ?? table.AssignedWaiterId ?? "",
           assignedWaiterName: table.assignedWaiterName ?? table.AssignedWaiterName ?? "",
           assignment: getTableAssignment(table),
