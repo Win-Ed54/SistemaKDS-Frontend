@@ -569,6 +569,11 @@ export default function WaiterView() {
         created: summary?.totalCreated || 0,
         delivered: summary?.totalDelivered || 0,
       });
+      const nextScope = normalizeServiceScope(
+        summary?.serviceScope ?? summary?.ServiceScope ?? getAuthValue("service_scope"),
+      );
+      setAuthValue("service_scope", nextScope);
+      setWaiterServiceScope(nextScope);
       setHasDedicatedTakeoutWaiter(Boolean(summary?.hasDedicatedTakeoutWaiter));
       const cleanup = Array.isArray(summary?.pendingCleanupOrders)
         ? summary.pendingCleanupOrders
@@ -781,7 +786,16 @@ export default function WaiterView() {
   useEffect(() => {
     if (!connection) return undefined;
 
+    const handleStaffUpdated = () => {
+      void refetchTables();
+      void loadWaiterData();
+    };
+
     const handleServiceScopeChange = (payload) => {
+      if (payload?.userId && String(payload.userId).trim() !== String(waiterId || "").trim()) {
+        return;
+      }
+
       const nextScope = normalizeServiceScope(
         payload?.serviceScope ?? payload?.ServiceScope ?? getAuthValue("service_scope"),
       );
@@ -803,14 +817,18 @@ export default function WaiterView() {
       void loadWaiterData();
     };
 
+    connection.on("staffupdated", handleStaffUpdated);
+    connection.on("StaffUpdated", handleStaffUpdated);
     connection.on("servicescopeupdated", handleServiceScopeChange);
     connection.on("ServiceScopeUpdated", handleServiceScopeChange);
 
     return () => {
+      connection.off("staffupdated", handleStaffUpdated);
+      connection.off("StaffUpdated", handleStaffUpdated);
       connection.off("servicescopeupdated", handleServiceScopeChange);
       connection.off("ServiceScopeUpdated", handleServiceScopeChange);
     };
-  }, [connection, loadWaiterData, refetchTables, selectableAssignedDiningTables, setTable, showToast]);
+  }, [connection, loadWaiterData, refetchTables, selectableAssignedDiningTables, setTable, showToast, waiterId]);
 
   useEffect(() => {
     if (isConnected) scheduleWaiterRefresh();
