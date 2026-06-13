@@ -5,11 +5,16 @@ import { getAppPath } from "../config/appPaths";
 const RoleProtectedRoute = ({ children, role }) => {
   const token = getAuthValue("token");
   const userRole = getAuthValue("role");
+  const mustChangePassword = getAuthValue("must_change_password") === "true";
   const normalizedUserRole = String(userRole || "").trim().toLowerCase();
   const requiredRole = String(role || "").trim().toLowerCase();
 
   if (!token) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (mustChangePassword) {
+    return <Navigate to="/cambiar-contrasena" replace />;
   }
 
   if (requiredRole && normalizedUserRole !== requiredRole) {

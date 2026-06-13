@@ -48,6 +48,10 @@ const ProductList = ({ products: initialProducts, disabled = false }) => {
 
   const handleAdd = (product) => {
     if (disabled) return;
+    if (product?.isBlockedByIngredients || product?.IsBlockedByIngredients) {
+      showToast("Este producto esta bloqueado por falta de ingredientes.", "error");
+      return;
+    }
 
     const result = addItem(product);
     if (result?.ok === false && result?.message) {

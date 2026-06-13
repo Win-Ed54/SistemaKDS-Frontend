@@ -4,7 +4,6 @@ import {
   Clock3,
   CreditCard,
   Layers3,
-  LogOut,
   Receipt,
   Search,
   SplitSquareVertical,
@@ -14,6 +13,7 @@ import { useNavigate } from "react-router-dom";
 import { useToast } from "../context/ToastContext";
 import useKdsSettings from "../hooks/useKdsSettings";
 import useSignalRConnection from "../hooks/useSignalRConnection";
+import ModuleHeader from "../components/common/ModuleHeader";
 import { logout } from "../services/authService";
 import { getAuthValue } from "../services/authStorage";
 import { getOrderHistory, payOrder } from "../services/api.service";
@@ -589,56 +589,37 @@ const CashierView = () => {
   };
 
   return (
-    <div className="min-h-screen min-w-0 overflow-x-hidden bg-slate-950 text-white p-4 lg:p-6 selection:bg-emerald-400/30">
+    <div className="min-h-screen min-w-0 overflow-x-hidden bg-[radial-gradient(circle_at_top,_rgba(52,211,153,0.12),_transparent_23%),radial-gradient(circle_at_bottom_right,_rgba(103,232,249,0.08),_transparent_18%),linear-gradient(180deg,_#06110d_0%,_#071510_42%,_#0f1f1a_100%)] text-white p-4 lg:p-6 selection:bg-emerald-300/30">
       <div className="max-w-[1500px] mx-auto space-y-6">
-        <header className="rounded-[1.4rem] border border-slate-800 bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.10),_transparent_24%),linear-gradient(135deg,_rgba(15,23,42,0.98)_0%,_rgba(2,6,23,0.98)_100%)] px-4 py-3 shadow-2xl">
-          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-[1rem] border border-emerald-500/30 bg-emerald-500/10">
-                <Wallet className="h-5 w-5 text-emerald-400" />
-              </div>
-              <div>
-                <h1 className="text-lg font-black tracking-tighter uppercase sm:text-xl">
-                  KDS <span className="text-emerald-400">Caja</span>
-                </h1>
-                <p className="mt-0.5 text-[8px] text-slate-500 font-bold uppercase tracking-[0.24em]">
-                  {settings?.takeoutRequirePrepayment ? "Cobros y prepagos" : "Cobro operativo"}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
+        <ModuleHeader
+          icon={Wallet}
+          title="KDS Caja"
+          subtitle={settings?.takeoutRequirePrepayment ? "Cobros y prepagos" : "Cobro operativo"}
+          accent={{
+            border: "border-emerald-500/30",
+            background: "bg-emerald-500/10",
+            text: "text-emerald-400",
+          }}
+          isConnected={isConnected}
+          onLogout={handleLogout}
+          maxWidthClassName="max-w-[1500px]"
+          rightContent={(
+            <>
               <CashierTopMetric
                 label="Sesion"
                 value={loading ? "Sync" : "Activa"}
                 accent="text-slate-200"
                 tone="border-slate-700 bg-slate-900/80"
               />
-              <div className={`flex items-center gap-2 rounded-full border px-3 py-2 ${isConnected ? "border-emerald-500/30 bg-emerald-950/20 text-emerald-400" : "border-red-500/20 bg-red-950/20 text-red-400"}`}>
-                <div className={`h-2 w-2 rounded-full ${isConnected ? "bg-emerald-500" : "bg-red-500"}`} />
-                <span className="text-[9px] font-black uppercase tracking-wider">
-                  {isConnected ? "En linea" : "Sin conexion"}
-                </span>
-              </div>
-
               <div className="flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-emerald-300">
                 <Clock3 className="h-4 w-4" />
                 <span className="text-[9px] font-black uppercase tracking-[0.16em]">
                   {getLatestChargeTime(recentCharges)}
                 </span>
               </div>
-
-              <div className="h-8 w-px bg-slate-800" />
-              <button
-                onClick={handleLogout}
-                className="inline-flex items-center gap-2 rounded-full border border-red-500/20 bg-red-500/10 px-4 py-2 text-[9px] font-black uppercase tracking-[0.18em] text-red-300 transition-all hover:bg-red-500 hover:text-white"
-              >
-                <LogOut className="w-4 h-4" />
-                Cerrar sesion
-              </button>
-            </div>
-          </div>
-        </header>
+            </>
+          )}
+        />
 
         <section className="bg-slate-900 border border-slate-800 rounded-[2.5rem] p-6 lg:p-8 shadow-2xl">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">

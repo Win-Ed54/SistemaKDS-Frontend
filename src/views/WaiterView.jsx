@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import {
   BellRing,
   ClipboardList,
-  LogOut,
   PackageCheck,
   ReceiptText,
   Sparkles,
@@ -41,6 +40,7 @@ import ProductList from "../components/waiter/ProductList";
 import ReadyOrdersView from "../components/waiter/ReadyOrdersView";
 import TableSelector from "../components/waiter/TableSelector";
 import WaiterProfile from "../components/waiter/WaiterProfile";
+import ModuleHeader from "../components/common/ModuleHeader";
 import { readViewState, writeViewState } from "../utils/viewStateStorage";
 import { sortCategoriesForDisplay, sortProductsForDisplay } from "../utils/displayOrder";
 
@@ -1032,52 +1032,24 @@ export default function WaiterView() {
   };
 
   return (
-    <div className="min-h-screen min-w-0 overflow-x-hidden bg-[radial-gradient(circle_at_top,_rgba(34,211,238,0.10),_transparent_28%),linear-gradient(180deg,_#020617_0%,_#0f172a_100%)] text-white">
-      <header className="sticky top-0 z-50 px-3 pt-3 lg:px-5 lg:pt-4 backdrop-blur-md">
-        <div className="max-w-[1600px] mx-auto rounded-[1.4rem] border border-slate-800 bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.10),_transparent_24%),linear-gradient(135deg,_rgba(15,23,42,0.98)_0%,_rgba(2,6,23,0.98)_100%)] px-4 py-3 shadow-2xl">
-          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-            <button onClick={() => setShowProfile(true)} className="flex items-center gap-3 text-left">
-              <div className="flex h-10 w-10 items-center justify-center rounded-[1rem] border border-cyan-500/20 bg-cyan-500/10">
-                <User className="h-5 w-5 text-cyan-300" />
-              </div>
-              <div>
-                <h1 className="text-lg font-black tracking-tighter uppercase leading-none sm:text-xl">
-                  KDS <span className="text-cyan-400">Terminal</span>
-                </h1>
-                <p className="mt-0.5 text-[8px] text-slate-500 font-black uppercase tracking-[0.24em]">
-                  Operador: {waiterName}
-                </p>
-                <p className="mt-2 inline-flex rounded-full border border-cyan-500/20 bg-cyan-500/10 px-3 py-1 text-[8px] font-black uppercase tracking-[0.18em] text-cyan-300">
-                  {getServiceScopeLabel(waiterServiceScope)}
-                </p>
-              </div>
-            </button>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <div
-                className={`flex items-center gap-2 px-3 py-2 rounded-full border ${
-                  isConnected
-                    ? "border-emerald-500/30 bg-emerald-950/20 text-emerald-400"
-                    : "border-red-500/20 bg-red-950/20 text-red-400"
-                }`}
-              >
-                <div
-                  className={`w-2 h-2 rounded-full ${isConnected ? "bg-emerald-500" : "bg-red-500"}`}
-                />
-                <span className="text-[10px] font-black uppercase tracking-wider">
-                  {isConnected ? "En linea" : "Sin conexion"}
-                </span>
-              </div>
-
-              <div className="h-8 w-px bg-slate-800" />
-              <button onClick={handleLogout} className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-red-500/10 border border-red-500/20 text-red-300 text-[9px] font-black uppercase tracking-[0.18em] hover:bg-red-500 hover:text-white transition-all">
-                <LogOut className="w-4 h-4" />
-                <span className="hidden md:block">Cerrar sesion</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen min-w-0 overflow-x-hidden bg-[radial-gradient(circle_at_top,_rgba(103,232,249,0.14),_transparent_24%),radial-gradient(circle_at_bottom_right,_rgba(37,99,235,0.10),_transparent_22%),linear-gradient(180deg,_#040816_0%,_#09111f_48%,_#10203a_100%)] text-white">
+      <ModuleHeader
+        icon={User}
+        title="KDS Mesero"
+        subtitle={`Operador: ${waiterName}`}
+        isConnected={isConnected}
+        onLogout={handleLogout}
+        sticky
+        leftFooter={(
+          <button
+            type="button"
+            onClick={() => setShowProfile(true)}
+            className="inline-flex rounded-full border border-cyan-500/20 bg-cyan-500/10 px-3 py-1 text-[8px] font-black uppercase tracking-[0.18em] text-cyan-300"
+          >
+            {getServiceScopeLabel(waiterServiceScope)}
+          </button>
+        )}
+      />
 
       <main className="max-w-[1600px] mx-auto px-3 pb-32 pt-4 lg:px-5 lg:pb-10 lg:pt-3 space-y-5">
         <section className="sticky top-[88px] z-40 mt-2 rounded-[1.7rem] border border-slate-700/80 bg-[linear-gradient(180deg,_rgba(15,23,42,0.96)_0%,_rgba(2,6,23,0.92)_100%)] p-2 shadow-[0_18px_35px_rgba(2,6,23,0.32)] backdrop-blur-md overflow-x-auto no-scrollbar sm:top-[94px] xl:top-[104px] xl:mt-0 xl:rounded-[2rem] xl:p-2.5">

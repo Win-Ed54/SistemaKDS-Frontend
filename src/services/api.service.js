@@ -79,9 +79,14 @@ const request = async (endpoint, options = {}, retry = true) => {
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
+    const validationMessages = errorData?.errors && typeof errorData.errors === "object"
+      ? Object.values(errorData.errors).flat().filter(Boolean)
+      : [];
     const message =
+      validationMessages[0] ||
       errorData?.error ||
       errorData?.message ||
+      errorData?.title ||
       (typeof errorData === "string" ? errorData : `Error: ${response.status}`);
 
     const error = new Error(message);
@@ -110,6 +115,14 @@ export const payOrder = (id, data) =>
 export const cancelOrder = (id) => request(`/orders/${id}/cancel`, { method: "PATCH" });
 export const getTables = () => request("/tables");
 export const getProducts = () => request("/products");
+export const getIngredients = () => request("/ingredients");
+export const createIngredient = (data) =>
+  request("/ingredients", { method: "POST", body: JSON.stringify(data) });
+export const updateIngredient = (id, data) =>
+  request(`/ingredients/${id}`, { method: "PUT", body: JSON.stringify(data) });
+export const deleteIngredient = (id) => request(`/ingredients/${id}`, { method: "DELETE" });
+export const updateProductRecipe = (id, items) =>
+  request(`/products/${id}/recipe`, { method: "PUT", body: JSON.stringify({ items }) });
 export const updateProductStock = (id, stock) =>
   request(`/products/${id}/stock`, { method: "PATCH", body: JSON.stringify({ newStock: stock }) });
 export const createProduct = (data) =>
@@ -143,6 +156,18 @@ export const startTableCleaning = (tableNumber, data) =>
   request(`/tables/${tableNumber}/start-cleaning`, { method: "PATCH", body: JSON.stringify(data || {}) });
 export const getWaiters = () => request("/users/waiters");
 export const getStaff = () => request("/users/staff");
+export const createUser = (data) =>
+  request("/users", { method: "POST", body: JSON.stringify(data) });
+export const updateUserStatus = (userId, isActive) =>
+  request(`/users/${userId}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ isActive }),
+  });
+export const resetUserPassword = (userId) =>
+  request(`/users/${userId}/reset-password`, {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
 export const updateUserServiceScope = (userId, serviceScope) =>
   request(`/users/${userId}/service-scope`, {
     method: "PATCH",

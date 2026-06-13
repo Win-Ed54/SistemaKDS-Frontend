@@ -1,5 +1,21 @@
 @import "tailwindcss";
 
+:root {
+  --kds-bg-0: #050816;
+  --kds-bg-1: #09111f;
+  --kds-bg-2: #101a2b;
+  --kds-surface: rgba(10, 18, 32, 0.88);
+  --kds-surface-strong: rgba(8, 13, 24, 0.94);
+  --kds-border: rgba(95, 122, 164, 0.22);
+  --kds-grid: rgba(37, 99, 235, 0.08);
+  --kds-cyan: #67e8f9;
+  --kds-cyan-strong: #22d3ee;
+  --kds-amber: #fbbf24;
+  --kds-orange: #fb923c;
+  --kds-green: #34d399;
+  --kds-red: #f87171;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -7,7 +23,7 @@
 html {
   min-height: 100%;
   width: 100%;
-  background-color: #020617;
+  background-color: var(--kds-bg-0);
   color-scheme: dark;
   overflow-x: hidden;
   overflow-y: auto;
@@ -17,16 +33,24 @@ body {
   min-width: 0;
   min-height: 100vh;
   margin: 0;
-  background: radial-gradient(circle at top, rgba(34, 211, 238, 0.10), transparent 28%), linear-gradient(180deg, #020617 0%, #0f172a 100%);
+  background:
+    radial-gradient(circle at top, rgba(103, 232, 249, 0.12), transparent 24%),
+    radial-gradient(circle at bottom right, rgba(251, 146, 60, 0.08), transparent 22%),
+    linear-gradient(180deg, var(--kds-bg-0) 0%, var(--kds-bg-1) 48%, var(--kds-bg-2) 100%);
   color: white;
   overflow-x: hidden;
   overflow-y: auto;
+  font-family: "Segoe UI", "Bahnschrift", "Trebuchet MS", sans-serif;
 }
 
 #root {
   min-width: 0;
   min-height: 100vh;
-  background: #020617;
+  background:
+    linear-gradient(transparent 31px, rgba(37, 99, 235, 0.05) 32px),
+    linear-gradient(90deg, transparent 31px, rgba(37, 99, 235, 0.04) 32px),
+    linear-gradient(180deg, rgba(5, 8, 22, 0.96) 0%, rgba(9, 17, 31, 0.98) 100%);
+  background-size: 32px 32px, 32px 32px, auto;
   isolation: isolate;
   overflow-x: hidden;
 }
@@ -74,20 +98,20 @@ body,
 }
 
 :focus-visible {
-  outline: 3px solid rgba(34, 211, 238, 0.95);
+  outline: 3px solid rgba(103, 232, 249, 0.95);
   outline-offset: 3px;
-  box-shadow: 0 0 0 6px rgba(34, 211, 238, 0.16);
+  box-shadow: 0 0 0 6px rgba(34, 211, 238, 0.18);
 }
 
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline-color: rgba(52, 211, 153, 0.95);
-  box-shadow: 0 0 0 5px rgba(52, 211, 153, 0.14);
+  outline-color: rgba(251, 191, 36, 0.95);
+  box-shadow: 0 0 0 5px rgba(251, 191, 36, 0.14);
 }
 
 .custom-scrollbar {
-  scrollbar-color: rgba(148, 163, 184, 0.75) rgba(15, 23, 42, 0.8);
+  scrollbar-color: rgba(103, 232, 249, 0.7) rgba(8, 13, 24, 0.88);
   scrollbar-width: thin;
 }
 
@@ -97,18 +121,18 @@ textarea:focus-visible {
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.8);
+  background: rgba(8, 13, 24, 0.88);
   border-radius: 999px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, rgba(34, 211, 238, 0.9), rgba(16, 185, 129, 0.85));
-  border: 2px solid rgba(15, 23, 42, 0.95);
+  background: linear-gradient(180deg, rgba(103, 232, 249, 0.92), rgba(251, 146, 60, 0.85));
+  border: 2px solid rgba(8, 13, 24, 0.95);
   border-radius: 999px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, rgba(103, 232, 249, 1), rgba(52, 211, 153, 1));
+  background: linear-gradient(180deg, rgba(165, 243, 252, 1), rgba(251, 191, 36, 0.96));
 }
 
 /* ============================= */
@@ -162,4 +186,9 @@ textarea:focus-visible {
 
 .animate-order-exit {
   animation: orderExit 0.3s ease-in forwards;
+}
+
+::selection {
+  background: rgba(103, 232, 249, 0.2);
+  color: #f8fafc;
 }

@@ -195,6 +195,13 @@ export const startConnection = async (preferredRole = "") => {
   if (!statusHandlersRegistered) {
     statusHandlersRegistered = true;
 
+    const handleSessionRevoked = async () => {
+      await forceSessionReset();
+    };
+
+    connection.on("sessionrevoked", handleSessionRevoked);
+    connection.on("SessionRevoked", handleSessionRevoked);
+
     connection.onreconnecting(() => {
       notifyStatus(false);
       if (heartbeatIntervalId) {

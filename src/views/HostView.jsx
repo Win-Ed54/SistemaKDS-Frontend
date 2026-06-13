@@ -4,7 +4,6 @@ import {
   ArrowUp,
   Armchair,
   Clock3,
-  LogOut,
   RefreshCcw,
   Users,
   XCircle,
@@ -25,6 +24,7 @@ import useSignalRConnection from "../hooks/useSignalRConnection";
 import useTables from "../hooks/useTables";
 import { sanitizeSafeFreeText } from "../utils/inputSanitizers";
 import { readViewState, writeViewState } from "../utils/viewStateStorage";
+import ModuleHeader from "../components/common/ModuleHeader";
 
 const DEFAULT_CLEANING_MINUTES = 8;
 
@@ -734,7 +734,7 @@ const HostView = () => {
   };
 
   return (
-    <div className="min-h-screen min-w-0 overflow-x-hidden bg-[radial-gradient(circle_at_top,_rgba(14,165,233,0.10),_transparent_28%),linear-gradient(180deg,_#020617_0%,_#0f172a_100%)] text-white selection:bg-cyan-400/30">
+    <div className="min-h-screen min-w-0 overflow-x-hidden bg-[radial-gradient(circle_at_top,_rgba(103,232,249,0.12),_transparent_22%),radial-gradient(circle_at_bottom_left,_rgba(16,185,129,0.08),_transparent_22%),linear-gradient(180deg,_#050816_0%,_#0a1525_46%,_#11253a_100%)] text-white selection:bg-cyan-300/30">
       <ConfirmDialog
         open={pendingCancelTable !== null}
         title="Cancelar asignacion de mesa"
@@ -754,63 +754,30 @@ const HostView = () => {
         }}
       />
 
-      <header className="sticky top-0 z-50 px-3 pt-3 lg:px-5 lg:pt-4 backdrop-blur-md">
-        <div className="max-w-[1600px] mx-auto rounded-[1.4rem] border border-slate-800 bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.10),_transparent_24%),linear-gradient(135deg,_rgba(15,23,42,0.98)_0%,_rgba(2,6,23,0.98)_100%)] px-4 py-3 shadow-2xl">
-          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-            <div className="flex items-center gap-3 text-left">
-              <div className="flex h-10 w-10 items-center justify-center rounded-[1rem] border border-cyan-500/20 bg-cyan-500/10">
-                <Armchair className="h-5 w-5 text-cyan-300" />
-              </div>
-              <div>
-                <h1 className="text-lg font-black tracking-tighter uppercase leading-none sm:text-xl">
-                  KDS <span className="text-cyan-400">Host</span>
-                </h1>
-                <p className="mt-0.5 text-[8px] text-slate-500 font-black uppercase tracking-[0.24em]">
-                  Recepcion: {hostName}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <MetricCard label="Libres" value={availableTables.length} accent="text-emerald-300" />
-              <MetricCard label="Ocupadas" value={diningTablesCount} accent="text-amber-300" />
-              <MetricCard label="Limpieza" value={cleaningTablesCount} accent="text-cyan-300" />
-              <MetricCard
-                label="Proxima"
-                value={
-                  nextTableToFree
-                    ? `M${nextTableToFree.number} ${formatMinutes(nextTableToFree.remainingMinutes)}`
-                    : "Libre"
-                }
-                accent="text-white"
-              />
-              <div
-                className={`flex items-center gap-2 px-3 py-2 rounded-full border ${
-                  isConnected
-                    ? "border-emerald-500/30 bg-emerald-950/20 text-emerald-400"
-                    : "border-red-500/20 bg-red-950/20 text-red-400"
-                }`}
-              >
-                <div
-                  className={`w-2 h-2 rounded-full ${isConnected ? "bg-emerald-500" : "bg-red-500"}`}
-                />
-                <span className="text-[10px] font-black uppercase tracking-wider">
-                  {isConnected ? "En linea" : "Sin conexion"}
-                </span>
-              </div>
-
-              <div className="h-8 w-px bg-slate-800" />
-              <button
-                onClick={handleLogout}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-red-500/10 border border-red-500/20 text-red-300 text-[9px] font-black uppercase tracking-[0.18em] hover:bg-red-500 hover:text-white transition-all"
-              >
-                <LogOut className="w-4 h-4" />
-                <span className="hidden md:block">Cerrar sesion</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
+      <ModuleHeader
+        icon={Armchair}
+        title="KDS Recepcion"
+        subtitle={`Recepcion: ${hostName}`}
+        isConnected={isConnected}
+        onLogout={handleLogout}
+        sticky
+        rightContent={(
+          <>
+            <MetricCard label="Libres" value={availableTables.length} accent="text-emerald-300" />
+            <MetricCard label="Ocupadas" value={diningTablesCount} accent="text-amber-300" />
+            <MetricCard label="Limpieza" value={cleaningTablesCount} accent="text-cyan-300" />
+            <MetricCard
+              label="Proxima"
+              value={
+                nextTableToFree
+                  ? `M${nextTableToFree.number} ${formatMinutes(nextTableToFree.remainingMinutes)}`
+                  : "Libre"
+              }
+              accent="text-white"
+            />
+          </>
+        )}
+      />
 
       <main className="max-w-[1600px] mx-auto px-3 pb-10 pt-3 lg:px-5 space-y-5">
         <SurfaceHeader

@@ -156,7 +156,7 @@ export default function Login() {
 
     try {
       const data = await login(safeUsername, safePassword);
-      const route = getRouteForRole(data.role);
+      const route = data.requiresPasswordChange ? "/cambiar-contrasena" : getRouteForRole(data.role);
 
       if (!route || route === "/login") {
         logout();
@@ -168,7 +168,9 @@ export default function Login() {
     } catch (authError) {
       console.error("Error completo:", authError);
 
-      if (authError.response?.status === 401) {
+      if (authError.response?.status === 409) {
+        setError(authError?.message || "La cuenta ya esta en uso.");
+      } else if (authError.response?.status === 401) {
         setError("Usuario o contrasena incorrectos");
       } else if (authError.response?.status === 403) {
         setError("Usuario no autorizado");
@@ -178,6 +180,45 @@ export default function Login() {
         setError("No se pudo conectar al servidor");
       } else {
         setError("Error inesperado");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDemoLogin = async () => {
+    if (!isServerReachable) {
+      setError("El servidor no esta disponible en este momento.");
+      return;
+    }
+
+    const safeUsername = sanitizeLoginUsername(username).trim();
+    if (!safeUsername) {
+      setError("Ingresa el usuario demo");
+      return;
+    }
+
+    setError(null);
+    setLoading(true);
+
+    try {
+      const data = await login(safeUsername, "");
+      const route = data.requiresPasswordChange ? "/cambiar-contrasena" : getRouteForRole(data.role);
+
+      if (!route || route === "/login") {
+        logout();
+        setError(`Rol desconocido: ${data.role}`);
+        return;
+      }
+
+      navigate(route, { replace: true });
+    } catch (authError) {
+      if (authError.response?.status === 409) {
+        setError(authError?.message || "La cuenta demo ya esta en uso.");
+      } else if (authError.response?.status === 401) {
+        setError("El usuario demo no esta habilitado o no existe.");
+      } else {
+        setError(authError?.message || "No se pudo iniciar el acceso demo.");
       }
     } finally {
       setLoading(false);
@@ -295,6 +336,21 @@ export default function Login() {
         >
           {loading ? "Ingresando..." : "Iniciar sesion"}
         </button>
+
+        <button
+          style={{
+            ...styles.secondaryButton,
+            ...(loading || !isServerReachable ? styles.buttonDisabled : null),
+          }}
+          onClick={handleDemoLogin}
+          disabled={loading || !isServerReachable}
+        >
+          Entrar como demo
+        </button>
+
+        <p style={styles.helperText}>
+          Para acceso demo crea usuarios marcados como prueba desde admin y entra solo con el usuario.
+        </p>
 
         {error && (
           <p style={styles.errorBox}>
@@ -461,6 +517,24 @@ const styles = {
   buttonDisabled: {
     cursor: "not-allowed",
     opacity: 0.75,
+  },
+  secondaryButton: {
+    padding: "12px 14px",
+    borderRadius: "8px",
+    border: "1px solid rgba(26,111,255,0.18)",
+    background: "rgba(26,111,255,0.08)",
+    color: "#1a365d",
+    fontWeight: "bold",
+    fontSize: "14px",
+    cursor: "pointer",
+    letterSpacing: "0.5px",
+  },
+  helperText: {
+    margin: "0",
+    color: "#475569",
+    textAlign: "center",
+    fontSize: "11px",
+    lineHeight: 1.5,
   },
   errorBox: {
     color: "#991b1b",

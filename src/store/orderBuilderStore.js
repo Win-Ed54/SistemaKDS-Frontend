@@ -90,6 +90,13 @@ const useOrderBuilderStore = create((set, get) => ({
     const inCartTotal = getProductUnitsInOrder(currentItems, productId);
     const { distinctItems, totalUnits } = getOrderMetrics(currentItems);
     const available = (current?.stock ?? current?.Stock ?? 0) - inCartTotal;
+    const isBlockedByIngredients = Boolean(
+      current?.isBlockedByIngredients ?? current?.IsBlockedByIngredients,
+    );
+
+    if (isBlockedByIngredients) {
+      return { ok: false, message: "Este producto no puede pedirse por falta de ingredientes." };
+    }
 
     if (available <= 0) {
       return { ok: false, message: "Stock insuficiente para agregar otro producto." };
@@ -167,6 +174,13 @@ const useOrderBuilderStore = create((set, get) => ({
     const inCartTotal = getProductUnitsInOrder(currentItems, productId);
     const { distinctItems, totalUnits } = getOrderMetrics(currentItems);
     const available = (current?.stock ?? current?.Stock ?? 0) - inCartTotal;
+    const isBlockedByIngredients = Boolean(
+      current?.isBlockedByIngredients ?? current?.IsBlockedByIngredients,
+    );
+
+    if (isBlockedByIngredients) {
+      return { ok: false, message: "Este producto no puede pedirse por falta de ingredientes." };
+    }
 
     if (available <= 0) {
       return { ok: false, message: "Stock insuficiente para agregar otro producto." };
@@ -351,10 +365,16 @@ const useOrderBuilderStore = create((set, get) => ({
 
   reconcileWithAvailableStock: (products = []) => {
     const stockByProduct = new Map(
-      (Array.isArray(products) ? products : []).map((product) => [
-        product.id || product._id || product.Id,
-        Math.max(0, Number(product.stock ?? product.Stock ?? 0)),
-      ])
+      (Array.isArray(products) ? products : []).map((product) => {
+        const isBlockedByIngredients = Boolean(
+          product?.isBlockedByIngredients ?? product?.IsBlockedByIngredients,
+        );
+
+        return [
+          product.id || product._id || product.Id,
+          isBlockedByIngredients ? 0 : Math.max(0, Number(product.stock ?? product.Stock ?? 0)),
+        ];
+      })
     );
 
     set((state) => {

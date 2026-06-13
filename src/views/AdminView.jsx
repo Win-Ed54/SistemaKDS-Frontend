@@ -4,6 +4,7 @@ import { ArrowUp, BarChart3, Boxes, ClipboardList, LayoutDashboard, Settings2, U
 import {
   closeTable,
   getActiveOrders,
+  getIngredients,
   getOrderHistory,
   getProducts,
   getStaff,
@@ -19,12 +20,14 @@ import { readViewState, writeViewState } from "../utils/viewStateStorage";
 import AdminHeader from "../components/admin/AdminHeader";
 import AdministrativeLog from "../components/admin/AdministrativeLog";
 import InventoryManager from "../components/admin/InventoryManager";
+import IngredientsManager from "../components/admin/IngredientsManager";
 import KdsSettingsPanel from "../components/admin/KdsSettingsPanel";
 import OrdersSummary from "../components/admin/OrdersSummary";
 import StatsCard from "../components/admin/StatsCard";
 import StaffAssignmentsPanel from "../components/admin/StaffAssignmentsPanel";
 import TableStatus from "../components/admin/TableStatus";
 import TopProductsReport from "../components/admin/TopProductsReport";
+import UserCreationPanel from "../components/admin/UserCreationPanel";
 import ConfirmDialog from "../components/common/ConfirmDialog";
 
 const READY_INCIDENT_MINUTES = 10;
@@ -97,6 +100,7 @@ const AdminView = () => {
   const [orders, setOrders] = useState([]);
   const [tables, setTables] = useState([]);
   const [products, setProducts] = useState([]);
+  const [ingredients, setIngredients] = useState([]);
   const [history, setHistory] = useState([]);
   const [staff, setStaff] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -118,18 +122,20 @@ const AdminView = () => {
     if (!silent) setLoading(true);
 
     try {
-      const [ordersRes, tablesRes, productsRes, historyRes, staffRes] = await Promise.all([
+      const [ordersRes, tablesRes, productsRes, historyRes, staffRes, ingredientsRes] = await Promise.all([
         getActiveOrders(),
         getTables(),
         getProducts(),
         getOrderHistory(),
         getStaff(),
+        getIngredients(),
       ]);
 
       setOrders(Array.isArray(ordersRes) ? ordersRes : []);
       setTables(Array.isArray(tablesRes) ? tablesRes : []);
       setHistory(Array.isArray(historyRes) ? historyRes : []);
       setStaff(Array.isArray(staffRes) ? staffRes : []);
+      setIngredients(Array.isArray(ingredientsRes) ? ingredientsRes : []);
 
       setProducts((currentProducts) => {
         if (!Array.isArray(productsRes)) return [];
@@ -507,7 +513,7 @@ const AdminView = () => {
 
   if (loading && orders.length === 0) {
     return (
-      <div className="min-h-screen min-w-0 overflow-x-hidden bg-slate-950 flex items-center justify-center">
+      <div className="min-h-screen min-w-0 overflow-x-hidden bg-[radial-gradient(circle_at_top,_rgba(103,232,249,0.12),_transparent_22%),radial-gradient(circle_at_bottom_right,_rgba(59,130,246,0.08),_transparent_20%),linear-gradient(180deg,_#040816_0%,_#0a1222_46%,_#0f1a30_100%)] flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin shadow-[0_0_15px_rgba(6,182,212,0.5)]" />
           <p className="text-[10px] font-black text-cyan-500 uppercase tracking-[0.5em] animate-pulse">
@@ -528,7 +534,7 @@ const AdminView = () => {
   ];
 
   return (
-    <div className="min-h-screen min-w-0 overflow-x-hidden bg-slate-950 text-white p-4 lg:p-8 selection:bg-cyan-500/30">
+    <div className="min-h-screen min-w-0 overflow-x-hidden bg-[radial-gradient(circle_at_top,_rgba(103,232,249,0.12),_transparent_24%),radial-gradient(circle_at_bottom_left,_rgba(37,99,235,0.08),_transparent_20%),linear-gradient(180deg,_#040816_0%,_#0a1222_44%,_#0f1a30_100%)] text-white p-4 lg:p-8 selection:bg-cyan-300/30">
       <div className="max-w-[1700px] mx-auto space-y-8">
         <ConfirmDialog
           open={pendingTableRelease !== null}
@@ -675,6 +681,13 @@ const AdminView = () => {
 
         {(activeSection === "overview" || activeSection === "inventory") && (
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
+            <div className="xl:col-span-12">
+              <IngredientsManager
+                ingredients={ingredients}
+                products={products}
+                refresh={() => loadData(true)}
+              />
+            </div>
             <div className="xl:col-span-8">
               <InventoryManager products={products} refresh={() => loadData(true)} />
             </div>
@@ -685,12 +698,20 @@ const AdminView = () => {
         )}
 
         {(activeSection === "overview" || activeSection === "team") && (
-          <StaffAssignmentsPanel
-            users={staff}
-            onUpdated={() => {
-              void loadData(true);
-            }}
-          />
+          <div className="space-y-8">
+            <UserCreationPanel
+              users={staff}
+              onCreated={() => {
+                void loadData(true);
+              }}
+            />
+            <StaffAssignmentsPanel
+              users={staff}
+              onUpdated={() => {
+                void loadData(true);
+              }}
+            />
+          </div>
         )}
 
         {(activeSection === "overview" || activeSection === "settings") && (

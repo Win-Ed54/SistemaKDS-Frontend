@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChefHat, Clock3, LogOut } from "lucide-react";
+import { ChefHat, Clock3, Bell, BellOff, Volume2 } from "lucide-react";
 import OrderCard from "../components/kitchen/OrderCard";
+import ModuleHeader from "../components/common/ModuleHeader";
 import useKitchenClock from "../hooks/useKitchenClock";
 import useKitchenOrders from "../hooks/useKitchenOrders";
 import useOrderSound from "../hooks/useOrderSound";
@@ -30,7 +31,10 @@ const KitchenDisplay = () => {
   const navigate = useNavigate();
   const updateOrder = useOrderStore((state) => state.updateOrder);
 
-  useOrderSound();
+  const soundControls = useOrderSound();
+  const initialSoundSettings = soundControls.getSettings();
+  const [soundMuted, setSoundMuted] = useState(initialSoundSettings.muted);
+  const [soundVolume, setSoundVolume] = useState(initialSoundSettings.volume);
 
   const getOrderId = (order) => order.id || order._id;
 
@@ -66,7 +70,10 @@ const KitchenDisplay = () => {
   const handleReady = async (orderId) => {
     try {
       const updated = await markOrderReady(orderId);
-      if (updated) updateOrder(updated);
+      if (updated) {
+        updateOrder(updated);
+        soundControls.playReadyOrderSound();
+      }
     } catch (error) {
       console.error("No se pudo marcar la orden como lista:", error);
     }
@@ -74,58 +81,90 @@ const KitchenDisplay = () => {
 
   return (
     <div
-      className="flex min-h-[100dvh] min-w-0 flex-col overflow-x-hidden bg-[radial-gradient(circle_at_top,_rgba(249,115,22,0.10),_transparent_24%),linear-gradient(180deg,_#020617_0%,_#020617_100%)] text-white selection:bg-orange-500/30 md:h-[100dvh]"
+      className="flex min-h-[100dvh] min-w-0 flex-col overflow-x-hidden bg-[radial-gradient(circle_at_top,_rgba(251,146,60,0.16),_transparent_22%),radial-gradient(circle_at_bottom_left,_rgba(251,191,36,0.10),_transparent_20%),linear-gradient(180deg,_#07090f_0%,_#0d121a_42%,_#181108_100%)] text-white selection:bg-orange-300/30 md:h-[100dvh]"
     >
-      <header className="px-3 pt-3 lg:px-5 lg:pt-4" style={{ flexShrink: 0 }}>
-        <div className="mx-auto max-w-[1800px] rounded-[1.4rem] border border-slate-800 bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.10),_transparent_24%),linear-gradient(135deg,_rgba(15,23,42,0.98)_0%,_rgba(2,6,23,0.98)_100%)] px-4 py-3 shadow-2xl">
-          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[1rem] border border-orange-500/30 bg-orange-500/10">
-                <ChefHat className="h-5 w-5 text-orange-300" />
-              </div>
-              <div>
-                <h1 className="text-lg font-black tracking-tighter uppercase sm:text-xl">
-                  KDS <span className="text-orange-400">Cocina</span>
-                </h1>
-                <p className="mt-0.5 text-[8px] font-black uppercase tracking-[0.24em] text-slate-500">
-                  Produccion en tiempo real
-                </p>
-              </div>
+      <ModuleHeader
+        icon={ChefHat}
+        title="KDS Cocina"
+        subtitle="Produccion en tiempo real"
+        accent={{
+          border: "border-orange-500/30",
+          background: "bg-orange-500/10",
+          text: "text-orange-300",
+        }}
+        isConnected={isConnected}
+        onLogout={handleLogout}
+        maxWidthClassName="max-w-[1800px]"
+        rightContent={(
+          <>
+            <div className="flex items-center gap-2 rounded-full border border-orange-500/20 bg-orange-500/10 px-3 py-2 text-orange-300">
+              <Clock3 className="h-4 w-4" />
+              <span className="text-[10px] font-black uppercase tracking-[0.18em]">
+                {currentTimeLabel}
+              </span>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 xl:justify-end">
-              <div
-                className={`flex items-center gap-2 rounded-full border px-3 py-2 ${
-                  isConnected
-                    ? "border-emerald-500/30 bg-emerald-950/20 text-emerald-400"
-                    : "border-red-500/20 bg-red-950/20 text-red-400"
-                }`}
-              >
-                <div className={`h-2 w-2 rounded-full ${isConnected ? "bg-emerald-500" : "bg-red-500"}`} />
-                <span className="text-[10px] font-black uppercase tracking-wider">
-                  {isConnected ? "En linea" : "Sin conexion"}
-                </span>
-              </div>
-
-              <div className="flex items-center gap-2 rounded-full border border-orange-500/20 bg-orange-500/10 px-3 py-2 text-orange-300">
-                <Clock3 className="h-4 w-4" />
-                <span className="text-[10px] font-black uppercase tracking-[0.18em]">
-                  {currentTimeLabel}
-                </span>
-              </div>
-
-              <div className="h-8 w-px bg-slate-800" />
+            <div className="flex items-center gap-2 rounded-full border border-slate-800 bg-slate-950/80 px-3 py-2 text-slate-200">
               <button
-                onClick={handleLogout}
-                className="inline-flex items-center gap-2 rounded-full border border-red-500/20 bg-red-500/10 px-4 py-2 text-[9px] font-black uppercase tracking-[0.2em] text-red-300 transition-all hover:bg-red-500 hover:text-white"
+                type="button"
+                onClick={() => {
+                  const nextMuted = !soundMuted;
+                  setSoundMuted(nextMuted);
+                  soundControls.setMuted(nextMuted);
+                }}
+                className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.16em]"
               >
-                <LogOut className="h-4 w-4" />
-                Cerrar sesion
+                {soundMuted ? <BellOff className="h-4 w-4 text-red-300" /> : <Bell className="h-4 w-4 text-emerald-300" />}
+                {soundMuted ? "Silenciado" : "Sonido activo"}
+              </button>
+              <div className="hidden h-6 w-px bg-slate-800 sm:block" />
+              <label className="hidden items-center gap-2 sm:flex">
+                <Volume2 className="h-4 w-4 text-cyan-300" />
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.1"
+                  value={soundVolume}
+                  onChange={(event) => {
+                    const nextVolume = Number(event.target.value);
+                    setSoundVolume(nextVolume);
+                    soundControls.setVolume(nextVolume);
+                  }}
+                />
+              </label>
+              <button
+                type="button"
+                onClick={() => soundControls.playNewOrderSound()}
+                className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.16em] text-cyan-300"
+              >
+                Probar nueva
+              </button>
+              <button
+                type="button"
+                onClick={() => soundControls.playUrgentOrderSound()}
+                className="rounded-full border border-amber-400/20 bg-amber-400/10 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.16em] text-amber-300"
+              >
+                Probar urgente
+              </button>
+              <button
+                type="button"
+                onClick={() => soundControls.playCancelOrderSound()}
+                className="rounded-full border border-red-500/20 bg-red-500/10 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.16em] text-red-300"
+              >
+                Probar cancelada
+              </button>
+              <button
+                type="button"
+                onClick={() => soundControls.playReadyOrderSound()}
+                className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.16em] text-emerald-300"
+              >
+                Probar lista
               </button>
             </div>
-          </div>
-        </div>
-      </header>
+          </>
+        )}
+      />
 
       <div
         className="mx-auto mt-3 grid w-full max-w-[1800px] grid-cols-1 gap-3 overflow-visible px-3 pb-3 md:grid-cols-2 md:overflow-hidden lg:px-5 lg:pb-5"

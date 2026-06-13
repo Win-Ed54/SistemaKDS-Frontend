@@ -15,15 +15,24 @@ const ProductCard = ({ product, onAdd, disabled = false }) => {
   const productItems = items.filter((item) => item.productId === productId);
   const quantityInCart = productItems.reduce((sum, item) => sum + item.quantity, 0);
   const isOutOfStock = productStock <= 0;
+  const ingredientShortages = Array.isArray(product.ingredientShortages)
+    ? product.ingredientShortages
+    : Array.isArray(product.IngredientShortages)
+      ? product.IngredientShortages
+      : [];
+  const isBlockedByIngredients = Boolean(
+    product.isBlockedByIngredients ?? product.IsBlockedByIngredients,
+  );
   const isLowStock = productStock > 0 && productStock <= 5;
   const isInCart = quantityInCart > 0;
+  const isUnavailable = isOutOfStock || isBlockedByIngredients;
   const totalPrice = isInCart ? productPrice * quantityInCart : productPrice;
   const productHeadingId = `product-card-title-${String(productId || productName)
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "") || "item"}`;
   const handleImageAdd = () => {
-    if (disabled || isOutOfStock) return;
+    if (disabled || isUnavailable) return;
     onAdd(product);
   };
 
@@ -32,6 +41,8 @@ const ProductCard = ({ product, onAdd, disabled = false }) => {
       className={`group relative flex h-full flex-col overflow-hidden rounded-[1.25rem] border transition-all duration-200 ${
         isOutOfStock
           ? "border-slate-900 bg-slate-950/40 opacity-60 grayscale"
+          : isBlockedByIngredients
+            ? "border-amber-700/40 bg-slate-950/70 opacity-80"
           : isInCart
             ? "border-cyan-400/70 bg-slate-900 shadow-[0_0_18px_rgba(34,211,238,0.12)]"
             : isLowStock
@@ -48,18 +59,18 @@ const ProductCard = ({ product, onAdd, disabled = false }) => {
       <button
         type="button"
         aria-labelledby={productHeadingId}
-        title={disabled ? `${productName} bloqueado` : isOutOfStock ? `${productName} agotado` : productName}
+        title={disabled ? `${productName} bloqueado` : isUnavailable ? `${productName} no disponible` : productName}
         onClick={handleImageAdd}
         onKeyDown={(event) => {
-          if (disabled || isOutOfStock) return;
+          if (disabled || isUnavailable) return;
           if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
             handleImageAdd();
           }
         }}
-        disabled={disabled || isOutOfStock}
+        disabled={disabled || isUnavailable}
         className={`relative aspect-[4/3] w-full overflow-hidden bg-slate-800 text-left sm:aspect-square lg:aspect-[4/3] ${
-          isOutOfStock ? "cursor-not-allowed" : "cursor-pointer"
+          isUnavailable ? "cursor-not-allowed" : "cursor-pointer"
         }`}
       >
         {productImageUrl ? (
@@ -77,15 +88,17 @@ const ProductCard = ({ product, onAdd, disabled = false }) => {
             className={`rounded-lg border px-2 py-1 text-[8px] font-black uppercase backdrop-blur-md ${
               isOutOfStock
                 ? "border-red-500/40 bg-red-500/20 text-red-400"
+                : isBlockedByIngredients
+                  ? "border-amber-500/40 bg-amber-500/20 text-amber-300"
                 : isLowStock
                   ? "border-yellow-500/40 bg-yellow-500/20 text-yellow-300"
                   : "border-emerald-400/30 bg-slate-900/80 text-emerald-400"
             }`}
           >
-            {isOutOfStock ? "Sin stock" : `Stock ${productStock}`}
+            {isOutOfStock ? "Sin stock" : isBlockedByIngredients ? "Sin ingredientes" : `Stock ${productStock}`}
           </span>
         </div>
-        {!isOutOfStock && (
+        {!isUnavailable && (
           <div className="absolute inset-x-2.5 bottom-2.5 rounded-xl border border-white/10 bg-slate-950/75 px-3 py-2 text-center text-[8px] font-black uppercase tracking-[0.14em] text-cyan-100 opacity-0 backdrop-blur-md transition-opacity group-hover:opacity-100 sm:opacity-100 lg:opacity-0">
             Toca, click o Enter para agregar
           </div>
@@ -103,6 +116,11 @@ const ProductCard = ({ product, onAdd, disabled = false }) => {
           <p className="line-clamp-2 text-[10px] italic leading-relaxed text-slate-300 sm:text-[11px]">
             {productDescription}
           </p>
+          {isBlockedByIngredients && ingredientShortages.length > 0 && (
+            <p className="mt-2 line-clamp-3 text-[10px] font-black leading-relaxed text-amber-300">
+              Falta: {ingredientShortages.map((item) => item.ingredientName).join(", ")}
+            </p>
+          )}
         </div>
 
         <div className="mt-auto border-t border-slate-800/60 pt-2.5">
@@ -123,14 +141,14 @@ const ProductCard = ({ product, onAdd, disabled = false }) => {
               }}
               disabled={disabled || isOutOfStock}
               className={`w-full rounded-[0.95rem] py-2.5 text-[9px] font-black uppercase tracking-[0.18em] transition-all ${
-                isOutOfStock
+                isUnavailable
                   ? "cursor-not-allowed border border-slate-700 bg-slate-800 text-slate-600"
                   : isInCart
                     ? "bg-cyan-400 text-slate-950"
                     : "bg-emerald-400 text-slate-950 hover:bg-emerald-300"
               }`}
             >
-              {isOutOfStock ? "Agotado" : isInCart ? "Agregar otro" : "Agregar"}
+              {isOutOfStock ? "Agotado" : isBlockedByIngredients ? "Bloqueado" : isInCart ? "Agregar otro" : "Agregar"}
             </button>
           </div>
         </div>

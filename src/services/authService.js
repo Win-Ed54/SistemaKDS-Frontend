@@ -115,6 +115,7 @@ export const login = async (username, password) => {
 
   applySessionTokens(data);
   setAuthValue("user_name", username);
+  setAuthValue("must_change_password", data.requiresPasswordChange ? "true" : "false");
   startAutoRefreshSession();
   window.dispatchEvent(new Event("auth-changed"));
 
@@ -142,7 +143,39 @@ export const getSession = () => {
 
 export { getRoleRoute as getRouteForRole };
 
+export const requiresPasswordChange = () => getAuthValue("must_change_password") === "true";
+
+export const clearPasswordChangeRequirement = () => {
+  setAuthValue("must_change_password", "false");
+};
+
+export const changePassword = (currentPassword, newPassword) =>
+  request("/auth/change-password", {
+    method: "POST",
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
+
 export const logout = () => {
   clearRefreshTimeout();
-  void forceSessionReset();
+  const token = getAuthValue("token");
+  const refreshToken = getAuthValue("refresh_token");
+
+  void (async () => {
+    try {
+      if (token && refreshToken) {
+        await fetch(buildApiUrl("/auth/logout"), {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ refreshToken }),
+        });
+      }
+    } catch {
+      // Si el logout remoto falla, igual limpiamos la sesion local.
+    } finally {
+      await forceSessionReset();
+    }
+  })();
 };

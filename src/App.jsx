@@ -60,6 +60,7 @@ const lazyRetry = async (importer, retryKey) => {
 const lazyView = (importer, retryKey) => lazy(() => lazyRetry(importer, retryKey));
 
 const Login = lazyView(() => import("./pages/Login"), "login");
+const ChangePasswordPage = lazyView(() => import("./pages/ChangePassword"), "change-password");
 const AdminView = lazyView(() => import("./views/AdminView"), "admin");
 const CashierView = lazyView(() => import("./views/CashierView"), "cashier");
 const HostView = lazyView(() => import("./views/HostView"), "host");
@@ -187,6 +188,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/cambiar-contrasena" element={<ChangePasswordPage />} />
 
           <Route
             path="/cocina"

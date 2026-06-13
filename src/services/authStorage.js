@@ -4,6 +4,7 @@ const AUTH_KEYS = [
   "refresh_token",
   "user_name",
   "service_scope",
+  "must_change_password",
   "admin_token",
   "waiter_token",
   "host_token",
