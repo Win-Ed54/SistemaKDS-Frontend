@@ -168,6 +168,7 @@ export const resetUserPassword = (userId) =>
     method: "POST",
     body: JSON.stringify({}),
   });
+export const deleteUser = (userId) => request(`/users/${userId}`, { method: "DELETE" });
 export const updateUserServiceScope = (userId, serviceScope) =>
   request(`/users/${userId}/service-scope`, {
     method: "PATCH",

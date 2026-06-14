@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
-import { BadgePlus, Copy, KeyRound, Mail, Power, RotateCcw, UserPlus2 } from "lucide-react";
-import { createUser, resetUserPassword, updateUserStatus } from "../../services/api.service";
+import { BadgePlus, Copy, KeyRound, Mail, Power, RotateCcw, Trash2, UserPlus2 } from "lucide-react";
+import { createUser, deleteUser, resetUserPassword, updateUserStatus } from "../../services/api.service";
 import { useToast } from "../../context/ToastContext";
 
 const ROLE_OPTIONS = [
@@ -59,6 +59,7 @@ const UserCreationPanel = ({ users = [], onCreated }) => {
   const [createdResult, setCreatedResult] = useState(null);
   const [togglingUserId, setTogglingUserId] = useState("");
   const [resettingUserId, setResettingUserId] = useState("");
+  const [deletingUserId, setDeletingUserId] = useState("");
 
   const demoUsers = useMemo(
     () => (Array.isArray(users) ? users.filter((user) => user?.isDemoAccount) : []),
@@ -188,6 +189,27 @@ const UserCreationPanel = ({ users = [], onCreated }) => {
       showToast(error?.message || "No se pudo reiniciar la contrasena", "error");
     } finally {
       setResettingUserId("");
+    }
+  };
+
+  const handleDeleteDemoUser = async (user) => {
+    const userId = user?.id || user?._id || "";
+    if (!userId || !user?.isDemoAccount) return;
+
+    const shouldDelete = window.confirm(
+      `Se eliminara el perfil demo ${user?.username || "seleccionado"} de forma permanente.`,
+    );
+    if (!shouldDelete) return;
+
+    setDeletingUserId(userId);
+    try {
+      await deleteUser(userId);
+      showToast("Perfil demo eliminado", "success");
+      onCreated?.();
+    } catch (error) {
+      showToast(error?.message || "No se pudo eliminar el perfil demo", "error");
+    } finally {
+      setDeletingUserId("");
     }
   };
 
@@ -433,6 +455,18 @@ const UserCreationPanel = ({ users = [], onCreated }) => {
                             ? "Generando..."
                             : "Nueva temporal"}
                       </button>
+                      {isDemoAccount ? (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteDemoUser(user)}
+                          disabled={deletingUserId === userId || isProtectedManager}
+                          className="inline-flex items-center gap-2 rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-[10px] font-black uppercase tracking-[0.16em] text-amber-300 disabled:opacity-60"
+                          title={isProtectedManager ? "La cuenta de gerencia no puede eliminarse desde este panel." : ""}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          {deletingUserId === userId ? "Eliminando..." : "Eliminar demo"}
+                        </button>
+                      ) : null}
                     </div>
                   </div>
                 </div>
