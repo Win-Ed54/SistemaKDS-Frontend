@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { BadgePlus, Copy, KeyRound, Mail, Power, RotateCcw, Trash2, UserPlus2 } from "lucide-react";
 import { createUser, deleteUser, resetUserPassword, updateUserStatus } from "../../services/api.service";
 import { useToast } from "../../context/ToastContext";
+import ConfirmDialog from "../common/ConfirmDialog";
 
 const ROLE_OPTIONS = [
   { value: "admin", label: "Admin" },
@@ -60,6 +61,7 @@ const UserCreationPanel = ({ users = [], onCreated }) => {
   const [togglingUserId, setTogglingUserId] = useState("");
   const [resettingUserId, setResettingUserId] = useState("");
   const [deletingUserId, setDeletingUserId] = useState("");
+  const [pendingDeleteUser, setPendingDeleteUser] = useState(null);
 
   const demoUsers = useMemo(
     () => (Array.isArray(users) ? users.filter((user) => user?.isDemoAccount) : []),
@@ -196,15 +198,11 @@ const UserCreationPanel = ({ users = [], onCreated }) => {
     const userId = user?.id || user?._id || "";
     if (!userId || !user?.isDemoAccount) return;
 
-    const shouldDelete = window.confirm(
-      `Se eliminara el perfil demo ${user?.username || "seleccionado"} de forma permanente.`,
-    );
-    if (!shouldDelete) return;
-
     setDeletingUserId(userId);
     try {
       await deleteUser(userId);
       showToast("Perfil demo eliminado", "success");
+      setPendingDeleteUser(null);
       onCreated?.();
     } catch (error) {
       showToast(error?.message || "No se pudo eliminar el perfil demo", "error");
@@ -215,6 +213,22 @@ const UserCreationPanel = ({ users = [], onCreated }) => {
 
   return (
     <section className="rounded-[2rem] border border-slate-800 bg-slate-900/60 p-5 shadow-xl">
+      <ConfirmDialog
+        open={Boolean(pendingDeleteUser)}
+        title="Eliminar perfil demo"
+        description={
+          pendingDeleteUser
+            ? `Se eliminara ${pendingDeleteUser.username || "este perfil demo"} de forma permanente.`
+            : ""
+        }
+        confirmLabel="Eliminar demo"
+        cancelLabel="Volver"
+        tone="danger"
+        loading={Boolean(deletingUserId)}
+        onConfirm={() => void handleDeleteDemoUser(pendingDeleteUser)}
+        onCancel={() => (deletingUserId ? undefined : setPendingDeleteUser(null))}
+      />
+
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
           <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500">
@@ -458,7 +472,7 @@ const UserCreationPanel = ({ users = [], onCreated }) => {
                       {isDemoAccount ? (
                         <button
                           type="button"
-                          onClick={() => handleDeleteDemoUser(user)}
+                          onClick={() => setPendingDeleteUser(user)}
                           disabled={deletingUserId === userId || isProtectedManager}
                           className="inline-flex items-center gap-2 rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-[10px] font-black uppercase tracking-[0.16em] text-amber-300 disabled:opacity-60"
                           title={isProtectedManager ? "La cuenta de gerencia no puede eliminarse desde este panel." : ""}
