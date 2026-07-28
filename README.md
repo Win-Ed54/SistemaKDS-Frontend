@@ -2,6 +2,10 @@
 
 Frontend del sistema KDS construido con React 19, Vite 7, Zustand, Tailwind CSS 4 y cliente SignalR.
 
+## Documentacion adicional
+
+- [Arquitectura del frontend](./ARCHITECTURE.md)
+
 ## Vistas
 
 - `/login`
@@ -74,6 +78,23 @@ No guardes tokens, contrasenas ni URLs privadas reales en este README. Usa varia
 corepack pnpm install
 corepack pnpm run dev
 ```
+
+## Mapa del codigo
+
+- `src/views`: pantallas completas por rol.
+- `src/components`: bloques reutilizables por dominio.
+- `src/hooks`: integracion entre vistas, API y SignalR.
+- `src/store`: estado global con Zustand.
+- `src/services`: cliente HTTP, SignalR, auth local y reinicio de sesion.
+- `src/utils`: sanitizacion y helpers puros.
+
+Archivos de referencia:
+
+- `src/services/api.service.js`: request autenticado y refresh token.
+- `src/services/signalrService.js`: hub, reconexion, dedupe y presencia.
+- `src/store/orderBuilderStore.js`: borradores por mesa o destino.
+- `src/store/orderStore.js`: ordenes activas normalizadas.
+- `src/hooks/useKitchenOrders.js`: ejemplo de resincronizacion REST + SignalR.
 
 Dev server:
 

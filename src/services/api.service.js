@@ -3,6 +3,7 @@ import { getCurrentAppPath } from "../config/appPaths";
 import { buildApiUrl } from "../config/runtime";
 import { forceSessionReset } from "./sessionReset";
 
+// Escoge el token segun la vista activa para mantener sesiones separadas por rol.
 const getToken = () => {
   const path = getCurrentAppPath();
   if (path.includes("cocina")) return getAuthValue("kitchen_token");
@@ -16,6 +17,7 @@ const getToken = () => {
 let isRefreshing = false;
 let refreshQueue = [];
 
+// Serializa el refresh token para que varias requests 401 no disparen refrescos paralelos.
 const refreshAccessToken = async () => {
   const refreshToken = getAuthValue("refresh_token");
   if (!refreshToken) throw new Error("No refresh token");
@@ -42,6 +44,10 @@ const refreshAccessToken = async () => {
   return data.token;
 };
 
+/**
+ * Cliente base de la API.
+ * Agrega token, refresca sesion al recibir 401 y normaliza errores para la UI.
+ */
 const request = async (endpoint, options = {}, retry = true) => {
   const token = getToken();
   const headers = { ...(options.headers || {}) };

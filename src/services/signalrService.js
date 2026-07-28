@@ -4,6 +4,7 @@ import { getAuthValue } from "./authStorage";
 import { getCurrentAppPath } from "../config/appPaths";
 import { hubUrl } from "../config/runtime";
 import { forceSessionReset } from "./sessionReset";
+
 const ROLE_TOKEN_MAP = {
   kitchen: "kitchen_token",
   host: "host_token",
@@ -12,6 +13,10 @@ const ROLE_TOKEN_MAP = {
   cashier: "cashier_token",
 };
 
+/**
+ * Resuelve el token que debe usar SignalR segun el rol preferido,
+ * la ruta actual o el rol persistido en almacenamiento.
+ */
 export const getSignalRToken = (preferredRole = "") => {
   const normalizedPreferredRole = String(preferredRole || "").trim().toLowerCase();
   const preferredTokenKey = ROLE_TOKEN_MAP[normalizedPreferredRole];
@@ -36,6 +41,10 @@ export const getSignalRToken = (preferredRole = "") => {
 
 export const hasSignalRToken = (preferredRole = "") => Boolean(getSignalRToken(preferredRole));
 
+/**
+ * Se usa para enriquecer presencia en el backend y facilitar trazabilidad
+ * cuando varias pantallas del restaurante comparten usuario o sesion.
+ */
 const getBrowserName = () => {
   if (typeof navigator === "undefined") return "Unknown";
 
@@ -101,6 +110,7 @@ const getPayloadId = (payload) => {
   return payload;
 };
 
+// Evita procesar el mismo evento duplicado cuando el backend emite alias o reconexiones.
 const createEventDeduper = (scope) => {
   const recentEvents = new Map();
 
@@ -132,6 +142,7 @@ const scheduleReconnect = () => {
   if (typeof navigator !== "undefined" && navigator.onLine === false) return;
   if (reconnectTimeoutId) return;
 
+  // Mantiene una sola cola de reconexion aunque fallen varios eventos seguidos.
   reconnectTimeoutId = window.setTimeout(() => {
     reconnectTimeoutId = null;
     void startConnection();
@@ -213,6 +224,7 @@ export const startConnection = async (preferredRole = "") => {
     connection.onreconnected(() => {
       notifyStatus(true);
       void registerPresence();
+      // Mantiene la presencia viva en el servidor mientras la pantalla sigue abierta.
       // asegurar latido periódico para mantener presencia activa en el servidor
       if (!heartbeatIntervalId) {
         heartbeatIntervalId = setInterval(() => {
@@ -263,6 +275,7 @@ export const startConnection = async (preferredRole = "") => {
       }
       notifyStatus(true);
       void registerPresence();
+      // Arranque inicial del latido; reconexiones usan el mismo mecanismo.
       // iniciar latido periódico para mantener presencia activa en el servidor
       if (!heartbeatIntervalId) {
         heartbeatIntervalId = setInterval(() => {
@@ -334,6 +347,7 @@ export const restartConnection = async (preferredRole = "") => {
 
 const removeHandler = (eventName, handler) => connection.off(eventName, handler);
 
+// Registra aliases de eventos antiguos y nuevos y devuelve un cleanup unico.
 const bindEvents = (events, handler) => {
   events.forEach((eventName) => connection.on(eventName, handler));
   return () => {
@@ -377,6 +391,7 @@ export const onOrderReady = (callback) => {
 
 export const onOrderDelivered = (callback) => {
   const shouldProcessEvent = createEventDeduper("order:delivered");
+  // Algunos emisores mandan solo id y otros mandan la orden completa.
   const idHandler = (orderId) => {
     if (!shouldProcessEvent(orderId)) return;
     useOrderStore.getState().removeOrder(orderId);

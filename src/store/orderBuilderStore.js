@@ -13,6 +13,7 @@ const EMPTY_DRAFT = {
   items: [],
 };
 
+// Cada mesa, pedido para llevar o ubicacion temporal mantiene su propio borrador.
 const getLocationKey = (tableId) => {
   if (tableId === null || tableId === undefined || tableId === "") {
     return "__unassigned__";
@@ -30,6 +31,7 @@ const cloneDraft = (draft = EMPTY_DRAFT) => ({
 const getDraftForLocation = (state, tableId) =>
   cloneDraft(state.draftsByLocation?.[getLocationKey(tableId)] || EMPTY_DRAFT);
 
+// Sincroniza el borrador persistido de la ubicacion actual con el estado visible del panel.
 const buildDraftState = (state, tableId, draftPatch) => {
   const locationKey = getLocationKey(tableId ?? state.tableId);
   const currentDraft = getDraftForLocation(state, tableId ?? state.tableId);
@@ -48,6 +50,10 @@ const buildDraftState = (state, tableId, draftPatch) => {
   };
 };
 
+/**
+ * Builder de ordenes del mesero.
+ * Conserva borradores por mesa o destino para que cambiar de contexto no pierda el carrito.
+ */
 const useOrderBuilderStore = create((set, get) => ({
   tableId: null,
   waiterName: "",
@@ -128,6 +134,7 @@ const useOrderBuilderStore = create((set, get) => ({
     }
 
     set((state) => {
+      // Las lineas sin nota se compactan para representar "mismo producto, misma preparacion".
       const existingClean = state.items.find(
         (item) => item.productId === productId && !item.notes
       );
@@ -212,6 +219,7 @@ const useOrderBuilderStore = create((set, get) => ({
     }
 
     set((state) => {
+      // Las lineas con la misma nota se agrupan para no duplicar variantes identicas.
       const matchingItem = state.items.find(
         (item) => item.productId === productId && (item.notes || "") === normalizedNotes
       );
@@ -343,6 +351,7 @@ const useOrderBuilderStore = create((set, get) => ({
       );
 
       if (targetIndex >= 0) {
+        // Si la nota editada coincide con otra linea existente, se fusionan cantidades.
         remainingItems[targetIndex] = {
           ...remainingItems[targetIndex],
           quantity: remainingItems[targetIndex].quantity + sourceItem.quantity,

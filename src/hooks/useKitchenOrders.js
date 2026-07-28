@@ -10,10 +10,18 @@ import {
   subscribeConnectionStatus,
 } from "../services/signalrService";
 
+/**
+ * Mantiene la cola activa de cocina alineada con REST y SignalR.
+ * Los eventos disparan una resincronizacion corta para resolver cambios simultaneos.
+ */
 const useKitchenOrders = () => {
   const { orders, setOrders, purgeInactive } = useOrderStore();
   const syncTimeoutRef = useRef(null);
 
+  /**
+   * Fuerza una resincronizacion con la API para que la lista local no dependa
+   * solo de eventos del hub, que pueden llegar fuera de orden al reconectar.
+   */
   const syncActiveOrders = useCallback(async () => {
     try {
       const active = await getActiveOrders();
@@ -30,6 +38,7 @@ const useKitchenOrders = () => {
     const scheduleSync = () => {
       if (!mounted || syncTimeoutRef.current) return;
 
+      // Agrupa rafagas de eventos para no disparar varias cargas consecutivas.
       syncTimeoutRef.current = window.setTimeout(() => {
         syncTimeoutRef.current = null;
         if (mounted) void syncActiveOrders();

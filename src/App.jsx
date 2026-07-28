@@ -23,6 +23,10 @@ let signalRCleanup = [];
 
 const CHUNK_RETRY_PREFIX = "kds-chunk-retry";
 
+/**
+ * Detecta errores tipicos de despliegues SPA donde el navegador intenta abrir
+ * un chunk viejo despues de una publicacion nueva.
+ */
 const isRecoverableChunkError = (error) => {
   const message = String(error?.message || error || "");
 
@@ -105,6 +109,8 @@ const ScreenLoading = () => (
 
 function App() {
   useEffect(() => {
+    // En estaciones con mouse, reenviamos la rueda al documento cuando el foco
+    // cae sobre contenedores que ya no pueden seguir desplazandose.
     const hasFinePointer = window.matchMedia?.("(pointer: fine)")?.matches;
     if (!hasFinePointer) return undefined;
 
@@ -143,6 +149,7 @@ function App() {
 
       try {
         signalRInitialized = true;
+        // Reutiliza la misma conexion global y solo la reinicia cuando cambia autenticacion.
         if (forceRestart) {
           await restartConnection();
         } else {
@@ -163,6 +170,7 @@ function App() {
     };
 
     const handleAuthChanged = async () => {
+      // Si cambian token o rol, limpiamos handlers viejos antes de negociar otra vez.
       signalRInitialized = false;
       signalRCleanup.forEach((cleanup) => cleanup?.());
       signalRCleanup = [];
