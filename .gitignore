@@ -17,7 +17,10 @@ lerna-debug.log*
 # --- Environment files ---
 .env
 .env.local
+.env.*
+!.env.example
 .env.*.local
+.npmrc
 
 # --- Editors and OS files ---
 .vscode/*
